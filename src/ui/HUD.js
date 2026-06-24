@@ -294,7 +294,8 @@ export class HUD {
         font-size: 11px; font-weight: 800; letter-spacing: 1px;
       }
       .hud-oxygen {
-        position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: calc(166px + var(--safe-bottom, 0px));
+        left: 50%; transform: translateX(-50%);
         width: 240px; text-align: center; opacity: 0; transition: opacity 0.25s ease;
       }
       .hud-oxygen.visible { opacity: 1; }
@@ -306,7 +307,8 @@ export class HUD {
         transition: width 0.12s linear, background 0.2s linear; }
 
       .hud-vitals {
-        position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: calc(104px + var(--safe-bottom, 0px));
+        left: 50%; transform: translateX(-50%);
         display: flex; flex-direction: column; gap: 3px; align-items: center;
         text-shadow: 0 1px 2px rgba(0,0,0,0.9);
       }
@@ -320,7 +322,8 @@ export class HUD {
       .icon.food.empty { filter: grayscale(1) brightness(0.4); opacity: 0.5; }
 
       .hud-hotbar {
-        position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: calc(28px + var(--safe-bottom, 0px));
+        left: 50%; transform: translateX(-50%);
         display: flex; gap: 6px; padding: 7px;
         background: rgba(10,12,16,0.5); border-radius: 12px;
         border: 1px solid rgba(255,255,255,0.08);

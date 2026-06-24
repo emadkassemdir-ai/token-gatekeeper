@@ -175,7 +175,8 @@ export class Chat {
     style.id = 'chat-styles';
     style.textContent = `
       #chat {
-        position: absolute; left: 14px; bottom: 96px; z-index: 70;
+        position: absolute; left: calc(14px + var(--safe-left, 0px));
+        bottom: calc(104px + var(--safe-bottom, 0px)); z-index: 70;
         width: min(440px, 70vw); pointer-events: none;
         font-family: 'Segoe UI', system-ui, sans-serif;
       }

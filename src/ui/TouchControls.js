@@ -40,7 +40,7 @@ export class TouchControls {
     this._moveThresh = 12; // px of travel that turns a hold into a look-drag
 
     this._joyId = null;
-    this._joyR = 56;
+    this._joyR = 46; // smaller travel radius to match the shrunk joystick base
 
     this.physics.touch = true;
     this._injectStyles();
@@ -260,17 +260,23 @@ export class TouchControls {
       .tc-joy-base, .tc-move-btns, .tc-util-btns, .tc-btn {
         touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; }
       .tc-joy-base {
-        position: absolute; left: 26px; bottom: 26px; z-index: 55;
-        width: 132px; height: 132px; border-radius: 50%;
+        /* Shrunk, and nudged up + right so it clears the home indicator. */
+        position: absolute; left: calc(44px + var(--safe-left, 0px));
+        bottom: calc(48px + var(--safe-bottom, 0px)); z-index: 55;
+        width: 108px; height: 108px; border-radius: 50%;
         background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.18);
         box-shadow: inset 0 0 24px rgba(0,0,0,0.3); }
       .tc-joy-knob {
         position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-        width: 58px; height: 58px; border-radius: 50%;
+        width: 50px; height: 50px; border-radius: 50%;
         background: rgba(255,255,255,0.22); border: 2px solid rgba(255,255,255,0.4); }
-      .tc-move-btns { position: absolute; right: 24px; bottom: 26px; z-index: 55;
+      .tc-move-btns {
+        position: absolute; right: calc(24px + var(--safe-right, 0px));
+        bottom: calc(44px + var(--safe-bottom, 0px)); z-index: 55;
         display: flex; gap: 12px; align-items: flex-end; }
-      .tc-util-btns { position: absolute; right: 24px; bottom: 116px; z-index: 55;
+      .tc-util-btns {
+        position: absolute; right: calc(24px + var(--safe-right, 0px));
+        bottom: calc(134px + var(--safe-bottom, 0px)); z-index: 55;
         display: flex; gap: 12px; align-items: flex-end; }
       .tc-btn {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -288,9 +294,13 @@ export class TouchControls {
       .tc-hint.fade { opacity: 0; }
 
       @media (max-width: 560px) {
-        .tc-joy-base { width: 112px; height: 112px; left: 18px; bottom: 18px; }
-        .tc-move-btns { right: 16px; bottom: 18px; gap: 10px; }
-        .tc-util-btns { right: 16px; bottom: 100px; }
+        .tc-joy-base { width: 100px; height: 100px;
+          left: calc(28px + var(--safe-left, 0px));
+          bottom: calc(40px + var(--safe-bottom, 0px)); }
+        .tc-move-btns { right: calc(16px + var(--safe-right, 0px));
+          bottom: calc(36px + var(--safe-bottom, 0px)); gap: 10px; }
+        .tc-util-btns { right: calc(16px + var(--safe-right, 0px));
+          bottom: calc(118px + var(--safe-bottom, 0px)); }
         .tc-btn { width: 58px; height: 58px; }
         .tc-btn.tc-jump { width: 68px; height: 68px; }
       }
