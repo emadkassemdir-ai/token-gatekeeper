@@ -17,6 +17,7 @@ import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { GameMenu } from './ui/GameMenu.js';
 import { HUD } from './ui/HUD.js';
+import { TouchControls } from './ui/TouchControls.js';
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
@@ -115,6 +116,11 @@ class Game {
   _initUI() {
     this.hud = new HUD(this.app, this.profile);
     this.crosshair.classList.add('visible');
+
+    // On touch devices, mount the on-screen joystick / look / action controls.
+    if (TouchControls.isTouchDevice()) {
+      this.touchControls = new TouchControls(this.app, this.physics, this.interaction);
+    }
   }
 
   _bindLifecycle() {

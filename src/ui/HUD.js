@@ -101,6 +101,15 @@ export class HUD {
       slot.appendChild(key);
       slot.appendChild(swatch);
       slot.appendChild(label);
+
+      // Tap/click a slot to select it (primary hotbar control on touch).
+      const select = (e) => {
+        e.preventDefault();
+        this.profile.selectSlot(i);
+      };
+      slot.addEventListener('click', select);
+      slot.addEventListener('touchstart', select, { passive: false });
+
       hotbar.appendChild(slot);
       this._slotEls.push(slot);
     });
@@ -210,7 +219,9 @@ export class HUD {
         display: flex; gap: 6px; padding: 7px;
         background: rgba(10,12,16,0.5); border-radius: 12px;
         border: 1px solid rgba(255,255,255,0.08);
+        pointer-events: auto; /* tappable hotbar on touch devices */
       }
+      .hud-slot { cursor: pointer; -webkit-tap-highlight-color: transparent; }
       .hud-slot {
         position: relative; width: 56px; height: 56px; border-radius: 9px;
         background: rgba(255,255,255,0.05);

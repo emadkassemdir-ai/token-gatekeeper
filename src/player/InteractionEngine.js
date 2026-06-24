@@ -40,6 +40,7 @@ export class InteractionEngine {
     this._placeCooldown = 0;
 
     this.onEdit = null; // callback(x,y,z,id) for persistence
+    this._placeRequested = false; // one-shot place (touch tap)
 
     this._buildHighlight();
     this._bindEvents();
@@ -317,7 +318,23 @@ export class InteractionEngine {
     }
 
     if (this.breaking) this._tryBreak(dt);
-    if (this.placing) this._tryPlace();
+    if (this.placing || this._placeRequested) {
+      this._tryPlace();
+      this._placeRequested = false;
+    }
+  }
+
+  /* --------------------------- touch input API --------------------------- */
+
+  /** Begin/stop mining (touch "break" button hold). @param {boolean} active */
+  setBreaking(active) {
+    this.breaking = active;
+    if (!active) this._resetBreak();
+  }
+
+  /** Request a single block placement (touch "place" tap). */
+  requestPlace() {
+    this._placeRequested = true;
   }
 }
 
