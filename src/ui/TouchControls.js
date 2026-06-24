@@ -1,46 +1,52 @@
 /**
  * TouchControls
  * -------------
- * On-screen controls for touch devices (phones / tablets), since the desktop
- * scheme relies on PointerLock + mouse buttons + a physical keyboard that don't
- * exist on a touchscreen. Provides:
+ * On-screen controls for touch devices. Provides:
  *
- *   - a left analog joystick driving PhysicsEngine.setMoveInput()
- *   - a full-screen drag layer behind the HUD for look (PhysicsEngine.rotate)
- *   - action buttons: Jump (hold), Fly (toggle), Down (hold, fly descend),
- *     Break (hold to mine) and Place (tap)
+ *   - a left analog joystick -> PhysicsEngine.setMoveInput()
+ *   - a full-screen layer behind the HUD that interprets gestures:
+ *       * drag            -> look (PhysicsEngine.rotate)
+ *       * long-press hold -> mine the targeted block (per-block timing) /
+ *                            attack a mob in front
+ *       * quick tap       -> place the selected block
+ *   - buttons: Jump (hold), Fly (toggle), Down (hold, fly descend),
+ *     Craft (open crafting), Chat (open chat)
  *
- * Multi-touch works because a touch keeps targeting the element it began on, so
- * the joystick (left) and look drag (right) can run simultaneously.
- *
- * @see PhysicsEngine#setMoveInput @see PhysicsEngine#rotate
- * @see InteractionEngine#setBreaking @see InteractionEngine#requestPlace
+ * Multi-touch works because a touch keeps targeting its origin element, so the
+ * joystick and the look/break gesture run simultaneously.
  */
 export class TouchControls {
   /**
    * @param {HTMLElement} mount
    * @param {import('../player/PhysicsEngine.js').PhysicsEngine} physics
    * @param {import('../player/InteractionEngine.js').InteractionEngine} interaction
+   * @param {Object} [handlers]
+   * @param {() => void} [handlers.openCraft]
+   * @param {() => void} [handlers.openChat]
    */
-  constructor(mount, physics, interaction) {
+  constructor(mount, physics, interaction, handlers = {}) {
     this.mount = mount;
     this.physics = physics;
     this.interaction = interaction;
+    this.handlers = handlers;
 
-    this._lookId = null; // active look-drag touch identifier
-    this._lookX = 0;
-    this._lookY = 0;
+    this._lookId = null;
+    this._lookX = 0; this._lookY = 0;
+    this._startX = 0; this._startY = 0; this._startT = 0;
+    this._moved = false;
+    this._breaking = false;
+    this._lpTimer = null;
+    this._lpDelay = 220;   // ms hold before mining starts
+    this._moveThresh = 12; // px of travel that turns a hold into a look-drag
 
-    this._joyId = null; // active joystick touch identifier
-    this._joyR = 56; // joystick max travel radius (px)
+    this._joyId = null;
+    this._joyR = 56;
 
-    this.physics.touch = true; // tell physics to skip PointerLock
-
+    this.physics.touch = true;
     this._injectStyles();
     this._build();
   }
 
-  /** @returns {boolean} whether the current device is touch-capable. */
   static isTouchDevice() {
     return (
       'ontouchstart' in window ||
@@ -52,7 +58,6 @@ export class TouchControls {
   /* -------------------------------- build -------------------------------- */
 
   _build() {
-    // Full-screen look layer (sits below the HUD so the hotbar stays tappable).
     const look = document.createElement('div');
     look.className = 'tc-look';
     look.addEventListener('touchstart', (e) => this._onLookStart(e), { passive: false });
@@ -62,7 +67,7 @@ export class TouchControls {
     this.mount.appendChild(look);
     this.lookEl = look;
 
-    // Joystick (bottom-left).
+    // Joystick.
     const joyBase = document.createElement('div');
     joyBase.className = 'tc-joy-base';
     const joyKnob = document.createElement('div');
@@ -76,51 +81,43 @@ export class TouchControls {
     this.joyBase = joyBase;
     this.joyKnob = joyKnob;
 
-    // Action buttons (bottom-right cluster).
-    const actions = document.createElement('div');
-    actions.className = 'tc-actions';
-    actions.appendChild(this._makeHoldButton('tc-break', '⛏', 'BREAK',
-      (d) => this.interaction.setBreaking(d)));
-    actions.appendChild(this._makeTapButton('tc-place', '▥', 'PLACE',
-      () => this.interaction.requestPlace()));
-    this.mount.appendChild(actions);
-
-    // Movement buttons (above the joystick / right of it).
+    // Movement buttons (bottom-right).
     const moveBtns = document.createElement('div');
     moveBtns.className = 'tc-move-btns';
-    moveBtns.appendChild(this._makeTapButton('tc-fly', '✈', 'FLY',
-      () => this.physics.toggleFly()));
-    moveBtns.appendChild(this._makeHoldButton('tc-jump', '⤒', 'JUMP',
-      (d) => this.physics.setJump(d)));
-    moveBtns.appendChild(this._makeHoldButton('tc-down', '⤓', 'DOWN',
-      (d) => this.physics.setDescend(d)));
+    moveBtns.appendChild(this._makeTapButton('tc-fly', '✈', 'FLY', () => this.physics.toggleFly()));
+    moveBtns.appendChild(this._makeHoldButton('tc-jump', '⤒', 'JUMP', (d) => this.physics.setJump(d)));
+    moveBtns.appendChild(this._makeHoldButton('tc-down', '⤓', 'DOWN', (d) => this.physics.setDescend(d)));
     this.mount.appendChild(moveBtns);
 
-    this._els = [look, joyBase, actions, moveBtns];
+    // Utility buttons (right side, above movement).
+    const utilBtns = document.createElement('div');
+    utilBtns.className = 'tc-util-btns';
+    utilBtns.appendChild(this._makeTapButton('tc-craft', '🛠', 'CRAFT', () => this.handlers.openCraft?.()));
+    utilBtns.appendChild(this._makeTapButton('tc-chat', '💬', 'CHAT', () => this.handlers.openChat?.()));
+    this.mount.appendChild(utilBtns);
+
+    // A hint shown briefly.
+    const hint = document.createElement('div');
+    hint.className = 'tc-hint';
+    hint.textContent = 'Drag to look · Hold to mine · Tap to place';
+    this.mount.appendChild(hint);
+    setTimeout(() => hint.classList.add('fade'), 4000);
+
+    this._els = [look, joyBase, moveBtns, utilBtns, hint];
   }
 
-  /** A button that reports pressed/released (hold semantics). */
   _makeHoldButton(cls, glyph, label, onChange) {
     const btn = this._makeButtonEl(cls, glyph, label);
-    const set = (down) => (e) => {
-      e.preventDefault();
-      btn.classList.toggle('active', down);
-      onChange(down);
-    };
+    const set = (down) => (e) => { e.preventDefault(); btn.classList.toggle('active', down); onChange(down); };
     btn.addEventListener('touchstart', set(true), { passive: false });
     btn.addEventListener('touchend', set(false), { passive: false });
     btn.addEventListener('touchcancel', set(false), { passive: false });
     return btn;
   }
 
-  /** A button that fires once per tap. */
   _makeTapButton(cls, glyph, label, onTap) {
     const btn = this._makeButtonEl(cls, glyph, label);
-    btn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      btn.classList.add('active');
-      onTap();
-    }, { passive: false });
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.classList.add('active'); onTap(); }, { passive: false });
     const clear = (e) => { e.preventDefault(); btn.classList.remove('active'); };
     btn.addEventListener('touchend', clear, { passive: false });
     btn.addEventListener('touchcancel', clear, { passive: false });
@@ -134,15 +131,26 @@ export class TouchControls {
     return btn;
   }
 
-  /* ------------------------------ look drag ------------------------------ */
+  /* ----------------------- look / break / place ------------------------- */
 
   _onLookStart(e) {
     e.preventDefault();
     if (this._lookId !== null) return;
     const t = e.changedTouches[0];
     this._lookId = t.identifier;
-    this._lookX = t.clientX;
-    this._lookY = t.clientY;
+    this._lookX = this._startX = t.clientX;
+    this._lookY = this._startY = t.clientY;
+    this._startT = performance.now();
+    this._moved = false;
+    this._breaking = false;
+    // Schedule a long-press: if the finger is still down and hasn't wandered,
+    // start mining the block under the crosshair.
+    this._lpTimer = setTimeout(() => {
+      if (this._lookId !== null && !this._moved) {
+        this._breaking = true;
+        this.interaction.setBreaking(true);
+      }
+    }, this._lpDelay);
   }
 
   _onLookMove(e) {
@@ -155,13 +163,33 @@ export class TouchControls {
     this._lookX = t.clientX;
     this._lookY = t.clientY;
     this.physics.rotate(dx, dy);
+
+    if (!this._moved) {
+      const travel = Math.hypot(t.clientX - this._startX, t.clientY - this._startY);
+      if (travel > this._moveThresh) {
+        this._moved = true;
+        // A drag is a look gesture — cancel the pending mine.
+        if (this._lpTimer) { clearTimeout(this._lpTimer); this._lpTimer = null; }
+      }
+    }
   }
 
   _onLookEnd(e) {
     if (this._lookId === null) return;
-    if (this._findTouch(e.changedTouches, this._lookId)) {
-      this._lookId = null;
+    if (!this._findTouch(e.changedTouches, this._lookId)) return;
+
+    if (this._lpTimer) { clearTimeout(this._lpTimer); this._lpTimer = null; }
+
+    if (this._breaking) {
+      this.interaction.setBreaking(false);
+    } else if (!this._moved && performance.now() - this._startT < this._lpDelay) {
+      // Short, stationary tap -> place a block.
+      this.interaction.requestPlace();
     }
+
+    this._lookId = null;
+    this._breaking = false;
+    this._moved = false;
   }
 
   /* ------------------------------ joystick ------------------------------- */
@@ -199,12 +227,8 @@ export class TouchControls {
     let dy = clientY - this._joyCy;
     const dist = Math.hypot(dx, dy);
     const max = this._joyR;
-    if (dist > max) {
-      dx = (dx / dist) * max;
-      dy = (dy / dist) * max;
-    }
+    if (dist > max) { dx = (dx / dist) * max; dy = (dy / dist) * max; }
     this.joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    // Up on screen (negative dy) means forward (positive z).
     this.physics.setMoveInput(dx / max, -dy / max);
   }
 
@@ -218,6 +242,7 @@ export class TouchControls {
   }
 
   dispose() {
+    if (this._lpTimer) clearTimeout(this._lpTimer);
     this.physics.setMoveInput(0, 0);
     this.physics.setJump(false);
     this.physics.setDescend(false);
@@ -230,61 +255,44 @@ export class TouchControls {
     const style = document.createElement('style');
     style.id = 'tc-styles';
     style.textContent = `
-      .tc-look {
-        position: absolute; inset: 0; z-index: 35;
-        touch-action: none; -webkit-tap-highlight-color: transparent;
-      }
-      .tc-joy-base, .tc-actions, .tc-move-btns, .tc-btn {
-        touch-action: none; -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }
+      .tc-look { position: absolute; inset: 0; z-index: 35;
+        touch-action: none; -webkit-tap-highlight-color: transparent; }
+      .tc-joy-base, .tc-move-btns, .tc-util-btns, .tc-btn {
+        touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; }
       .tc-joy-base {
         position: absolute; left: 26px; bottom: 26px; z-index: 55;
         width: 132px; height: 132px; border-radius: 50%;
-        background: rgba(255,255,255,0.06);
-        border: 2px solid rgba(255,255,255,0.18);
-        box-shadow: inset 0 0 24px rgba(0,0,0,0.3);
-      }
+        background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.18);
+        box-shadow: inset 0 0 24px rgba(0,0,0,0.3); }
       .tc-joy-knob {
-        position: absolute; left: 50%; top: 50%;
-        transform: translate(-50%, -50%);
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
         width: 58px; height: 58px; border-radius: 50%;
-        background: rgba(255,255,255,0.22);
-        border: 2px solid rgba(255,255,255,0.4);
-      }
-      .tc-actions {
-        position: absolute; right: 24px; bottom: 26px; z-index: 55;
-        display: flex; gap: 14px; align-items: flex-end;
-      }
-      .tc-move-btns {
-        position: absolute; right: 24px; bottom: 150px; z-index: 55;
-        display: flex; gap: 12px; align-items: flex-end;
-      }
+        background: rgba(255,255,255,0.22); border: 2px solid rgba(255,255,255,0.4); }
+      .tc-move-btns { position: absolute; right: 24px; bottom: 26px; z-index: 55;
+        display: flex; gap: 12px; align-items: flex-end; }
+      .tc-util-btns { position: absolute; right: 24px; bottom: 116px; z-index: 55;
+        display: flex; gap: 12px; align-items: flex-end; }
       .tc-btn {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 74px; height: 74px; border-radius: 50%;
-        background: rgba(10,12,16,0.5);
-        border: 2px solid rgba(255,255,255,0.18);
-        color: #eaf2fb;
-      }
-      .tc-btn.active {
-        background: rgba(108,194,74,0.35);
-        border-color: var(--accent, #6cc24a);
-        transform: scale(0.94);
-      }
-      .tc-btn.tc-break, .tc-btn.tc-place { width: 82px; height: 82px; }
-      .tc-btn.tc-fly, .tc-btn.tc-down { width: 60px; height: 60px; }
-      .tc-glyph { font-size: 26px; line-height: 1; }
-      .tc-btn.tc-fly .tc-glyph, .tc-btn.tc-down .tc-glyph { font-size: 20px; }
-      .tc-label { font-size: 9px; letter-spacing: 1px; margin-top: 3px; opacity: 0.85; }
-      .tc-btn.tc-fly .tc-label, .tc-btn.tc-down .tc-label { display: none; }
+        width: 66px; height: 66px; border-radius: 50%;
+        background: rgba(10,12,16,0.5); border: 2px solid rgba(255,255,255,0.18); color: #eaf2fb; }
+      .tc-btn.active { background: rgba(108,194,74,0.35); border-color: var(--accent, #6cc24a); transform: scale(0.94); }
+      .tc-btn.tc-jump { width: 78px; height: 78px; }
+      .tc-glyph { font-size: 24px; line-height: 1; }
+      .tc-label { font-size: 8.5px; letter-spacing: 1px; margin-top: 3px; opacity: 0.85; }
+      .tc-hint {
+        position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 55;
+        background: rgba(10,12,16,0.6); color: #cfe0f0; font-size: 12px;
+        padding: 6px 12px; border-radius: 8px; transition: opacity 0.6s ease;
+        font-family: 'Segoe UI', system-ui, sans-serif; pointer-events: none; }
+      .tc-hint.fade { opacity: 0; }
 
       @media (max-width: 560px) {
         .tc-joy-base { width: 112px; height: 112px; left: 18px; bottom: 18px; }
-        .tc-actions { right: 16px; bottom: 18px; gap: 10px; }
-        .tc-move-btns { right: 16px; bottom: 120px; }
-        .tc-btn { width: 64px; height: 64px; }
-        .tc-btn.tc-break, .tc-btn.tc-place { width: 70px; height: 70px; }
+        .tc-move-btns { right: 16px; bottom: 18px; gap: 10px; }
+        .tc-util-btns { right: 16px; bottom: 100px; }
+        .tc-btn { width: 58px; height: 58px; }
+        .tc-btn.tc-jump { width: 68px; height: 68px; }
       }
     `;
     document.head.appendChild(style);

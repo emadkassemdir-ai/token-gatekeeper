@@ -146,11 +146,44 @@ export const BLOCKS = {
     breakable: true,
     hardness: 2.5,
     liquid: false
+  },
+  11: {
+    id: 11,
+    name: 'Oak Planks',
+    color: [0.62, 0.46, 0.27],
+    faceColors: {
+      top: [0.66, 0.5, 0.3],
+      bottom: [0.66, 0.5, 0.3],
+      side: [0.6, 0.44, 0.26]
+    },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 1.0,
+    liquid: false
+  },
+  12: {
+    id: 12,
+    name: 'Crafting Table',
+    color: [0.5, 0.36, 0.2],
+    faceColors: {
+      top: [0.45, 0.32, 0.18],
+      bottom: [0.55, 0.42, 0.25],
+      side: [0.5, 0.36, 0.2]
+    },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 1.2,
+    liquid: false
   }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
-export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 6, 7, 9, 10, 4];
+export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 11, 12, 6, 7, 9, 10, 4];
+
+/** Crafting Table block id (referenced by the crafting proximity check). */
+export const CRAFTING_TABLE_ID = 12;
 
 /**
  * @param {number} id

@@ -110,7 +110,8 @@ export class GameMenu {
         <div class="controls-hint">
           <strong>Controls</strong>
           WASD move · Mouse look · Space jump · F fly · 1-9 hotbar ·
-          Left-click break · Right-click place
+          Left-click mine/attack · Right-click place · E craft · T chat<br>
+          Touch: joystick + drag-look · hold to mine · tap to place
         </div>
       </div>
     `;

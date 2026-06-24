@@ -148,6 +148,9 @@ export class PhysicsEngine {
   }
 
   _handleKey(e, down) {
+    // Ignore movement keys while typing in a text field (chat/crafting search).
+    const a = document.activeElement;
+    if (down && a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
     const code = e.code;
     this.keys[code] = down;
 

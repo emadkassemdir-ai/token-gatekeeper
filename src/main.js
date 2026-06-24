@@ -2,25 +2,33 @@
  * main.js — VoxelCraft bootstrap
  * ------------------------------
  * Orchestrates the whole engine lifecycle:
- *   1. Show the splash menu and validate a username.
- *   2. Build the player profile (loading any saved data).
- *   3. Spin up Three.js (renderer, scene, lights, fog) and the world.
- *   4. Wire physics + interaction + HUD and run the fixed-step game loop.
- *   5. Autosave periodically and on tab close.
+ *   1. Splash menu -> validated username.
+ *   2. Player profile (loads saved data: position, inventory, vitals, mode).
+ *   3. Three.js (renderer, scene, lights, fog) + world.
+ *   4. Survival/creative systems: inventory, stats, crafting, chat, mobs.
+ *   5. Wire physics + interaction + HUD + touch controls; run the game loop.
+ *   6. Autosave periodically and on tab close.
  */
 
 import * as THREE from 'three';
 
 import { PlayerProfile } from './state/PlayerProfile.js';
+import { Inventory } from './state/Inventory.js';
+import { PlayerStats } from './state/PlayerStats.js';
 import { World, CHUNK_SIZE } from './world/World.js';
+import { CRAFTING_TABLE_ID } from './world/BlockTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
+import { EntityManager } from './entities/EntityManager.js';
 import { GameMenu } from './ui/GameMenu.js';
 import { HUD } from './ui/HUD.js';
 import { TouchControls } from './ui/TouchControls.js';
+import { Chat } from './ui/Chat.js';
+import { CraftingMenu } from './ui/CraftingMenu.js';
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
+const TABLE_REACH = 4; // blocks to a crafting table for tool recipes
 
 class Game {
   constructor(profile) {
@@ -31,11 +39,15 @@ class Game {
     this._clock = new THREE.Clock();
     this._autosaveTimer = 0;
     this._running = false;
+    this._spawn = { x: profile.position.x, z: profile.position.z };
+    this._dir = new THREE.Vector3();
 
     this._initRenderer();
     this._initScene();
     this._initWorld();
+    this._initState();
     this._initPlayer();
+    this._initEntities();
     this._initUI();
     this._bindLifecycle();
   }
@@ -43,10 +55,7 @@ class Game {
   /* ------------------------------- setup --------------------------------- */
 
   _initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(0x87b9e6);
@@ -56,19 +65,12 @@ class Game {
   _initScene() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87b9e6);
-    // Distance fog hides the render-distance boundary and saves overdraw.
     const fogStart = (RENDER_RADIUS - 1) * CHUNK_SIZE;
     const fogEnd = (RENDER_RADIUS + 1.5) * CHUNK_SIZE;
     this.scene.fog = new THREE.Fog(0x87b9e6, fogStart, fogEnd);
 
-    this.camera = new THREE.PerspectiveCamera(
-      72,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
+    this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    // Sky + sun lighting.
     const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x55703a, 0.95);
     this.scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xfff4e0, 0.9);
@@ -79,47 +81,71 @@ class Game {
 
   _initWorld() {
     this.world = new World(this.scene, this.profile.worldSeed);
-
-    // Generate the spawn region around the saved/spawn position.
     const spawnCx = Math.floor(this.profile.position.x / CHUNK_SIZE);
     const spawnCz = Math.floor(this.profile.position.z / CHUNK_SIZE);
     this.world.generate(spawnCx, spawnCz, RENDER_RADIUS, this.profile.editedBlocks);
   }
 
+  _initState() {
+    const mode = this.profile.gameMode || 'survival';
+    this.inventory = new Inventory(mode);
+    this.inventory.load(this.profile.inventoryData);
+    this.stats = new PlayerStats(mode);
+    this.stats.load(this.profile.statsData);
+    this.stats.onDeath = () => this._handleDeath();
+  }
+
   _initPlayer() {
-    // If this is a brand-new profile (no saved Y movement yet), seat the player
-    // on the generated surface so they don't spawn buried or in the air.
     if (!this.profile.lastSaved) {
       const sx = this.profile.position.x;
       const sz = this.profile.position.z;
       this.profile.position.y = this.world.getSpawnHeight(sx, sz) + 0.1;
     }
 
-    this.physics = new PhysicsEngine(
-      this.camera,
-      this.world,
-      this.renderer.domElement,
-      this.profile
-    );
+    this.physics = new PhysicsEngine(this.camera, this.world, this.renderer.domElement, this.profile);
 
     this.interaction = new InteractionEngine(
-      this.camera,
-      this.world,
-      this.scene,
-      this.physics,
-      this.profile
+      this.camera, this.world, this.scene, this.physics, this.profile, this.inventory
     );
-    // Persist every player edit into the profile's sparse edit map.
     this.interaction.onEdit = (x, y, z, id) => this.profile.recordEdit(x, y, z, id);
+    this.interaction.onMine = (dropType) => this.inventory.add(dropType, 1);
+    this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
+    this.interaction.onAttack = () => {
+      this.camera.getWorldDirection(this._dir);
+      return this.entities.playerAttack(this.camera.position, this._dir, this.inventory.getSelectedType());
+    };
+  }
+
+  _initEntities() {
+    this.entities = new EntityManager(this.scene, this.world, this.stats);
+    this.entities.onPlayerHit = () => this.chat?.error('A zombie hit you!');
+    this.entities.onZombieKilled = () => this.chat?.system('Zombie slain.');
   }
 
   _initUI() {
-    this.hud = new HUD(this.app, this.profile);
+    this.hud = new HUD(this.app, this.profile, this.inventory, this.stats);
     this.crosshair.classList.add('visible');
 
-    // On touch devices, mount the on-screen joystick / look / action controls.
+    // Crafting menu (E). Needs a crafting-table proximity test.
+    this.crafting = new CraftingMenu(this.app, this.inventory, () => this._nearCraftingTable(), {
+      onOpen: () => this._releasePointer(),
+      log: (msg) => this.chat?.system(msg)
+    });
+
+    // Chat (T) + commands.
+    this.chat = new Chat(this.app, {
+      setGameMode: (m) => this._setGameMode(m),
+      give: (type, count) => this.inventory.add(type, count) > 0 || this.inventory.isCreative,
+      clearInventory: () => this.inventory.clear(),
+      kill: () => this._handleDeath(),
+      onOpen: () => this._releasePointer()
+    });
+
     if (TouchControls.isTouchDevice()) {
-      this.touchControls = new TouchControls(this.app, this.physics, this.interaction);
+      this.touchControls = new TouchControls(this.app, this.physics, this.interaction, {
+        openCraft: () => this.crafting.openMenu(),
+        openChat: () => this.chat.openChat()
+      });
     }
   }
 
@@ -130,10 +156,48 @@ class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', this._onResize);
-
-    // Persist on tab close / navigation.
     this._onUnload = () => this.save();
     window.addEventListener('beforeunload', this._onUnload);
+  }
+
+  /* ----------------------------- gameplay -------------------------------- */
+
+  /** Release PointerLock so menu UI can be clicked (desktop). */
+  _releasePointer() {
+    if (document.pointerLockElement) document.exitPointerLock?.();
+  }
+
+  /** @param {'survival'|'creative'} mode */
+  _setGameMode(mode) {
+    this.inventory.setMode(mode);
+    this.stats.setMode(mode);
+    this.entities.setEnabled(mode === 'survival');
+    this.profile.gameMode = mode;
+    return true;
+  }
+
+  /** Is the player within reach of a placed crafting table? */
+  _nearCraftingTable() {
+    const p = this.physics.position;
+    const cx = Math.floor(p.x), cy = Math.floor(p.y), cz = Math.floor(p.z);
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dz = -TABLE_REACH; dz <= TABLE_REACH; dz++) {
+        for (let dx = -TABLE_REACH; dx <= TABLE_REACH; dx++) {
+          if (this.world.getBlock(cx + dx, cy + dy, cz + dz) === CRAFTING_TABLE_ID) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  _handleDeath() {
+    if (this.inventory.isCreative) return;
+    this.chat?.error('You died! Respawning…');
+    const y = this.world.getSpawnHeight(this._spawn.x, this._spawn.z) + 0.1;
+    this.physics.position.set(this._spawn.x, y, this._spawn.z);
+    this.physics.velocity.set(0, 0, 0);
+    this.entities.clear();
+    this.stats.respawn();
   }
 
   /* -------------------------------- loop --------------------------------- */
@@ -152,18 +216,20 @@ class Game {
     this.physics.update(dt);
     this.interaction.update(dt);
     this.world.update(dt);
+    this.entities.update(dt, this.physics.position);
+    this.stats.update(dt);
 
     this.hud.update(
       {
         position: this.physics.position,
         flyMode: this.physics.flyMode,
         inWater: this.physics.inWater,
-        submerged: this.physics.submerged
+        submerged: this.physics.submerged,
+        gameMode: this.inventory.mode
       },
       dt
     );
 
-    // Periodic autosave.
     this._autosaveTimer += dt;
     if (this._autosaveTimer >= AUTOSAVE_INTERVAL) {
       this._autosaveTimer = 0;
@@ -173,8 +239,11 @@ class Game {
     this.renderer.render(this.scene, this.camera);
   };
 
-  /** Persist position, rotation and edits to LocalStorage. */
+  /** Persist position, rotation, edits, inventory, vitals and mode. */
   save() {
+    this.profile.inventoryData = this.inventory.toJSON();
+    this.profile.statsData = this.stats.toJSON();
+    this.profile.gameMode = this.inventory.mode;
     this.profile.save(this.physics.position, this.physics.getRotation());
   }
 }
@@ -184,16 +253,14 @@ class Game {
 async function boot() {
   const app = document.getElementById('app');
   const menu = new GameMenu(app);
-
   const username = await menu.show();
 
   const profile = new PlayerProfile(username);
-  profile.load(); // hydrate from a prior session if one exists
+  profile.load();
 
   const game = new Game(profile);
   game.start();
 
-  // Expose for debugging in the console.
   window.__voxelcraft = game;
 }
 
