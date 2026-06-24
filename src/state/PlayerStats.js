@@ -69,6 +69,26 @@ export class PlayerStats {
     this.hunger = Math.min(MAX_HUNGER, this.hunger + amount);
   }
 
+  /**
+   * Eat a food item. Raw food restores less and has a 20% chance to cost a
+   * heart. Refused (returns false) when hunger is already full so the item
+   * isn't wasted.
+   * @param {{hunger:number, raw?:boolean}} food
+   * @returns {{ eaten: boolean, poisoned?: boolean }}
+   */
+  eat(food) {
+    if (!food) return { eaten: false };
+    if (this.hunger >= MAX_HUNGER) return { eaten: false };
+    this.feed(food.hunger);
+    let poisoned = false;
+    if (food.raw && Math.random() < 0.2) {
+      poisoned = true;
+      this._damageCooldown = 0; // poison bypasses i-frames
+      this.damage(1);
+    }
+    return { eaten: true, poisoned };
+  }
+
   /** Add hunger exhaustion (movement/jumping/mining cost). */
   addExhaustion(amount) {
     this._hungerDrain += amount;

@@ -25,6 +25,7 @@ export const CATEGORY = {
   5: 'wood',   // oak wood
   11: 'wood',  // oak planks
   12: 'wood',  // crafting table
+  18: 'stone', // furnace
   6: 'leaves', // oak leaves
   14: 'leaves',// jungle leaves
   9: 'glass'   // glass
@@ -60,7 +61,8 @@ export const BLOCK_DROPS = {
   14: null,        // jungle leaves drop nothing
   15: 'coal',      // coal ore -> coal
   16: 'gold_ore',  // raw gold (smelt later)
-  17: 'diamond'    // diamond ore -> diamond gem (usable directly)
+  17: 'diamond',   // diamond ore -> diamond gem (usable directly)
+  18: 'furnace'
 };
 
 /**
@@ -91,17 +93,43 @@ export const ITEMS = {
   snow:           { type: 'snow', name: 'Snow', maxStack: 64, place: 13 },
   jungle_leaves:  { type: 'jungle_leaves', name: 'Jungle Leaves', maxStack: 64, place: 14 },
   gold_ore:       { type: 'gold_ore', name: 'Raw Gold', maxStack: 64, place: 16 },
+  furnace:        { type: 'furnace', name: 'Furnace', maxStack: 64, place: 18 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
   coal:           { type: 'coal', name: 'Coal', maxStack: 64, glyph: '⬛' },
   diamond:        { type: 'diamond', name: 'Diamond', maxStack: 64, glyph: '💎' },
+  iron_ingot:     { type: 'iron_ingot', name: 'Iron Ingot', maxStack: 64, glyph: '▬' },
+  gold_ingot:     { type: 'gold_ingot', name: 'Gold Ingot', maxStack: 64, glyph: '▭' },
 
-  // Tools / weapons (don't stack).
-  wooden_pickaxe: { type: 'wooden_pickaxe', name: 'Wooden Pickaxe', maxStack: 1, tool: 'pickaxe', damage: 0.5, glyph: '⛏' },
-  wooden_axe:     { type: 'wooden_axe', name: 'Wooden Axe', maxStack: 1, tool: 'axe', damage: 1.0, glyph: '🪓' },
-  wooden_sword:   { type: 'wooden_sword', name: 'Wooden Sword', maxStack: 1, tool: 'sword', damage: 1.5, glyph: '🗡' }
+  // Food (eaten to restore hunger; raw food can poison).
+  raw_beef:       { type: 'raw_beef', name: 'Raw Beef', maxStack: 64, glyph: '🥩', food: { hunger: 1.5, raw: true } },
+  steak:          { type: 'steak', name: 'Steak', maxStack: 64, glyph: '🍖', food: { hunger: 4 } },
+  raw_mutton:     { type: 'raw_mutton', name: 'Raw Sheep Meat', maxStack: 64, glyph: '🥩', food: { hunger: 1.5, raw: true } },
+  cooked_mutton:  { type: 'cooked_mutton', name: 'Deluxe Sheep Meat', maxStack: 64, glyph: '🍖', food: { hunger: 4 } },
+  raw_salmon:     { type: 'raw_salmon', name: 'Raw Salmon', maxStack: 64, glyph: '🐟', food: { hunger: 1.5, raw: true } },
+  cooked_salmon:  { type: 'cooked_salmon', name: 'Cooked Salmon', maxStack: 64, glyph: '🍣', food: { hunger: 3.5 } },
+
+  // Tools / weapons (don't stack). Tier controls mining speed + attack damage.
+  wooden_pickaxe:  { type: 'wooden_pickaxe', name: 'Wooden Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'wood', damage: 0.5, glyph: '⛏' },
+  wooden_axe:      { type: 'wooden_axe', name: 'Wooden Axe', maxStack: 1, tool: 'axe', tier: 'wood', damage: 1.0, glyph: '🪓' },
+  wooden_sword:    { type: 'wooden_sword', name: 'Wooden Sword', maxStack: 1, tool: 'sword', tier: 'wood', damage: 1.5, glyph: '🗡' },
+  stone_pickaxe:   { type: 'stone_pickaxe', name: 'Stone Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'stone', damage: 1.0, glyph: '⛏' },
+  stone_axe:       { type: 'stone_axe', name: 'Stone Axe', maxStack: 1, tool: 'axe', tier: 'stone', damage: 1.5, glyph: '🪓' },
+  stone_sword:     { type: 'stone_sword', name: 'Stone Sword', maxStack: 1, tool: 'sword', tier: 'stone', damage: 2.0, glyph: '🗡' },
+  iron_pickaxe:    { type: 'iron_pickaxe', name: 'Iron Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'iron', damage: 1.5, glyph: '⛏' },
+  iron_axe:        { type: 'iron_axe', name: 'Iron Axe', maxStack: 1, tool: 'axe', tier: 'iron', damage: 2.0, glyph: '🪓' },
+  iron_sword:      { type: 'iron_sword', name: 'Iron Sword', maxStack: 1, tool: 'sword', tier: 'iron', damage: 3.0, glyph: '🗡' },
+  gold_pickaxe:    { type: 'gold_pickaxe', name: 'Gold Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'gold', damage: 1.0, glyph: '⛏' },
+  gold_axe:        { type: 'gold_axe', name: 'Gold Axe', maxStack: 1, tool: 'axe', tier: 'gold', damage: 1.5, glyph: '🪓' },
+  gold_sword:      { type: 'gold_sword', name: 'Gold Sword', maxStack: 1, tool: 'sword', tier: 'gold', damage: 2.5, glyph: '🗡' },
+  diamond_pickaxe: { type: 'diamond_pickaxe', name: 'Diamond Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'diamond', damage: 2.0, glyph: '⛏' },
+  diamond_axe:     { type: 'diamond_axe', name: 'Diamond Axe', maxStack: 1, tool: 'axe', tier: 'diamond', damage: 2.5, glyph: '🪓' },
+  diamond_sword:   { type: 'diamond_sword', name: 'Diamond Sword', maxStack: 1, tool: 'sword', tier: 'diamond', damage: 3.5, glyph: '🗡' }
 };
+
+/** Mining-speed multiplier per tool tier (wood = baseline = the spec'd times). */
+export const TIER_SPEED = { wood: 1, stone: 1.6, iron: 2.5, gold: 4, diamond: 3.5 };
 
 /** The creative-mode palette: every placeable block, infinite supply. */
 export const CREATIVE_PALETTE = [
@@ -133,18 +161,36 @@ export function placeBlockId(type) {
 }
 
 /**
- * Time (seconds) to break a block with a given tool class.
+ * Time (seconds) to break a block with the held item. The base time comes from
+ * the block category + the held tool's class (wood-tier values, per the spec);
+ * higher tool tiers divide that by their speed multiplier.
  * @param {number} blockId
- * @param {string|null} toolClass 'pickaxe' | 'axe' | 'sword' | null (hand)
+ * @param {string|null} heldType item type in hand (null = bare hand)
  * @returns {number} seconds (Infinity if the block can't be broken)
  */
-export function getBreakTime(blockId, toolClass) {
+export function getBreakTime(blockId, heldType) {
   const def = BLOCKS[blockId];
   if (!def || !def.breakable) return Infinity;
   const cat = CATEGORY[blockId];
   const row = BREAK_TIMES[cat];
   if (!row) return def.hardness ?? 1;
-  return row[toolClass] ?? row.hand;
+
+  const item = ITEMS[heldType];
+  const cls = item?.tool ?? null;
+  const base = row[cls] ?? row.hand;
+  if (!cls) return base; // bare hand or non-tool item
+  const speed = TIER_SPEED[item.tier] ?? 1;
+  return base / speed;
+}
+
+/** @param {string|null} type @returns {boolean} whether the item is edible. */
+export function isFood(type) {
+  return !!ITEMS[type]?.food;
+}
+
+/** @param {string|null} type @returns {{hunger:number,raw?:boolean}|null} */
+export function getFood(type) {
+  return ITEMS[type]?.food ?? null;
 }
 
 /**

@@ -17,7 +17,8 @@ import { Inventory } from './state/Inventory.js';
 import { PlayerStats } from './state/PlayerStats.js';
 import { Avatar } from './state/Avatar.js';
 import { World, CHUNK_SIZE } from './world/World.js';
-import { CRAFTING_TABLE_ID } from './world/BlockTypes.js';
+import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
+import { getFood } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { EntityManager } from './entities/EntityManager.js';
@@ -28,6 +29,7 @@ import { Chat } from './ui/Chat.js';
 import { CraftingMenu } from './ui/CraftingMenu.js';
 import { AvatarEditor } from './ui/AvatarEditor.js';
 import { InventoryScreen } from './ui/InventoryScreen.js';
+import { SmeltingMenu } from './ui/SmeltingMenu.js';
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
@@ -118,6 +120,12 @@ class Game {
       this.camera.getWorldDirection(this._dir);
       return this.entities.playerAttack(this.camera.position, this._dir, this.inventory.getSelectedType());
     };
+    this.interaction.onEat = (type) => {
+      const res = this.stats.eat(getFood(type));
+      if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
+      else if (res.eaten) this.chat?.system('Tasty!');
+      return res.eaten;
+    };
   }
 
   _initEntities() {
@@ -150,11 +158,18 @@ class Game {
       onOpen: () => this._releasePointer()
     });
 
+    // Furnace / smelting menu (G).
+    this.smelting = new SmeltingMenu(this.app, this.inventory, () => this._nearFurnace(), {
+      onOpen: () => this._releasePointer(),
+      log: (msg) => this.chat?.system(msg)
+    });
+
     if (TouchControls.isTouchDevice()) {
       this.touchControls = new TouchControls(this.app, this.physics, this.interaction, {
         openCraft: () => this.crafting.openMenu(),
         openChat: () => this.chat.openChat(),
-        openInventory: () => this.inventoryScreen.openScreen()
+        openInventory: () => this.inventoryScreen.openScreen(),
+        openSmelt: () => this.smelting.openMenu()
       });
     }
   }
@@ -186,19 +201,22 @@ class Game {
     return true;
   }
 
-  /** Is the player within reach of a placed crafting table? */
-  _nearCraftingTable() {
+  /** Is the player within reach of a given block id? */
+  _nearBlock(blockId) {
     const p = this.physics.position;
     const cx = Math.floor(p.x), cy = Math.floor(p.y), cz = Math.floor(p.z);
     for (let dy = -2; dy <= 2; dy++) {
       for (let dz = -TABLE_REACH; dz <= TABLE_REACH; dz++) {
         for (let dx = -TABLE_REACH; dx <= TABLE_REACH; dx++) {
-          if (this.world.getBlock(cx + dx, cy + dy, cz + dz) === CRAFTING_TABLE_ID) return true;
+          if (this.world.getBlock(cx + dx, cy + dy, cz + dz) === blockId) return true;
         }
       }
     }
     return false;
   }
+
+  _nearCraftingTable() { return this._nearBlock(CRAFTING_TABLE_ID); }
+  _nearFurnace() { return this._nearBlock(FURNACE_ID); }
 
   _handleDeath() {
     if (this.inventory.isCreative) return;

@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { BLOCKS, AIR, isAir, isBreakable } from '../world/BlockTypes.js';
-import { getBreakTime, getDrop, placeBlockId } from '../world/ItemTypes.js';
+import { getBreakTime, getDrop, placeBlockId, isFood } from '../world/ItemTypes.js';
 
 const REACH = 6; // max voxels the player can interact with
 
@@ -45,6 +45,7 @@ export class InteractionEngine {
     this.onMine = null;   // callback(blockId) when a block is removed (drops)
     this.onExhaust = null;// callback(amount) for hunger cost
     this.onAttack = null; // () => boolean : try to hit a mob; true if it hit
+    this.onEat = null;    // (foodType) => boolean : eat; true if consumed
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
 
@@ -236,9 +237,8 @@ export class InteractionEngine {
     }
 
     this._breakProgress += dt;
-    // Break time depends on the block category and the held tool.
-    const tool = this.inventory.getSelectedTool();
-    const breakTime = getBreakTime(id, tool);
+    // Break time depends on the block category and the held tool (class + tier).
+    const breakTime = getBreakTime(id, this.inventory.getSelectedType());
 
     // Visualise mining progress on the crack overlay.
     this.crack.visible = true;
@@ -263,6 +263,18 @@ export class InteractionEngine {
    * @returns {boolean} true if a block was placed
    */
   _tryPlace() {
+    // Holding food? The place action eats it instead of placing.
+    const heldType = this.inventory.getSelectedType();
+    if (isFood(heldType)) {
+      if (this._placeCooldown > 0) return false;
+      if (this.onEat && this.onEat(heldType)) {
+        this.inventory.consumeSelected();
+        this._placeCooldown = 0.4;
+        return true;
+      }
+      return false;
+    }
+
     if (!this.target || this._placeCooldown > 0) return false;
     const { x, y, z, nx, ny, nz } = this.target;
     const px = x + nx;

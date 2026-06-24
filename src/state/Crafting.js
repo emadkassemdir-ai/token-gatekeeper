@@ -56,8 +56,47 @@ export const RECIPES = [
     output: 'wooden_sword', outputCount: 1,
     inputs: [{ type: 'oak_planks', count: 1 }, { type: 'stick', count: 2 }],
     requiresTable: true
-  }
+  },
+  {
+    id: 'furnace',
+    output: 'furnace', outputCount: 1,
+    inputs: [{ type: 'stone', count: 8 }],
+    requiresTable: true
+  },
+  // Tiered tools (stone/iron/gold/diamond) generated below.
+  ...buildTierTools()
 ];
+
+/**
+ * Build pickaxe/axe/sword recipes for every non-wood tier. Same shapes as the
+ * wooden tools (3 material + 2 sticks for pick/axe, 1 + 2 for sword), just a
+ * different material per tier — exactly as specified.
+ * @returns {Recipe[]}
+ */
+function buildTierTools() {
+  const tiers = [
+    { tier: 'stone', mat: 'stone' },
+    { tier: 'iron', mat: 'iron_ingot' },
+    { tier: 'gold', mat: 'gold_ingot' },
+    { tier: 'diamond', mat: 'diamond' }
+  ];
+  const out = [];
+  for (const { tier, mat } of tiers) {
+    out.push({
+      id: `${tier}_pickaxe`, output: `${tier}_pickaxe`, outputCount: 1,
+      inputs: [{ type: mat, count: 3 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+    out.push({
+      id: `${tier}_axe`, output: `${tier}_axe`, outputCount: 1,
+      inputs: [{ type: mat, count: 3 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+    out.push({
+      id: `${tier}_sword`, output: `${tier}_sword`, outputCount: 1,
+      inputs: [{ type: mat, count: 1 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+  }
+  return out;
+}
 
 /**
  * Does the inventory hold every ingredient for this recipe?

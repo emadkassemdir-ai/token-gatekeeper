@@ -90,7 +90,7 @@ export class EntityManager {
       // Contact damage.
       if (z.canAttack(playerPos)) {
         z.resetAttackCooldown();
-        if (this.stats.damage(1)) this.onPlayerHit?.(1);
+        if (this.stats.damage(0.5)) this.onPlayerHit?.(0.5); // zombie: 0.5 heart/hit
       }
     }
 

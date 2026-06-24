@@ -231,14 +231,28 @@ export const BLOCKS = {
     breakable: true,
     hardness: 3.0,
     liquid: false
+  },
+  18: {
+    id: 18,
+    name: 'Furnace',
+    color: [0.34, 0.34, 0.36],
+    faceColors: { top: [0.3, 0.3, 0.32], bottom: [0.3, 0.3, 0.32], side: [0.36, 0.36, 0.38] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 2.0,
+    liquid: false
   }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
-export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 11, 12, 6, 7, 9, 10, 13, 15, 16, 17, 4];
+export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 11, 12, 18, 6, 7, 9, 10, 13, 15, 16, 17, 4];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */
 export const CRAFTING_TABLE_ID = 12;
+
+/** Furnace block id (referenced by the smelting proximity check). */
+export const FURNACE_ID = 18;
 
 /**
  * @param {number} id
