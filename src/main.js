@@ -48,6 +48,10 @@ class Game {
     this._spawn = { x: profile.position.x, z: profile.position.z };
     this._dir = new THREE.Vector3();
 
+    // Day/night: t in [0,1). 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight.
+    this._time = profile.timeOfDay ?? 0.2;
+    this._dayLength = 600; // seconds for a full cycle
+
     this._initRenderer();
     this._initScene();
     this._initWorld();
@@ -77,12 +81,18 @@ class Game {
 
     this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x55703a, 0.95);
-    this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff4e0, 0.9);
-    sun.position.set(0.5, 1, 0.35).multiplyScalar(100);
-    this.scene.add(sun);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.18));
+    this.hemi = new THREE.HemisphereLight(0xcfe6ff, 0x55703a, 0.95);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xfff4e0, 0.9);
+    this.sun.position.set(0.5, 1, 0.35).multiplyScalar(100);
+    this.scene.add(this.sun);
+    this.ambient = new THREE.AmbientLight(0xffffff, 0.18);
+    this.scene.add(this.ambient);
+
+    // Day/night sky colours blended each frame.
+    this._skyDay = new THREE.Color(0x87b9e6);
+    this._skyNight = new THREE.Color(0x0a1020);
+    this._skyColor = new THREE.Color();
   }
 
   _initWorld() {
@@ -130,8 +140,17 @@ class Game {
 
   _initEntities() {
     this.entities = new EntityManager(this.scene, this.world, this.stats);
-    this.entities.onPlayerHit = () => this.chat?.error('A zombie hit you!');
-    this.entities.onZombieKilled = () => this.chat?.system('Zombie slain.');
+    this.entities.onDrop = (type, count) => {
+      this.inventory.add(type, count);
+      this.chat?.system(`Picked up ${count} × ${type.replace(/_/g, ' ')}`);
+    };
+    this.entities.onEdit = (x, y, z, id) => this.profile.recordEdit(x, y, z, id);
+    this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
+  }
+
+  /** @returns {boolean} whether it is currently night. */
+  _isNight() {
+    return this._time >= 0.5;
   }
 
   _initUI() {
@@ -241,10 +260,12 @@ class Game {
 
     const dt = Math.min(this._clock.getDelta(), 0.1);
 
+    this._updateDayNight(dt);
+
     this.physics.update(dt);
     this.interaction.update(dt);
     this.world.update(dt);
-    this.entities.update(dt, this.physics.position);
+    this.entities.update(dt, this.physics.position, { isNight: this._isNight() });
     this.stats.update(dt);
 
     this.hud.update(
@@ -267,11 +288,30 @@ class Game {
     this.renderer.render(this.scene, this.camera);
   };
 
+  /**
+   * Advance the day/night cycle and blend sky colour + light intensity.
+   * @param {number} dt
+   */
+  _updateDayNight(dt) {
+    this._time = (this._time + dt / this._dayLength) % 1;
+    // Smooth 0..1 where ~1 = day (noon), ~0 = night (midnight).
+    const d = Math.max(0.05, Math.sin(this._time * Math.PI * 2) * 0.5 + 0.5);
+
+    this._skyColor.copy(this._skyNight).lerp(this._skyDay, d);
+    this.scene.background.copy(this._skyColor);
+    if (this.scene.fog) this.scene.fog.color.copy(this._skyColor);
+
+    this.sun.intensity = 0.15 + d * 0.85;
+    this.hemi.intensity = 0.3 + d * 0.7;
+    this.ambient.intensity = 0.08 + d * 0.14;
+  }
+
   /** Persist position, rotation, edits, inventory, vitals and mode. */
   save() {
     this.profile.inventoryData = this.inventory.toJSON();
     this.profile.statsData = this.stats.toJSON();
     this.profile.gameMode = this.inventory.mode;
+    this.profile.timeOfDay = this._time;
     this.profile.save(this.physics.position, this.physics.getRotation());
   }
 }
