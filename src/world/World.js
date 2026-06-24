@@ -25,13 +25,16 @@ import {
 import { NoiseGenerator } from './NoiseGenerator.js';
 
 export const CHUNK_SIZE = 16;
-export const WORLD_HEIGHT = 48;
-export const SEA_LEVEL = 22;
+export const WORLD_HEIGHT = 64; // taller world leaves room for caves below
+export const SEA_LEVEL = 30;
 
 export const BIOME = Object.freeze({
   PLAINS: 'plains',
   DESERT: 'desert',
-  MOUNTAIN: 'mountain'
+  MOUNTAIN: 'mountain',
+  SNOWY: 'snowy',
+  JUNGLE: 'jungle',
+  OCEAN: 'ocean'
 });
 
 function chunkKey(cx, cz) {
@@ -233,7 +236,7 @@ export class World {
    * @param {Record<string, number>} [edits] persisted "x,y,z" -> id overrides
    */
   generate(centerCx, centerCz, radius, edits = {}) {
-    // Phase 1 — terrain columns.
+    // Phase 1 — terrain columns (with integrated caves + ore distribution).
     for (let cz = centerCz - radius; cz <= centerCz + radius; cz++) {
       for (let cx = centerCx - radius; cx <= centerCx + radius; cx++) {
         const chunk = new Chunk(cx, cz);
@@ -243,9 +246,13 @@ export class World {
       }
     }
 
-    // Phase 2 — trees (needs neighbouring chunks to exist for canopy overhang).
+    // Phase 2 — trees + villages (need neighbouring chunks to exist so
+    // structures can overhang chunk borders).
     for (const chunk of this.chunks.values()) {
       this._plantTrees(chunk);
+    }
+    for (const chunk of this.chunks.values()) {
+      this._generateVillage(chunk);
     }
 
     // Phase 3 — replay persisted player edits so they win over generation.
@@ -259,41 +266,44 @@ export class World {
   }
 
   /**
-   * Classify a column's biome from temperature/moisture/elevation noise.
+   * Classify a column's biome from temperature/moisture/elevation noise and
+   * compute its surface height.
    * @param {number} wx @param {number} wz
    * @returns {{ biome: string, height: number }}
    */
   sampleColumn(wx, wz) {
-    const elevation = this.noise.fbm2(wx * 0.011, wz * 0.011, {
-      octaves: 5,
-      persistence: 0.5,
-      lacunarity: 2.0
+    const elevation = this.noise.fbm2(wx * 0.010, wz * 0.010, {
+      octaves: 5, persistence: 0.5, lacunarity: 2.0
     });
-    const temperature = this.noise.fbm2((wx - 4000) * 0.006, (wz + 4000) * 0.006, {
-      octaves: 3
-    });
-    const moisture = this.noise.fbm2((wx + 8000) * 0.008, (wz - 8000) * 0.008, {
-      octaves: 3
-    });
+    const temperature = this.noise.fbm2((wx - 4000) * 0.005, (wz + 4000) * 0.005, { octaves: 3 });
+    const moisture = this.noise.fbm2((wx + 8000) * 0.006, (wz - 8000) * 0.006, { octaves: 3 });
 
-    // Base rolling height, with a sharply amplified mountain mask up top.
-    let height = SEA_LEVEL + elevation * 10;
-    if (elevation > 0.35) {
-      height += (elevation - 0.35) * 70; // mountainous crags
-    }
+    // Base rolling height with an amplified mountain mask, and deep ocean
+    // basins where the continent noise dips low.
+    let height = SEA_LEVEL + elevation * 11;
+    if (elevation > 0.35) height += (elevation - 0.35) * 75; // crags
+    if (elevation < -0.2) height = SEA_LEVEL - 6 + (elevation + 0.2) * 30; // basins
     height = Math.max(2, Math.min(WORLD_HEIGHT - 6, Math.round(height)));
 
-    let biome = BIOME.PLAINS;
-    if (height > SEA_LEVEL + 14) {
+    let biome;
+    if (height < SEA_LEVEL - 1) {
+      biome = BIOME.OCEAN;
+    } else if (height > SEA_LEVEL + 16) {
       biome = BIOME.MOUNTAIN;
-    } else if (temperature > 0.25 && moisture < -0.05 && height <= SEA_LEVEL + 6) {
+    } else if (temperature < -0.25) {
+      biome = BIOME.SNOWY;
+    } else if (temperature > 0.28 && moisture > 0.1) {
+      biome = BIOME.JUNGLE;
+    } else if (temperature > 0.25 && moisture < -0.05) {
       biome = BIOME.DESERT;
+    } else {
+      biome = BIOME.PLAINS;
     }
     return { biome, height };
   }
 
   /**
-   * Fill a single chunk's voxel grid from procedural terrain.
+   * Fill a single chunk's voxel grid: terrain layers, ores, caves and water.
    * @param {Chunk} chunk
    */
   _fillChunkTerrain(chunk) {
@@ -312,39 +322,73 @@ export class World {
           if (y === 0) {
             id = 4; // Bedrock floor.
           } else if (y === height) {
-            // Surface block depends on biome / water.
-            if (underwater) id = 7; // sandy lake bed
-            else if (biome === BIOME.DESERT) id = 7; // sand
-            else if (biome === BIOME.MOUNTAIN) id = 3; // exposed stone crag
-            else id = 1; // grass
+            id = this._surfaceBlock(biome, height, underwater);
           } else if (y > height - 4) {
-            // Sub-surface layer.
-            if (biome === BIOME.DESERT || underwater) id = 7; // sand
-            else if (biome === BIOME.MOUNTAIN) id = 3; // stone
+            // Sub-surface.
+            if (biome === BIOME.DESERT || biome === BIOME.OCEAN || underwater) id = 7;
+            else if (biome === BIOME.MOUNTAIN) id = 3;
             else id = 2; // dirt
           } else {
-            id = 3; // stone deep down
-            // Iron ore pockets carved out of stone via 3D noise.
-            const ore = this.noise.fbm3(wx * 0.18, y * 0.18, wz * 0.18, { octaves: 2 });
-            if (ore > 0.62 && y < height - 5) id = 10;
+            id = this._stoneOrOre(wx, y, wz); // deep: stone with ore pockets
           }
-          chunk.setLocal(lx, y, lz, id);
+
+          // Carve caves out of solid sub-surface rock (but never bedrock).
+          if (y > 1 && y < height - 1 && this._isCave(wx, y, wz)) {
+            id = AIR;
+          }
+          if (id !== AIR) chunk.setLocal(lx, y, lz, id);
         }
 
-        // Flood water up to sea level over any submerged columns.
+        // Flood water up to sea level over submerged columns.
         if (underwater) {
-          for (let y = height + 1; y <= SEA_LEVEL; y++) {
-            chunk.setLocal(lx, y, lz, 8);
-          }
+          for (let y = height + 1; y <= SEA_LEVEL; y++) chunk.setLocal(lx, y, lz, 8);
         }
       }
     }
   }
 
+  /** Surface block for a biome column. */
+  _surfaceBlock(biome, height, underwater) {
+    if (underwater) return 7;              // sandy bed
+    switch (biome) {
+      case BIOME.OCEAN: return 7;          // sand
+      case BIOME.DESERT: return 7;         // sand
+      case BIOME.SNOWY: return 13;         // snow
+      case BIOME.MOUNTAIN: return height > SEA_LEVEL + 26 ? 13 : 3; // snowy peaks
+      case BIOME.JUNGLE:
+      case BIOME.PLAINS:
+      default: return 1;                   // grass
+    }
+  }
+
   /**
-   * Deterministically plant oak trees in plains columns. Tree placement is
-   * keyed on world coordinates via the noise hash so it is stable across
-   * reloads and independent of generation order.
+   * Stone, or an ore selected by a depth-gated deterministic roll. Lower
+   * blocks have a chance of rarer ores (diamond near bedrock).
+   * @param {number} wx @param {number} y @param {number} wz
+   * @returns {number} block id
+   */
+  _stoneOrOre(wx, y, wz) {
+    const v = this.noise.hash3(wx, y, wz);
+    if (y < 14 && v < 0.010) return 17;                 // diamond (deep)
+    if (y < 22 && v >= 0.010 && v < 0.022) return 16;   // gold
+    if (y < 44 && v >= 0.022 && v < 0.045) return 10;   // iron
+    if (v >= 0.045 && v < 0.080) return 15;             // coal (any depth)
+    return 3;                                           // stone
+  }
+
+  /**
+   * Whether the voxel at (wx,wy,wz) should be carved into a cave. Blobby
+   * caverns from low-frequency 3D noise, biased to stay underground.
+   */
+  _isCave(wx, wy, wz) {
+    if (wy >= SEA_LEVEL + 2) return false; // keep surfaces mostly intact
+    const n = this.noise.perlin3(wx * 0.06, wy * 0.10, wz * 0.06);
+    return Math.abs(n) > 0.55;
+  }
+
+  /**
+   * Plant trees per biome: oaks in plains/snowy, dense tall jungle trees in
+   * jungle. Placement is keyed on world coords so it's stable across reloads.
    * @param {Chunk} chunk
    */
   _plantTrees(chunk) {
@@ -356,49 +400,126 @@ export class World {
         const wx = baseX + lx;
         const wz = baseZ + lz;
         const { biome, height } = this.sampleColumn(wx, wz);
-        if (biome !== BIOME.PLAINS || height < SEA_LEVEL) continue;
-        if (chunk.getLocal(lx, height, lz) !== 1) continue; // must be grass
+        if (height < SEA_LEVEL) continue;
 
-        // ~4% of eligible columns, with a simple spacing rule to avoid clumps.
+        const surface = chunk.getLocal(lx, height, lz);
+        const onGrass = surface === 1;
+        const onSnow = surface === 13;
+        let density = 0;
+        if (biome === BIOME.JUNGLE && onGrass) density = 0.10;
+        else if (biome === BIOME.PLAINS && onGrass) density = 0.04;
+        else if (biome === BIOME.SNOWY && onSnow) density = 0.03;
+        if (density === 0) continue;
+
         const roll = this.noise.hash2(wx, wz);
-        if (roll > 0.04) continue;
-        if (this.noise.hash2(wx + 1, wz) < 0.04) continue;
-        if (this.noise.hash2(wx, wz + 1) < 0.04) continue;
+        if (roll > density) continue;
+        // Spacing: don't place if a stronger neighbour roll wins.
+        if (this.noise.hash2(wx + 1, wz) < density) continue;
+        if (this.noise.hash2(wx, wz + 1) < density) continue;
 
-        this._spawnTree(wx, height + 1, wz, roll);
+        this._spawnTree(wx, height + 1, wz, roll, biome);
       }
     }
   }
 
   /**
-   * Build an oak: a trunk topped by a layered leaf canopy. Writes directly via
-   * setBlock so canopy that overhangs into neighbouring chunks is placed there.
-   * @param {number} wx @param {number} baseY @param {number} wz @param {number} roll
+   * Build a tree. Jungle trees are taller with darker (jungle) leaves.
+   * @param {number} wx @param {number} baseY @param {number} wz
+   * @param {number} roll @param {string} biome
    */
-  _spawnTree(wx, baseY, wz, roll) {
-    const trunkHeight = 4 + Math.floor(roll * 75) % 3; // 4..6
+  _spawnTree(wx, baseY, wz, roll, biome) {
+    const jungle = biome === BIOME.JUNGLE;
+    const leaf = jungle ? 14 : 6;
+    const trunkHeight = jungle ? 7 + (Math.floor(roll * 90) % 4) : 4 + (Math.floor(roll * 75) % 3);
     const topY = baseY + trunkHeight;
 
-    // Canopy: two wide layers, then a narrow cap.
     for (let dy = -2; dy <= 1; dy++) {
       const y = topY + dy;
       const radius = dy >= 1 ? 1 : 2;
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dz = -radius; dz <= radius; dz++) {
-          // Trim the corners of the widest layers for a rounded look.
           if (radius === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
-          if (dx === 0 && dz === 0 && dy < 1) continue; // leave room for trunk top
+          if (dx === 0 && dz === 0 && dy < 1) continue;
           if (isAir(this.getBlock(wx + dx, y, wz + dz))) {
-            this.setBlock(wx + dx, y, wz + dz, 6); // leaves
+            this.setBlock(wx + dx, y, wz + dz, leaf);
           }
         }
       }
     }
+    for (let i = 0; i < trunkHeight; i++) this.setBlock(wx, baseY + i, wz, 5);
+  }
 
-    // Trunk last so it overwrites any leaf placed in its column.
-    for (let i = 0; i < trunkHeight; i++) {
-      this.setBlock(wx, baseY + i, wz, 5); // oak wood
+  /* ----------------------------- villages -------------------------------- */
+
+  /**
+   * Rarely build a small village (a cluster of plank houses) on flat plains.
+   * Keyed on chunk coordinates so a given chunk always decides the same way.
+   * @param {Chunk} chunk
+   */
+  _generateVillage(chunk) {
+    if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.07) return;
+
+    const cxw = chunk.cx * CHUNK_SIZE + 8;
+    const czw = chunk.cz * CHUNK_SIZE + 8;
+    const { biome } = this.sampleColumn(cxw, czw);
+    if (biome !== BIOME.PLAINS && biome !== BIOME.SNOWY) return;
+
+    // Place a few houses at deterministic offsets around the chunk centre.
+    const offsets = [[0, 0], [7, 2], [-6, 5], [3, -7]];
+    let built = 0;
+    for (let i = 0; i < offsets.length; i++) {
+      const r = this.noise.hash2(chunk.cx * 31 + i, chunk.cz * 31 - i);
+      if (r > 0.7) continue;
+      const hx = cxw + offsets[i][0];
+      const hz = czw + offsets[i][1];
+      if (this._buildHouse(hx, hz)) built++;
+      if (built >= 3) break;
     }
+  }
+
+  /**
+   * Build one 5×5 plank house with walls, a glass window, a doorway, a roof
+   * and a crafting table inside — provided the ground is flat enough.
+   * @param {number} cx @param {number} cz centre of the house footprint
+   * @returns {boolean} whether a house was placed
+   */
+  _buildHouse(cx, cz) {
+    const ground = this.getSpawnHeight(cx, cz) - 1;
+    // Reject steep/under-water ground.
+    if (ground < SEA_LEVEL) return false;
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        const g = this.getSpawnHeight(cx + dx, cz + dz) - 1;
+        if (Math.abs(g - ground) > 2) return false;
+      }
+    }
+
+    const wallH = 3;
+    const floorY = ground + 1;
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        const edge = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+        // Floor.
+        this.setBlock(cx + dx, ground, cz + dz, 11); // plank floor
+        if (edge) {
+          for (let y = 0; y < wallH; y++) {
+            let block = 11; // planks
+            const corner = Math.abs(dx) === 2 && Math.abs(dz) === 2;
+            if (corner) block = 5; // wood corner posts
+            else if (y === 1 && (dx === 0 || dz === 0)) block = 9; // glass window
+            this.setBlock(cx + dx, floorY + y, cz + dz, block);
+          }
+        }
+        // Roof.
+        this.setBlock(cx + dx, floorY + wallH, cz + dz, 11);
+      }
+    }
+    // Doorway on the +x wall (clear two blocks).
+    this.setBlock(cx + 2, floorY, cz, AIR);
+    this.setBlock(cx + 2, floorY + 1, cz, AIR);
+    // A crafting table inside.
+    this.setBlock(cx - 1, floorY, cz - 1, 12);
+    return true;
   }
 
   /* ----------------------------- rendering ------------------------------- */

@@ -16,12 +16,17 @@ export const CATEGORY = {
   1: 'soft',   // grass
   2: 'soft',   // dirt
   7: 'soft',   // sand
+  13: 'soft',  // snow
   3: 'stone',  // stone
   10: 'stone', // iron ore
+  15: 'stone', // coal ore
+  16: 'stone', // gold ore
+  17: 'stone', // diamond ore
   5: 'wood',   // oak wood
   11: 'wood',  // oak planks
   12: 'wood',  // crafting table
   6: 'leaves', // oak leaves
+  14: 'leaves',// jungle leaves
   9: 'glass'   // glass
 };
 
@@ -50,7 +55,12 @@ export const BLOCK_DROPS = {
   9: null,       // glass shatters
   10: 'iron_ore',
   11: 'oak_planks',
-  12: 'crafting_table'
+  12: 'crafting_table',
+  13: 'snow',
+  14: null,        // jungle leaves drop nothing
+  15: 'coal',      // coal ore -> coal
+  16: 'gold_ore',  // raw gold (smelt later)
+  17: 'diamond'    // diamond ore -> diamond gem (usable directly)
 };
 
 /**
@@ -78,9 +88,14 @@ export const ITEMS = {
   oak_planks:     { type: 'oak_planks', name: 'Oak Planks', maxStack: 64, place: 11 },
   crafting_table: { type: 'crafting_table', name: 'Crafting Table', maxStack: 64, place: 12 },
   bedrock:        { type: 'bedrock', name: 'Bedrock', maxStack: 64, place: 4 },
+  snow:           { type: 'snow', name: 'Snow', maxStack: 64, place: 13 },
+  jungle_leaves:  { type: 'jungle_leaves', name: 'Jungle Leaves', maxStack: 64, place: 14 },
+  gold_ore:       { type: 'gold_ore', name: 'Raw Gold', maxStack: 64, place: 16 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
+  coal:           { type: 'coal', name: 'Coal', maxStack: 64, glyph: '⬛' },
+  diamond:        { type: 'diamond', name: 'Diamond', maxStack: 64, glyph: '💎' },
 
   // Tools / weapons (don't stack).
   wooden_pickaxe: { type: 'wooden_pickaxe', name: 'Wooden Pickaxe', maxStack: 1, tool: 'pickaxe', damage: 0.5, glyph: '⛏' },
