@@ -92,6 +92,7 @@ export class TouchControls {
     // Utility buttons (right side, above movement).
     const utilBtns = document.createElement('div');
     utilBtns.className = 'tc-util-btns';
+    utilBtns.appendChild(this._makeTapButton('tc-bag', '🎒', 'BAG', () => this.handlers.openInventory?.()));
     utilBtns.appendChild(this._makeTapButton('tc-craft', '🛠', 'CRAFT', () => this.handlers.openCraft?.()));
     utilBtns.appendChild(this._makeTapButton('tc-chat', '💬', 'CHAT', () => this.handlers.openChat?.()));
     this.mount.appendChild(utilBtns);

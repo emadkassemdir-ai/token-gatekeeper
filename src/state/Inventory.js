@@ -1,28 +1,36 @@
 /**
  * Inventory
  * ---------
- * A 9-slot inventory that doubles as the hotbar. Behaviour depends on the game
- * mode:
+ * A 27-slot inventory: 9 hotbar slots (indices 0-8) plus 18 storage slots
+ * (indices 9-26) shown in the full inventory screen. The hotbar is the first
+ * row and the only part the HUD shows; the storage rows hold overflow.
  *
+ * Behaviour depends on the game mode:
  *   - survival: real stacks (max 64). Mining adds drops, placing/crafting
  *     consumes. You start empty.
- *   - creative: the 9 slots mirror a fixed palette of placeable blocks with an
- *     infinite supply — placing never consumes and mining never adds.
+ *   - creative: an infinite supply. The hotbar is a freely editable palette
+ *     (pull items from the catalog); placing never consumes and mining never
+ *     adds.
  *
- * @see ItemTypes for item definitions and the creative palette.
+ * @see ItemTypes for item definitions and the creative palette/catalog.
  */
 
 import { ITEMS, CREATIVE_PALETTE, getItem } from '../world/ItemTypes.js';
 
-const SLOTS = 9;
+export const HOTBAR_SIZE = 9;
+export const STORAGE_SIZE = 18;
+export const TOTAL_SLOTS = HOTBAR_SIZE + STORAGE_SIZE;
 
 export class Inventory {
   /** @param {'survival'|'creative'} mode */
   constructor(mode = 'survival') {
     /** @type {Array<{type:string,count:number}|null>} */
-    this.slots = new Array(SLOTS).fill(null);
+    this.slots = new Array(TOTAL_SLOTS).fill(null);
     this.selected = 0;
     this.mode = mode;
+    // Editable creative hotbar palette (types). Defaults to the standard set.
+    this.creativeHotbar = CREATIVE_PALETTE.slice(0, HOTBAR_SIZE);
+    while (this.creativeHotbar.length < HOTBAR_SIZE) this.creativeHotbar.push(null);
   }
 
   /** @param {'survival'|'creative'} mode */
@@ -38,7 +46,7 @@ export class Inventory {
   /* ------------------------------ selection ------------------------------ */
 
   selectSlot(i) {
-    this.selected = ((i % SLOTS) + SLOTS) % SLOTS;
+    this.selected = ((i % HOTBAR_SIZE) + HOTBAR_SIZE) % HOTBAR_SIZE;
   }
 
   cycleSlot(delta) {
@@ -46,13 +54,11 @@ export class Inventory {
   }
 
   /**
-   * The item type in the active slot. In creative this reads from the palette.
+   * The item type in the active hotbar slot.
    * @returns {string|null}
    */
   getSelectedType() {
-    if (this.isCreative) {
-      return CREATIVE_PALETTE[this.selected] ?? null;
-    }
+    if (this.isCreative) return this.creativeHotbar[this.selected] ?? null;
     return this.slots[this.selected]?.type ?? null;
   }
 
@@ -63,14 +69,14 @@ export class Inventory {
   }
 
   /**
-   * View model for the HUD: 9 entries of { type, count, infinite }.
+   * View model for the HUD hotbar: 9 entries of { type, count, infinite }.
    * @returns {Array<{type:string|null,count:number,infinite:boolean}>}
    */
   getHotbarView() {
     const out = [];
-    for (let i = 0; i < SLOTS; i++) {
+    for (let i = 0; i < HOTBAR_SIZE; i++) {
       if (this.isCreative) {
-        const type = CREATIVE_PALETTE[i] ?? null;
+        const type = this.creativeHotbar[i] ?? null;
         out.push({ type, count: type ? Infinity : 0, infinite: true });
       } else {
         const s = this.slots[i];
@@ -80,33 +86,48 @@ export class Inventory {
     return out;
   }
 
+  /**
+   * Full slot view (hotbar + storage) for the inventory screen.
+   * @returns {Array<{type:string|null,count:number,infinite:boolean}>}
+   */
+  getAllSlotsView() {
+    const out = [];
+    for (let i = 0; i < TOTAL_SLOTS; i++) {
+      if (this.isCreative && i < HOTBAR_SIZE) {
+        const type = this.creativeHotbar[i] ?? null;
+        out.push({ type, count: type ? Infinity : 0, infinite: true });
+      } else {
+        const s = this.slots[i];
+        out.push({ type: s?.type ?? null, count: s?.count ?? 0, infinite: this.isCreative });
+      }
+    }
+    return out;
+  }
+
   /* ------------------------------ mutation ------------------------------- */
 
   /**
-   * Add items to the inventory (survival only). Stacks into existing slots
-   * first, then fills empty ones.
+   * Add items (survival only). Tops up matching stacks, then fills empties
+   * across the whole inventory (hotbar first).
    * @param {string} type @param {number} [n=1]
-   * @returns {number} how many were actually stored
+   * @returns {number} how many were stored
    */
   add(type, n = 1) {
-    if (this.isCreative) return n; // creative: infinite, nothing to store
+    if (this.isCreative) return n;
     const def = getItem(type);
     if (!def) return 0;
     const max = def.maxStack;
     let remaining = n;
 
-    // Top up matching stacks.
-    for (let i = 0; i < SLOTS && remaining > 0; i++) {
+    for (let i = 0; i < TOTAL_SLOTS && remaining > 0; i++) {
       const s = this.slots[i];
       if (s && s.type === type && s.count < max) {
-        const room = max - s.count;
-        const take = Math.min(room, remaining);
+        const take = Math.min(max - s.count, remaining);
         s.count += take;
         remaining -= take;
       }
     }
-    // Fill empty slots.
-    for (let i = 0; i < SLOTS && remaining > 0; i++) {
+    for (let i = 0; i < TOTAL_SLOTS && remaining > 0; i++) {
       if (!this.slots[i]) {
         const take = Math.min(max, remaining);
         this.slots[i] = { type, count: take };
@@ -117,7 +138,7 @@ export class Inventory {
   }
 
   /**
-   * Remove `n` of a type from anywhere in the inventory (survival only).
+   * Remove `n` of a type from anywhere (survival only).
    * @param {string} type @param {number} [n=1]
    * @returns {boolean} true if the full amount was removed
    */
@@ -125,7 +146,7 @@ export class Inventory {
     if (this.isCreative) return true;
     if (this.count(type) < n) return false;
     let remaining = n;
-    for (let i = 0; i < SLOTS && remaining > 0; i++) {
+    for (let i = 0; i < TOTAL_SLOTS && remaining > 0; i++) {
       const s = this.slots[i];
       if (s && s.type === type) {
         const take = Math.min(s.count, remaining);
@@ -138,8 +159,8 @@ export class Inventory {
   }
 
   /**
-   * Consume one of the currently selected item (used when placing a block).
-   * @returns {boolean} whether something was consumed (always true in creative)
+   * Consume one of the selected hotbar item (placing a block).
+   * @returns {boolean}
    */
   consumeSelected() {
     if (this.isCreative) return true;
@@ -150,7 +171,7 @@ export class Inventory {
     return true;
   }
 
-  /** @param {string} type @returns {number} total count across all slots. */
+  /** @param {string} type @returns {number} total across all slots. */
   count(type) {
     if (this.isCreative) return Infinity;
     let total = 0;
@@ -158,28 +179,74 @@ export class Inventory {
     return total;
   }
 
-  /** Clear all slots (survival). */
+  /**
+   * Move/merge/swap a stack between two slots (inventory-screen drag). In
+   * creative, dropping onto a hotbar slot sets that palette entry.
+   * @param {number} from @param {number} to
+   */
+  moveSlot(from, to) {
+    if (from === to) return;
+    if (this.isCreative) {
+      // Creative: only the hotbar palette is editable; copy the source type in.
+      if (to < HOTBAR_SIZE) {
+        const srcType = from < HOTBAR_SIZE ? this.creativeHotbar[from] : this.slots[from]?.type;
+        if (srcType) this.creativeHotbar[to] = srcType;
+      }
+      return;
+    }
+    const a = this.slots[from];
+    const b = this.slots[to];
+    if (!a) return;
+    if (b && b.type === a.type) {
+      // Merge.
+      const max = getItem(a.type)?.maxStack ?? 64;
+      const room = max - b.count;
+      const take = Math.min(room, a.count);
+      b.count += take;
+      a.count -= take;
+      if (a.count <= 0) this.slots[from] = null;
+    } else {
+      // Swap.
+      this.slots[from] = b;
+      this.slots[to] = a;
+    }
+  }
+
+  /**
+   * Creative helper: drop a catalog item into the currently selected hotbar
+   * slot (infinite supply).
+   * @param {string} type
+   */
+  setCreativeSelected(type) {
+    if (this.isCreative) this.creativeHotbar[this.selected] = type;
+  }
+
+  /** Empty all storage + hotbar (survival). */
   clear() {
-    this.slots = new Array(SLOTS).fill(null);
+    this.slots = new Array(TOTAL_SLOTS).fill(null);
   }
 
   /* ---------------------------- serialization ---------------------------- */
 
   toJSON() {
-    return { slots: this.slots, selected: this.selected };
+    return { slots: this.slots, selected: this.selected, creativeHotbar: this.creativeHotbar };
   }
 
-  /** @param {{slots?:Array, selected?:number}} data */
+  /** @param {{slots?:Array, selected?:number, creativeHotbar?:Array}} data */
   load(data) {
     if (!data) return;
     if (Array.isArray(data.slots)) {
-      this.slots = new Array(SLOTS).fill(null);
-      for (let i = 0; i < SLOTS; i++) {
+      this.slots = new Array(TOTAL_SLOTS).fill(null);
+      for (let i = 0; i < TOTAL_SLOTS; i++) {
         const s = data.slots[i];
         if (s && ITEMS[s.type] && s.count > 0) {
           this.slots[i] = { type: s.type, count: s.count };
         }
       }
+    }
+    if (Array.isArray(data.creativeHotbar) && data.creativeHotbar.length) {
+      this.creativeHotbar = data.creativeHotbar.slice(0, HOTBAR_SIZE);
+      while (this.creativeHotbar.length < HOTBAR_SIZE) this.creativeHotbar.push(null);
     }
     if (Number.isInteger(data.selected)) this.selectSlot(data.selected);
   }

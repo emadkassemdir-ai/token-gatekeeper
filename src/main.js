@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import { PlayerProfile } from './state/PlayerProfile.js';
 import { Inventory } from './state/Inventory.js';
 import { PlayerStats } from './state/PlayerStats.js';
+import { Avatar } from './state/Avatar.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID } from './world/BlockTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
@@ -25,14 +26,17 @@ import { HUD } from './ui/HUD.js';
 import { TouchControls } from './ui/TouchControls.js';
 import { Chat } from './ui/Chat.js';
 import { CraftingMenu } from './ui/CraftingMenu.js';
+import { AvatarEditor } from './ui/AvatarEditor.js';
+import { InventoryScreen } from './ui/InventoryScreen.js';
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
 const TABLE_REACH = 4; // blocks to a crafting table for tool recipes
 
 class Game {
-  constructor(profile) {
+  constructor(profile, avatar) {
     this.profile = profile;
+    this.avatar = avatar || Avatar.load();
     this.app = document.getElementById('app');
     this.crosshair = document.getElementById('crosshair');
 
@@ -141,10 +145,16 @@ class Game {
       onOpen: () => this._releasePointer()
     });
 
+    // Inventory screen (I) with avatar display.
+    this.inventoryScreen = new InventoryScreen(this.app, this.inventory, this.avatar, {
+      onOpen: () => this._releasePointer()
+    });
+
     if (TouchControls.isTouchDevice()) {
       this.touchControls = new TouchControls(this.app, this.physics, this.interaction, {
         openCraft: () => this.crafting.openMenu(),
-        openChat: () => this.chat.openChat()
+        openChat: () => this.chat.openChat(),
+        openInventory: () => this.inventoryScreen.openScreen()
       });
     }
   }
@@ -252,13 +262,17 @@ class Game {
 
 async function boot() {
   const app = document.getElementById('app');
-  const menu = new GameMenu(app);
+  const avatar = Avatar.load();
+
+  const menu = new GameMenu(app, {
+    onEditAvatar: () => new AvatarEditor(app, avatar).open()
+  });
   const username = await menu.show();
 
   const profile = new PlayerProfile(username);
   profile.load();
 
-  const game = new Game(profile);
+  const game = new Game(profile, avatar);
   game.start();
 
   window.__voxelcraft = game;

@@ -10,9 +10,14 @@
 import { PlayerProfile } from '../state/PlayerProfile.js';
 
 export class GameMenu {
-  /** @param {HTMLElement} mountPoint */
-  constructor(mountPoint) {
+  /**
+   * @param {HTMLElement} mountPoint
+   * @param {Object} [options]
+   * @param {() => (void|Promise<void>)} [options.onEditAvatar] open avatar editor
+   */
+  constructor(mountPoint, options = {}) {
     this.mount = mountPoint;
+    this.options = options;
     this.root = null;
     this._resolve = null;
   }
@@ -41,6 +46,9 @@ export class GameMenu {
     const button = root.querySelector('#play-button');
     const error = root.querySelector('#username-error');
     const saved = root.querySelector('#saved-profiles');
+    const avatarBtn = root.querySelector('#avatar-button');
+
+    avatarBtn.addEventListener('click', () => this.options.onEditAvatar?.());
 
     // Populate quick-resume chips for any existing saves.
     const profiles = PlayerProfile.listSavedProfiles();
@@ -106,6 +114,7 @@ export class GameMenu {
                maxlength="24" placeholder="e.g. Steve" />
         <div id="username-error" class="field-error"></div>
         <button id="play-button" disabled>PLAY</button>
+        <button id="avatar-button" class="secondary-button">CUSTOMIZE AVATAR</button>
         <div id="saved-profiles" class="saved-profiles"></div>
         <div class="controls-hint">
           <strong>Controls</strong>
@@ -172,6 +181,13 @@ export class GameMenu {
       #play-button:hover:not(:disabled) { filter: brightness(1.08); }
       #play-button:active:not(:disabled) { transform: translateY(1px); }
       #play-button:disabled { background: #3a4452; color: #788596; cursor: not-allowed; }
+      .secondary-button {
+        width: 100%; margin-top: 10px; padding: 11px; font-size: 13px; font-weight: 700;
+        letter-spacing: 1px; color: #d6e2ef; background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.14); border-radius: 9px; cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .secondary-button:hover { background: rgba(108,194,74,0.16); border-color: var(--accent, #6cc24a); }
       .saved-profiles { margin-top: 16px; font-size: 12px; color: #8aa0b6;
         display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
       .saved-label { opacity: 0.7; }
