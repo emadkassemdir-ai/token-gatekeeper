@@ -64,8 +64,38 @@ export const RECIPES = [
     requiresTable: true
   },
   // Tiered tools (stone/iron/gold/diamond) generated below.
-  ...buildTierTools()
+  ...buildTierTools(),
+  // Armor (iron/gold/diamond) generated below.
+  ...buildArmor()
 ];
+
+/**
+ * Build helmet/chestplate/leggings/boots recipes for each armor material.
+ * @returns {Recipe[]}
+ */
+function buildArmor() {
+  const mats = [
+    { tier: 'iron', mat: 'iron_ingot' },
+    { tier: 'gold', mat: 'gold_ingot' },
+    { tier: 'diamond', mat: 'diamond' }
+  ];
+  const pieces = [
+    { slot: 'helmet', count: 5 },
+    { slot: 'chestplate', count: 8 },
+    { slot: 'leggings', count: 7 },
+    { slot: 'boots', count: 4 }
+  ];
+  const out = [];
+  for (const { tier, mat } of mats) {
+    for (const { slot, count } of pieces) {
+      out.push({
+        id: `${tier}_${slot}`, output: `${tier}_${slot}`, outputCount: 1,
+        inputs: [{ type: mat, count }], requiresTable: true
+      });
+    }
+  }
+  return out;
+}
 
 /**
  * Build pickaxe/axe/sword recipes for every non-wood tier. Same shapes as the

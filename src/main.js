@@ -136,6 +136,13 @@ class Game {
       else if (res.eaten) this.chat?.system('Tasty!');
       return res.eaten;
     };
+    this.interaction.onEquip = (type) => {
+      const res = this.stats.equip(type);
+      if (!res.equipped) return false;
+      if (res.replaced) this.inventory.add(res.replaced, 1);
+      this.chat?.system('Equipped ' + type.replace(/_/g, ' '));
+      return true;
+    };
   }
 
   _initEntities() {
@@ -173,7 +180,7 @@ class Game {
     });
 
     // Inventory screen (I) with avatar display.
-    this.inventoryScreen = new InventoryScreen(this.app, this.inventory, this.avatar, {
+    this.inventoryScreen = new InventoryScreen(this.app, this.inventory, this.avatar, this.stats, {
       onOpen: () => this._releasePointer()
     });
 

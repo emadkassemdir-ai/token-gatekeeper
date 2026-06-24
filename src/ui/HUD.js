@@ -15,7 +15,7 @@
 
 import { BLOCKS } from '../world/BlockTypes.js';
 import { ITEMS, placeBlockId } from '../world/ItemTypes.js';
-import { MAX_HEALTH, MAX_HUNGER } from '../state/PlayerStats.js';
+import { MAX_HEALTH, MAX_HUNGER, MAX_ARMOR } from '../state/PlayerStats.js';
 
 function rgbCss(triplet) {
   const [r, g, b] = triplet;
@@ -65,6 +65,7 @@ export class HUD {
       </div>
 
       <div id="hud-vitals" class="hud-vitals">
+        <div id="hud-armor" class="hud-bar"></div>
         <div id="hud-health" class="hud-bar"></div>
         <div id="hud-hunger" class="hud-bar"></div>
       </div>
@@ -84,6 +85,7 @@ export class HUD {
       oxygen: root.querySelector('#hud-oxygen'),
       oxygenFill: root.querySelector('#oxygen-fill'),
       vitals: root.querySelector('#hud-vitals'),
+      armor: root.querySelector('#hud-armor'),
       health: root.querySelector('#hud-health'),
       hunger: root.querySelector('#hud-hunger'),
       hotbar: root.querySelector('#hud-hotbar')
@@ -98,6 +100,15 @@ export class HUD {
   _buildIcons() {
     this._hearts = [];
     this._foods = [];
+    this._shields = [];
+    // 10 shield icons = 20 armor points (full diamond set).
+    for (let i = 0; i < MAX_ARMOR / 2; i++) {
+      const s = document.createElement('span');
+      s.className = 'icon shield';
+      s.textContent = '🛡';
+      this.el.armor.appendChild(s);
+      this._shields.push(s);
+    }
     for (let i = 0; i < MAX_HEALTH; i++) {
       const h = document.createElement('span');
       h.className = 'icon heart';
@@ -226,6 +237,17 @@ export class HUD {
   }
 
   _updateVitals() {
+    // Armor row (hidden when you have none).
+    const armor = this.stats.armorTotal();
+    this.el.armor.style.display = armor > 0 ? 'flex' : 'none';
+    if (armor > 0) {
+      for (let i = 0; i < this._shields.length; i++) {
+        const filled = armor >= (i + 1) * 2;
+        const half = !filled && armor > i * 2;
+        this._shields[i].className = 'icon shield' + (filled ? ' full' : half ? ' half' : ' empty');
+      }
+    }
+
     const hp = this.stats.health;
     for (let i = 0; i < this._hearts.length; i++) {
       const filled = hp >= i + 1;
@@ -320,6 +342,9 @@ export class HUD {
       .icon.food.full { filter: none; }
       .icon.food.half { opacity: 0.5; }
       .icon.food.empty { filter: grayscale(1) brightness(0.4); opacity: 0.5; }
+      .icon.shield.full { filter: none; }
+      .icon.shield.half { opacity: 0.55; }
+      .icon.shield.empty { filter: grayscale(1) brightness(0.5); opacity: 0.4; }
 
       .hud-hotbar {
         position: absolute; bottom: calc(28px + var(--safe-bottom, 0px));

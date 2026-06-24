@@ -7,8 +7,11 @@
  * are frozen full.
  */
 
+import { isArmor, armorSlot, armorPoints } from '../world/ItemTypes.js';
+
 export const MAX_HEALTH = 10; // 10 hearts
 export const MAX_HUNGER = 10; // 10 food icons
+export const MAX_ARMOR = 20;  // protection points for a full diamond set
 
 export class PlayerStats {
   /** @param {'survival'|'creative'} mode */
@@ -17,6 +20,9 @@ export class PlayerStats {
     this.health = MAX_HEALTH;
     this.hunger = MAX_HUNGER;
     this.dead = false;
+
+    /** Equipped armor pieces by slot. */
+    this.armor = { head: null, chest: null, legs: null, feet: null };
 
     this._damageCooldown = 0; // i-frames after taking a hit
     this._regenTimer = 0;
@@ -48,8 +54,42 @@ export class PlayerStats {
    * @param {number} amount
    * @returns {boolean} whether damage was applied
    */
+  /** @returns {number} total equipped armor protection points. */
+  armorTotal() {
+    let n = 0;
+    for (const slot in this.armor) n += armorPoints(this.armor[slot]);
+    return n;
+  }
+
+  /**
+   * Equip an armor item into its slot.
+   * @param {string} type
+   * @returns {{ equipped: boolean, replaced: string|null }} previous piece, if any
+   */
+  equip(type) {
+    if (!isArmor(type)) return { equipped: false, replaced: null };
+    const slot = armorSlot(type);
+    const prev = this.armor[slot];
+    this.armor[slot] = type;
+    return { equipped: true, replaced: prev };
+  }
+
+  /**
+   * Remove the armor in a slot.
+   * @param {string} slot
+   * @returns {string|null} the removed piece type
+   */
+  unequip(slot) {
+    const prev = this.armor[slot] ?? null;
+    this.armor[slot] = null;
+    return prev;
+  }
+
   damage(amount) {
     if (this.isCreative || this.dead || this._damageCooldown > 0) return false;
+    // Armor reduces incoming damage by 4% per point, capped at 80%.
+    const reduction = Math.min(0.8, this.armorTotal() * 0.04);
+    amount = amount * (1 - reduction);
     this.health = Math.max(0, this.health - amount);
     this._damageCooldown = 0.6;
     this._regenTimer = 0;
@@ -147,7 +187,7 @@ export class PlayerStats {
   }
 
   toJSON() {
-    return { mode: this.mode, health: this.health, hunger: this.hunger };
+    return { mode: this.mode, health: this.health, hunger: this.hunger, armor: this.armor };
   }
 
   load(data) {
@@ -155,6 +195,11 @@ export class PlayerStats {
     if (data.mode === 'survival' || data.mode === 'creative') this.mode = data.mode;
     if (typeof data.health === 'number') this.health = data.health;
     if (typeof data.hunger === 'number') this.hunger = data.hunger;
+    if (data.armor && typeof data.armor === 'object') {
+      for (const slot of ['head', 'chest', 'legs', 'feet']) {
+        if (isArmor(data.armor[slot])) this.armor[slot] = data.armor[slot];
+      }
+    }
   }
 }
 

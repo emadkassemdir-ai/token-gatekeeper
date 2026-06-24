@@ -125,7 +125,21 @@ export const ITEMS = {
   gold_sword:      { type: 'gold_sword', name: 'Gold Sword', maxStack: 1, tool: 'sword', tier: 'gold', damage: 2.5, glyph: '🗡' },
   diamond_pickaxe: { type: 'diamond_pickaxe', name: 'Diamond Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'diamond', damage: 2.0, glyph: '⛏' },
   diamond_axe:     { type: 'diamond_axe', name: 'Diamond Axe', maxStack: 1, tool: 'axe', tier: 'diamond', damage: 2.5, glyph: '🪓' },
-  diamond_sword:   { type: 'diamond_sword', name: 'Diamond Sword', maxStack: 1, tool: 'sword', tier: 'diamond', damage: 3.5, glyph: '🗡' }
+  diamond_sword:   { type: 'diamond_sword', name: 'Diamond Sword', maxStack: 1, tool: 'sword', tier: 'diamond', damage: 3.5, glyph: '🗡' },
+
+  // Armor (iron/gold/diamond). `armor` = protection points; `slot` = body part.
+  iron_helmet:      { type: 'iron_helmet', name: 'Iron Helmet', maxStack: 1, armor: 2, slot: 'head', glyph: '⛑' },
+  iron_chestplate:  { type: 'iron_chestplate', name: 'Iron Chestplate', maxStack: 1, armor: 6, slot: 'chest', glyph: '🦺' },
+  iron_leggings:    { type: 'iron_leggings', name: 'Iron Leggings', maxStack: 1, armor: 5, slot: 'legs', glyph: '👖' },
+  iron_boots:       { type: 'iron_boots', name: 'Iron Boots', maxStack: 1, armor: 2, slot: 'feet', glyph: '🥾' },
+  gold_helmet:      { type: 'gold_helmet', name: 'Gold Helmet', maxStack: 1, armor: 2, slot: 'head', glyph: '⛑' },
+  gold_chestplate:  { type: 'gold_chestplate', name: 'Gold Chestplate', maxStack: 1, armor: 5, slot: 'chest', glyph: '🦺' },
+  gold_leggings:    { type: 'gold_leggings', name: 'Gold Leggings', maxStack: 1, armor: 3, slot: 'legs', glyph: '👖' },
+  gold_boots:       { type: 'gold_boots', name: 'Gold Boots', maxStack: 1, armor: 1, slot: 'feet', glyph: '🥾' },
+  diamond_helmet:     { type: 'diamond_helmet', name: 'Diamond Helmet', maxStack: 1, armor: 3, slot: 'head', glyph: '⛑' },
+  diamond_chestplate: { type: 'diamond_chestplate', name: 'Diamond Chestplate', maxStack: 1, armor: 8, slot: 'chest', glyph: '🦺' },
+  diamond_leggings:   { type: 'diamond_leggings', name: 'Diamond Leggings', maxStack: 1, armor: 6, slot: 'legs', glyph: '👖' },
+  diamond_boots:      { type: 'diamond_boots', name: 'Diamond Boots', maxStack: 1, armor: 3, slot: 'feet', glyph: '🥾' }
 };
 
 /** Mining-speed multiplier per tool tier (wood = baseline = the spec'd times). */
@@ -186,6 +200,21 @@ export function getBreakTime(blockId, heldType) {
 /** @param {string|null} type @returns {boolean} whether the item is edible. */
 export function isFood(type) {
   return !!ITEMS[type]?.food;
+}
+
+/** @param {string|null} type @returns {boolean} whether the item is armor. */
+export function isArmor(type) {
+  return !!ITEMS[type]?.slot;
+}
+
+/** @param {string|null} type @returns {string|null} armor slot ('head'…). */
+export function armorSlot(type) {
+  return ITEMS[type]?.slot ?? null;
+}
+
+/** @param {string|null} type @returns {number} armor protection points. */
+export function armorPoints(type) {
+  return ITEMS[type]?.armor ?? 0;
 }
 
 /** @param {string|null} type @returns {{hunger:number,raw?:boolean}|null} */

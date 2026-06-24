@@ -32,10 +32,11 @@ export class InventoryScreen {
    * @param {() => void} [hooks.onOpen]
    * @param {() => void} [hooks.onClose]
    */
-  constructor(mount, inventory, avatar, hooks = {}) {
+  constructor(mount, inventory, avatar, stats, hooks = {}) {
     this.mount = mount;
     this.inventory = inventory;
     this.avatar = avatar;
+    this.stats = stats;
     this.hooks = hooks;
     this.open = false;
     this._held = -1; // picked-up slot index (survival), -1 = none
@@ -57,6 +58,8 @@ export class InventoryScreen {
           <div class="inv-left">
             <div class="inv-avatar" id="inv-avatar"></div>
             <div class="inv-avatar-label" id="inv-avatar-label">You</div>
+            <div class="inv-armor-label">Armor</div>
+            <div class="inv-armor" id="inv-armor"></div>
           </div>
           <div class="inv-right" id="inv-right"></div>
         </div>
@@ -66,6 +69,7 @@ export class InventoryScreen {
     this.root = root;
     this.rightEl = root.querySelector('#inv-right');
     this.avatarEl = root.querySelector('#inv-avatar');
+    this.armorEl = root.querySelector('#inv-armor');
     root.querySelector('#inv-close').addEventListener('click', () => this.close());
     root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
   }
@@ -107,6 +111,8 @@ export class InventoryScreen {
     this.avatarEl.innerHTML = '';
     this.avatarEl.appendChild(Avatar.buildPreview(this.avatar, 1.5));
 
+    this._renderArmor();
+
     this.rightEl.innerHTML = '';
     const creative = this.inventory.isCreative;
 
@@ -114,6 +120,31 @@ export class InventoryScreen {
       this._renderCreative();
     } else {
       this._renderSurvival();
+    }
+  }
+
+  /** Render the four armor slots (click an equipped piece to take it off). */
+  _renderArmor() {
+    if (!this.armorEl) return;
+    this.armorEl.innerHTML = '';
+    const slots = [['head', '⛑'], ['chest', '🦺'], ['legs', '👖'], ['feet', '🥾']];
+    for (const [slot, emptyGlyph] of slots) {
+      const type = this.stats?.armor?.[slot] ?? null;
+      const cell = this._makeItemCell(type, '');
+      cell.classList.add('inv-armor-slot');
+      if (!type) {
+        cell.querySelector('.inv-icon').classList.add('glyph');
+        cell.querySelector('.inv-icon').textContent = emptyGlyph;
+        cell.querySelector('.inv-icon').style.opacity = '0.35';
+      } else {
+        cell.title = (ITEMS[type]?.name ?? type) + ' — click to unequip';
+        cell.addEventListener('click', () => {
+          const removed = this.stats.unequip(slot);
+          if (removed) this.inventory.add(removed, 1);
+          this.render();
+        });
+      }
+      this.armorEl.appendChild(cell);
     }
   }
 
@@ -276,6 +307,10 @@ export class InventoryScreen {
       .inv-avatar { background: rgba(0,0,0,0.25); border-radius: 12px; padding: 14px;
         display: flex; align-items: center; justify-content: center; }
       .inv-avatar-label { font-size: 12px; color: #9fb0c3; }
+      .inv-armor-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+        color: #8fa3b8; margin-top: 6px; }
+      .inv-armor { display: grid; grid-template-columns: repeat(2, 40px); gap: 6px; }
+      .inv-armor-slot { width: 40px; height: 40px; }
       .inv-right { flex: 1; min-width: 0; }
       .inv-section-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
         color: #8fa3b8; margin: 4px 2px 8px; }

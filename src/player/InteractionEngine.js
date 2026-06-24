@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { BLOCKS, AIR, isAir, isBreakable } from '../world/BlockTypes.js';
-import { getBreakTime, getDrop, placeBlockId, isFood } from '../world/ItemTypes.js';
+import { getBreakTime, getDrop, placeBlockId, isFood, isArmor } from '../world/ItemTypes.js';
 
 const REACH = 6; // max voxels the player can interact with
 
@@ -46,6 +46,7 @@ export class InteractionEngine {
     this.onExhaust = null;// callback(amount) for hunger cost
     this.onAttack = null; // () => boolean : try to hit a mob; true if it hit
     this.onEat = null;    // (foodType) => boolean : eat; true if consumed
+    this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
 
@@ -263,8 +264,19 @@ export class InteractionEngine {
    * @returns {boolean} true if a block was placed
    */
   _tryPlace() {
-    // Holding food? The place action eats it instead of placing.
+    // Holding armor? The place action equips it instead of placing.
     const heldType = this.inventory.getSelectedType();
+    if (isArmor(heldType)) {
+      if (this._placeCooldown > 0) return false;
+      if (this.onEquip && this.onEquip(heldType)) {
+        this.inventory.consumeSelected();
+        this._placeCooldown = 0.3;
+        return true;
+      }
+      return false;
+    }
+
+    // Holding food? The place action eats it instead of placing.
     if (isFood(heldType)) {
       if (this._placeCooldown > 0) return false;
       if (this.onEat && this.onEat(heldType)) {
