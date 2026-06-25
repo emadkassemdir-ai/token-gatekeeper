@@ -8,6 +8,7 @@
 
 import { SMELT_RECIPES, canSmelt, smelt } from '../state/Smelting.js';
 import { ITEMS } from '../world/ItemTypes.js';
+import { itemIconHTML } from '../world/ItemTextures.js';
 
 export class SmeltingMenu {
   /**
@@ -89,9 +90,9 @@ export class SmeltingMenu {
       row.className = 'smelt-row' + (check.ok ? '' : ' disabled');
       row.innerHTML = `
         <div class="smelt-flow">
-          <span class="smelt-icon">${inp?.glyph ?? '▣'}</span>
+          ${itemIconHTML(recipe.input, 20)}
           <span class="smelt-arrow">→</span>
-          <span class="smelt-icon">${out?.glyph ?? '▣'}</span>
+          ${itemIconHTML(recipe.output, 20)}
         </div>
         <div class="smelt-name">${inp?.name ?? recipe.input} → ${out?.name ?? recipe.output}</div>
       `;

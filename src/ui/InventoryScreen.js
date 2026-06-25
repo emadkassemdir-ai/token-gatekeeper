@@ -13,6 +13,7 @@
 
 import { BLOCKS } from '../world/BlockTypes.js';
 import { ITEMS, placeBlockId } from '../world/ItemTypes.js';
+import { getItemIcon } from '../world/ItemTextures.js';
 import { Avatar } from '../state/Avatar.js';
 import { HOTBAR_SIZE, TOTAL_SLOTS } from '../state/Inventory.js';
 
@@ -253,14 +254,21 @@ export class InventoryScreen {
     icon.className = 'inv-icon';
     const def = type ? ITEMS[type] : null;
     if (def) {
-      const blockId = placeBlockId(type);
-      if (blockId && BLOCKS[blockId]) {
-        const b = BLOCKS[blockId];
-        icon.style.background = rgbCss(b.faceColors?.top ?? b.color);
-        if (b.transparent) icon.style.opacity = '0.75';
+      const art = getItemIcon(type);
+      if (art) {
+        icon.style.backgroundImage = `url(${art})`;
+        icon.style.backgroundSize = '100% 100%';
+        icon.style.imageRendering = 'pixelated';
       } else {
-        icon.classList.add('glyph');
-        icon.textContent = def.glyph ?? '▣';
+        const blockId = placeBlockId(type);
+        if (blockId && BLOCKS[blockId]) {
+          const b = BLOCKS[blockId];
+          icon.style.background = rgbCss(b.faceColors?.top ?? b.color);
+          if (b.transparent) icon.style.opacity = '0.75';
+        } else {
+          icon.classList.add('glyph');
+          icon.textContent = def.glyph ?? '▣';
+        }
       }
       cell.title = def.name;
     }

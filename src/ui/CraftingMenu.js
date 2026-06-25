@@ -9,6 +9,7 @@
 
 import { RECIPES, canCraft, craft } from '../state/Crafting.js';
 import { ITEMS } from '../world/ItemTypes.js';
+import { itemIconHTML } from '../world/ItemTextures.js';
 
 export class CraftingMenu {
   /**
@@ -104,7 +105,7 @@ export class CraftingMenu {
 
       row.innerHTML = `
         <div class="craft-out">
-          <span class="craft-icon">${out.glyph ?? '▣'}</span>
+          ${itemIconHTML(recipe.output, 22)}
           <span class="craft-name">${out.name}${recipe.outputCount > 1 ? ' ×' + recipe.outputCount : ''}</span>
         </div>
         <div class="craft-ing">${ing}</div>

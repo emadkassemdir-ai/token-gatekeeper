@@ -15,6 +15,7 @@
 
 import { BLOCKS } from '../world/BlockTypes.js';
 import { ITEMS, placeBlockId } from '../world/ItemTypes.js';
+import { getItemIcon } from '../world/ItemTextures.js';
 import { MAX_HEALTH, MAX_HUNGER, MAX_ARMOR } from '../state/PlayerStats.js';
 
 function rgbCss(triplet) {
@@ -174,23 +175,36 @@ export class HUD {
 
       if (!def) {
         swatch.style.background = 'transparent';
+        swatch.style.backgroundImage = 'none';
         swatch.textContent = '';
         label.textContent = '';
         count.textContent = '';
         continue;
       }
 
-      const blockId = placeBlockId(entry.type);
-      if (blockId && BLOCKS[blockId]) {
-        const b = BLOCKS[blockId];
-        swatch.style.background = rgbCss(b.faceColors?.top ?? b.color);
-        swatch.style.opacity = b.transparent ? '0.7' : '1';
+      const icon = getItemIcon(entry.type);
+      if (icon) {
+        // Real procedural pixel-art icon.
+        swatch.style.background = 'transparent';
+        swatch.style.backgroundImage = `url(${icon})`;
+        swatch.style.backgroundSize = '100% 100%';
+        swatch.style.imageRendering = 'pixelated';
+        swatch.style.opacity = '1';
         swatch.textContent = '';
       } else {
-        // Non-block item (tool / material): show its glyph.
-        swatch.style.background = 'rgba(255,255,255,0.08)';
-        swatch.style.opacity = '1';
-        swatch.textContent = def.glyph ?? '▣';
+        // Fallback (no canvas): colour swatch / glyph.
+        swatch.style.backgroundImage = 'none';
+        const blockId = placeBlockId(entry.type);
+        if (blockId && BLOCKS[blockId]) {
+          const b = BLOCKS[blockId];
+          swatch.style.background = rgbCss(b.faceColors?.top ?? b.color);
+          swatch.style.opacity = b.transparent ? '0.7' : '1';
+          swatch.textContent = '';
+        } else {
+          swatch.style.background = 'rgba(255,255,255,0.08)';
+          swatch.style.opacity = '1';
+          swatch.textContent = def.glyph ?? '▣';
+        }
       }
       label.textContent = def.name;
       count.textContent = entry.infinite ? '∞' : entry.count > 1 ? String(entry.count) : '';
