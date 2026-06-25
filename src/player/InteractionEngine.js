@@ -14,6 +14,7 @@
 
 import * as THREE from 'three';
 import { BLOCKS, AIR, isAir, isBreakable } from '../world/BlockTypes.js';
+import { getBreakTime, getDrop, placeBlockId, isFood, isArmor } from '../world/ItemTypes.js';
 
 const REACH = 6; // max voxels the player can interact with
 
@@ -25,12 +26,13 @@ export class InteractionEngine {
    * @param {import('./PhysicsEngine.js').PhysicsEngine} physics
    * @param {import('../state/PlayerProfile.js').PlayerProfile} profile
    */
-  constructor(camera, world, scene, physics, profile) {
+  constructor(camera, world, scene, physics, profile, inventory) {
     this.camera = camera;
     this.world = world;
     this.scene = scene;
     this.physics = physics;
     this.profile = profile;
+    this.inventory = inventory;
 
     this.target = null; // { x, y, z, nx, ny, nz }
     this.breaking = false;
@@ -39,7 +41,15 @@ export class InteractionEngine {
     this._breakTarget = null; // "x,y,z" of the block being mined
     this._placeCooldown = 0;
 
-    this.onEdit = null; // callback(x,y,z,id) for persistence
+    this.onEdit = null;   // callback(x,y,z,id) for persistence
+    this.onMine = null;   // callback(blockId) when a block is removed (drops)
+    this.onExhaust = null;// callback(amount) for hunger cost
+    this.onAttack = null; // () => boolean : try to hit a mob; true if it hit
+    this.onEat = null;    // (foodType) => boolean : eat; true if consumed
+    this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
+    this._placeRequested = false; // one-shot place (touch tap)
+    this._attackCooldown = 0;
+    this.reach = REACH; // mutable for the /reach cheat
 
     this._buildHighlight();
     this._bindEvents();
@@ -92,14 +102,14 @@ export class InteractionEngine {
     };
     this._onContextMenu = (e) => e.preventDefault();
     this._onWheel = (e) => {
-      if (document.pointerLockElement == null) return;
-      this.profile.cycleSlot(e.deltaY);
+      this.inventory.cycleSlot(e.deltaY);
     };
     this._onKeyDown = (e) => {
+      if (this._isTyping()) return;
       // Number keys 1-9 select hotbar slots directly.
       if (e.code.startsWith('Digit')) {
         const n = parseInt(e.code.slice(5), 10);
-        if (n >= 1 && n <= 9) this.profile.selectSlot(n - 1);
+        if (n >= 1 && n <= 9) this.inventory.selectSlot(n - 1);
       }
     };
 
@@ -165,7 +175,7 @@ export class InteractionEngine {
     let nz = 0;
     let traveled = 0;
 
-    while (traveled <= REACH) {
+    while (traveled <= this.reach) {
       const id = this.world.getBlock(x, y, z);
       // Target solid blocks; ignore non-solid liquids/air so the ray passes
       // through water until it reaches something tangible.
@@ -229,16 +239,21 @@ export class InteractionEngine {
     }
 
     this._breakProgress += dt;
-    const hardness = BLOCKS[id]?.hardness ?? 1;
+    // Break time depends on the block category and the held tool (class + tier).
+    const breakTime = getBreakTime(id, this.inventory.getSelectedType());
 
     // Visualise mining progress on the crack overlay.
     this.crack.visible = true;
     this.crack.position.set(x + 0.5, y + 0.5, z + 0.5);
-    this.crack.material.opacity = Math.min(0.5, (this._breakProgress / hardness) * 0.5);
+    this.crack.material.opacity = Math.min(0.5, (this._breakProgress / breakTime) * 0.5);
 
-    if (this._breakProgress >= hardness) {
+    if (this._breakProgress >= breakTime) {
       this.world.setBlock(x, y, z, AIR);
       this.onEdit?.(x, y, z, AIR);
+      // Drop the block into the inventory (survival) and cost a little hunger.
+      const drop = getDrop(id);
+      if (drop) this.onMine?.(drop);
+      this.onExhaust?.(0.6);
       this._resetBreak();
       return true;
     }
@@ -250,6 +265,29 @@ export class InteractionEngine {
    * @returns {boolean} true if a block was placed
    */
   _tryPlace() {
+    // Holding armor? The place action equips it instead of placing.
+    const heldType = this.inventory.getSelectedType();
+    if (isArmor(heldType)) {
+      if (this._placeCooldown > 0) return false;
+      if (this.onEquip && this.onEquip(heldType)) {
+        this.inventory.consumeSelected();
+        this._placeCooldown = 0.3;
+        return true;
+      }
+      return false;
+    }
+
+    // Holding food? The place action eats it instead of placing.
+    if (isFood(heldType)) {
+      if (this._placeCooldown > 0) return false;
+      if (this.onEat && this.onEat(heldType)) {
+        this.inventory.consumeSelected();
+        this._placeCooldown = 0.4;
+        return true;
+      }
+      return false;
+    }
+
     if (!this.target || this._placeCooldown > 0) return false;
     const { x, y, z, nx, ny, nz } = this.target;
     const px = x + nx;
@@ -262,8 +300,13 @@ export class InteractionEngine {
     // Don't place a block inside the player's own AABB.
     if (this._intersectsPlayer(px, py, pz)) return false;
 
-    const blockId = this.profile.getSelectedBlock();
+    // Resolve the held item to a placeable block id.
+    const type = this.inventory.getSelectedType();
+    const blockId = placeBlockId(type);
     if (!blockId || isAir(blockId)) return false;
+
+    // Survival: must actually have the item; consume one on success.
+    if (!this.inventory.consumeSelected()) return false;
 
     if (this.world.setBlock(px, py, pz, blockId)) {
       this.onEdit?.(px, py, pz, blockId);
@@ -301,6 +344,7 @@ export class InteractionEngine {
    */
   update(dt) {
     if (this._placeCooldown > 0) this._placeCooldown -= dt;
+    if (this._attackCooldown > 0) this._attackCooldown -= dt;
 
     this.target = this.raycastVoxel();
 
@@ -316,8 +360,39 @@ export class InteractionEngine {
       this._resetBreak();
     }
 
-    if (this.breaking) this._tryBreak(dt);
-    if (this.placing) this._tryPlace();
+    if (this.breaking) {
+      // While "breaking", first try to hit a mob in front; if one is in range
+      // we swing the weapon instead of mining. Otherwise, mine the block.
+      if (this._attackCooldown <= 0 && this.onAttack && this.onAttack()) {
+        this._attackCooldown = 0.5;
+        this.onExhaust?.(0.3);
+        this._resetBreak();
+      } else {
+        this._tryBreak(dt);
+      }
+    }
+    if (this.placing || this._placeRequested) {
+      this._tryPlace();
+      this._placeRequested = false;
+    }
+  }
+
+  _isTyping() {
+    const a = document.activeElement;
+    return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA');
+  }
+
+  /* --------------------------- touch input API --------------------------- */
+
+  /** Begin/stop mining (touch long-press hold). @param {boolean} active */
+  setBreaking(active) {
+    this.breaking = active;
+    if (!active) this._resetBreak();
+  }
+
+  /** Request a single block placement (touch tap). */
+  requestPlace() {
+    this._placeRequested = true;
   }
 }
 

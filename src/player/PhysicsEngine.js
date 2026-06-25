@@ -69,9 +69,56 @@ export class PhysicsEngine {
     this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
     this.mouseSensitivity = 0.0022;
+    this.touchSensitivity = 0.004;
+
+    // Analog locomotion input (e.g. from an on-screen joystick), range [-1, 1].
+    // x = strafe (right positive), z = forward (positive).
+    this.moveInput = { x: 0, z: 0 };
+    // Vertical intent for fly mode driven by touch buttons.
+    this._flyUp = false;
+    this._flyDown = false;
+    // When true, skip PointerLock (touch devices have no mouse to capture).
+    this.touch = false;
+    // Cheat hooks.
+    this.speedMultiplier = 1;
+    this.noclip = false;
 
     this._bindEvents();
     this._syncCamera();
+  }
+
+  /* ----------------------- public input API (touch) ---------------------- */
+
+  /** Set analog movement from a joystick. @param {number} x @param {number} z */
+  setMoveInput(x, z) {
+    this.moveInput.x = Math.max(-1, Math.min(1, x));
+    this.moveInput.z = Math.max(-1, Math.min(1, z));
+  }
+
+  /** Apply a look delta (drag-to-look), bypassing the PointerLock gate. */
+  rotate(dx, dy) {
+    this.yaw -= dx * this.touchSensitivity;
+    this.pitch -= dy * this.touchSensitivity;
+    const limit = Math.PI / 2 - 0.01;
+    this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
+  }
+
+  /** Hold/release jump (walk) or ascend (fly/swim). @param {boolean} down */
+  setJump(down) {
+    this._jumpHeld = down;
+    this._flyUp = down;
+  }
+
+  /** Hold/release descend (fly mode). @param {boolean} down */
+  setDescend(down) {
+    this._flyDown = down;
+  }
+
+  /** Toggle creative fly mode (mirrors the desktop 'F' key). */
+  toggleFly() {
+    this.flyMode = !this.flyMode;
+    this.profile.flyMode = this.flyMode;
+    this.velocity.y = 0;
   }
 
   /* ------------------------------- input --------------------------------- */
@@ -84,6 +131,7 @@ export class PhysicsEngine {
       this.locked = document.pointerLockElement === this.dom;
     };
     this._onClickToLock = () => {
+      if (this.touch) return; // no PointerLock on touch devices
       if (!this.locked) this.dom.requestPointerLock?.();
     };
 
@@ -103,6 +151,9 @@ export class PhysicsEngine {
   }
 
   _handleKey(e, down) {
+    // Ignore movement keys while typing in a text field (chat/crafting search).
+    const a = document.activeElement;
+    if (down && a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
     const code = e.code;
     this.keys[code] = down;
 
@@ -139,6 +190,7 @@ export class PhysicsEngine {
    * @returns {boolean} true if the player AABB at `pos` overlaps a solid voxel.
    */
   _collides(pos) {
+    if (this.noclip) return false; // cheat: pass through blocks
     const minX = Math.floor(pos.x - HALF_WIDTH);
     const maxX = Math.floor(pos.x + HALF_WIDTH);
     const minY = Math.floor(pos.y);
@@ -231,14 +283,21 @@ export class PhysicsEngine {
     if (this.keys['KeyD']) ix += 1;
     if (this.keys['KeyA']) ix -= 1;
 
-    // Normalise diagonal movement.
+    // Fold in analog joystick input (touch).
+    ix += this.moveInput.x;
+    iz += this.moveInput.z;
+
+    // Clamp magnitude to 1 so diagonals/analog never exceed full speed, while
+    // preserving partial speed for a half-pushed joystick.
     const len = Math.hypot(ix, iz);
-    if (len > 0) {
+    if (len > 1) {
       ix /= len;
       iz /= len;
     }
 
-    const speed = this.flyMode ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
+    const fly = this.flyMode || this.noclip;
+    const baseSpeed = fly ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
+    const speed = baseSpeed * this.speedMultiplier;
     const wishX = (forward.x * iz + right.x * ix) * speed;
     const wishZ = (forward.z * iz + right.z * ix) * speed;
 
@@ -246,11 +305,11 @@ export class PhysicsEngine {
     this.velocity.x = wishX;
     this.velocity.z = wishZ;
 
-    if (this.flyMode) {
+    if (fly) {
       // Creative vertical thrust; no gravity.
       let vy = 0;
-      if (this._jumpHeld) vy += FLY_SPEED;
-      if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) vy -= FLY_SPEED;
+      if (this._jumpHeld || this._flyUp) vy += FLY_SPEED;
+      if (this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this._flyDown) vy -= FLY_SPEED;
       this.velocity.y = vy;
       return;
     }

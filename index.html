@@ -2,13 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>VoxelCraft Engine</title>
     <style>
       :root {
         --accent: #6cc24a;
         --accent-dark: #4a8a30;
         --panel: rgba(18, 20, 24, 0.92);
+        /* Bottom inset for the iPad home indicator / iOS gesture bar. Falls
+           back to 0 on platforms without a safe area. */
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
       }
 
       * {

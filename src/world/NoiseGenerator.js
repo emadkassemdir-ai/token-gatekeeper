@@ -217,6 +217,20 @@ export class NoiseGenerator {
     h = Math.imul(h ^ (h >>> 13), 1274126177);
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
+
+  /**
+   * Deterministic pseudo-random value in [0,1) keyed on 3D integer coordinates.
+   * Used for ore placement so a given block always rolls the same ore.
+   * @param {number} x @param {number} y @param {number} z
+   * @returns {number}
+   */
+  hash3(x, y, z) {
+    let h = this.seed ^ Math.imul(x | 0, 374761393) ^
+      Math.imul(y | 0, 2246822519) ^ Math.imul(z | 0, 668265263);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    h = Math.imul(h ^ (h >>> 16), 1911520717);
+    return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+  }
 }
 
 export default NoiseGenerator;

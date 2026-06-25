@@ -1,8 +1,11 @@
-
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["claude/minecraft-clone-engine"] # Matches your active branch
+    # Build/deploy from either the canonical branch or the active session branch.
+    branches:
+      - "claude/minecraft-clone-engine"
+      - "claude/minecraft-clone-engine-z2e62i"
   workflow_dispatch:
 
 permissions:

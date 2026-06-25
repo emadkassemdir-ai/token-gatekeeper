@@ -1,0 +1,175 @@
+/**
+ * Crafting
+ * --------
+ * Shapeless recipe list (ingredients -> output) plus the logic to test and
+ * perform a craft against an Inventory. A recipe list (rather than a shaped
+ * grid) keeps the UI simple and side-steps the fact that, per the design spec,
+ * the pickaxe and axe share the same ingredients.
+ *
+ * Tool recipes require standing near a placed Crafting Table; basic recipes
+ * (planks, sticks, the table itself) can be crafted anywhere.
+ */
+
+/**
+ * @typedef {Object} Recipe
+ * @property {string} id
+ * @property {string} output         Item type produced.
+ * @property {number} outputCount
+ * @property {Array<{type:string,count:number}>} inputs
+ * @property {boolean} requiresTable
+ */
+
+/** @type {Recipe[]} */
+export const RECIPES = [
+  {
+    id: 'planks',
+    output: 'oak_planks', outputCount: 4,
+    inputs: [{ type: 'oak_log', count: 1 }],
+    requiresTable: false
+  },
+  {
+    id: 'sticks',
+    output: 'stick', outputCount: 4,
+    inputs: [{ type: 'oak_planks', count: 1 }],
+    requiresTable: false
+  },
+  {
+    id: 'crafting_table',
+    output: 'crafting_table', outputCount: 1,
+    inputs: [{ type: 'oak_planks', count: 4 }],
+    requiresTable: false
+  },
+  {
+    id: 'wooden_pickaxe',
+    output: 'wooden_pickaxe', outputCount: 1,
+    inputs: [{ type: 'oak_planks', count: 3 }, { type: 'stick', count: 2 }],
+    requiresTable: true
+  },
+  {
+    id: 'wooden_axe',
+    output: 'wooden_axe', outputCount: 1,
+    inputs: [{ type: 'oak_planks', count: 3 }, { type: 'stick', count: 2 }],
+    requiresTable: true
+  },
+  {
+    id: 'wooden_sword',
+    output: 'wooden_sword', outputCount: 1,
+    inputs: [{ type: 'oak_planks', count: 1 }, { type: 'stick', count: 2 }],
+    requiresTable: true
+  },
+  {
+    id: 'furnace',
+    output: 'furnace', outputCount: 1,
+    inputs: [{ type: 'stone', count: 8 }],
+    requiresTable: true
+  },
+  // Tiered tools (stone/iron/gold/diamond) generated below.
+  ...buildTierTools(),
+  // Armor (iron/gold/diamond) generated below.
+  ...buildArmor()
+];
+
+/**
+ * Build helmet/chestplate/leggings/boots recipes for each armor material.
+ * @returns {Recipe[]}
+ */
+function buildArmor() {
+  const mats = [
+    { tier: 'iron', mat: 'iron_ingot' },
+    { tier: 'gold', mat: 'gold_ingot' },
+    { tier: 'diamond', mat: 'diamond' }
+  ];
+  const pieces = [
+    { slot: 'helmet', count: 5 },
+    { slot: 'chestplate', count: 8 },
+    { slot: 'leggings', count: 7 },
+    { slot: 'boots', count: 4 }
+  ];
+  const out = [];
+  for (const { tier, mat } of mats) {
+    for (const { slot, count } of pieces) {
+      out.push({
+        id: `${tier}_${slot}`, output: `${tier}_${slot}`, outputCount: 1,
+        inputs: [{ type: mat, count }], requiresTable: true
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Build pickaxe/axe/sword recipes for every non-wood tier. Same shapes as the
+ * wooden tools (3 material + 2 sticks for pick/axe, 1 + 2 for sword), just a
+ * different material per tier — exactly as specified.
+ * @returns {Recipe[]}
+ */
+function buildTierTools() {
+  const tiers = [
+    { tier: 'stone', mat: 'stone' },
+    { tier: 'iron', mat: 'iron_ingot' },
+    { tier: 'gold', mat: 'gold_ingot' },
+    { tier: 'diamond', mat: 'diamond' }
+  ];
+  const out = [];
+  for (const { tier, mat } of tiers) {
+    out.push({
+      id: `${tier}_pickaxe`, output: `${tier}_pickaxe`, outputCount: 1,
+      inputs: [{ type: mat, count: 3 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+    out.push({
+      id: `${tier}_axe`, output: `${tier}_axe`, outputCount: 1,
+      inputs: [{ type: mat, count: 3 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+    out.push({
+      id: `${tier}_sword`, output: `${tier}_sword`, outputCount: 1,
+      inputs: [{ type: mat, count: 1 }, { type: 'stick', count: 2 }], requiresTable: true
+    });
+  }
+  return out;
+}
+
+/**
+ * Does the inventory hold every ingredient for this recipe?
+ * @param {Recipe} recipe
+ * @param {import('./Inventory.js').Inventory} inventory
+ * @returns {boolean}
+ */
+export function hasIngredients(recipe, inventory) {
+  if (inventory.isCreative) return true;
+  return recipe.inputs.every((inp) => inventory.count(inp.type) >= inp.count);
+}
+
+/**
+ * Whether a recipe can currently be crafted (ingredients + table proximity).
+ * @param {Recipe} recipe
+ * @param {import('./Inventory.js').Inventory} inventory
+ * @param {boolean} nearTable
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function canCraft(recipe, inventory, nearTable) {
+  if (recipe.requiresTable && !nearTable) {
+    return { ok: false, reason: 'Needs a crafting table nearby' };
+  }
+  if (!hasIngredients(recipe, inventory)) {
+    return { ok: false, reason: 'Missing materials' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Perform the craft: consume inputs, add the output.
+ * @param {Recipe} recipe
+ * @param {import('./Inventory.js').Inventory} inventory
+ * @param {boolean} nearTable
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function craft(recipe, inventory, nearTable) {
+  const check = canCraft(recipe, inventory, nearTable);
+  if (!check.ok) return check;
+
+  if (!inventory.isCreative) {
+    for (const inp of recipe.inputs) inventory.remove(inp.type, inp.count);
+  }
+  inventory.add(recipe.output, recipe.outputCount);
+  return { ok: true };
+}

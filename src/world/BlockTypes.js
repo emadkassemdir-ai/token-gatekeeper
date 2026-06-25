@@ -146,11 +146,113 @@ export const BLOCKS = {
     breakable: true,
     hardness: 2.5,
     liquid: false
+  },
+  11: {
+    id: 11,
+    name: 'Oak Planks',
+    color: [0.62, 0.46, 0.27],
+    faceColors: {
+      top: [0.66, 0.5, 0.3],
+      bottom: [0.66, 0.5, 0.3],
+      side: [0.6, 0.44, 0.26]
+    },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 1.0,
+    liquid: false
+  },
+  12: {
+    id: 12,
+    name: 'Crafting Table',
+    color: [0.5, 0.36, 0.2],
+    faceColors: {
+      top: [0.45, 0.32, 0.18],
+      bottom: [0.55, 0.42, 0.25],
+      side: [0.5, 0.36, 0.2]
+    },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 1.2,
+    liquid: false
+  },
+  13: {
+    id: 13,
+    name: 'Snow',
+    color: [0.92, 0.95, 0.98],
+    faceColors: { top: [0.96, 0.98, 1.0], bottom: [0.8, 0.85, 0.9], side: [0.9, 0.93, 0.97] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 0.5,
+    liquid: false
+  },
+  14: {
+    id: 14,
+    name: 'Jungle Leaves',
+    color: [0.13, 0.42, 0.1],
+    solid: true,
+    transparent: true,
+    breakable: true,
+    hardness: 0.2,
+    liquid: false,
+    opacity: 0.92
+  },
+  15: {
+    id: 15,
+    name: 'Coal Ore',
+    color: [0.32, 0.32, 0.34],
+    faceColors: { top: [0.3, 0.3, 0.32], bottom: [0.3, 0.3, 0.32], side: [0.33, 0.33, 0.35] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 1.8,
+    liquid: false
+  },
+  16: {
+    id: 16,
+    name: 'Gold Ore',
+    color: [0.62, 0.55, 0.3],
+    faceColors: { top: [0.66, 0.58, 0.32], bottom: [0.6, 0.53, 0.29], side: [0.62, 0.55, 0.3] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 2.5,
+    liquid: false
+  },
+  17: {
+    id: 17,
+    name: 'Diamond Ore',
+    color: [0.45, 0.72, 0.76],
+    faceColors: { top: [0.5, 0.78, 0.82], bottom: [0.42, 0.68, 0.72], side: [0.45, 0.72, 0.76] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 3.0,
+    liquid: false
+  },
+  18: {
+    id: 18,
+    name: 'Furnace',
+    color: [0.34, 0.34, 0.36],
+    faceColors: { top: [0.3, 0.3, 0.32], bottom: [0.3, 0.3, 0.32], side: [0.36, 0.36, 0.38] },
+    solid: true,
+    transparent: false,
+    breakable: true,
+    hardness: 2.0,
+    liquid: false
   }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
-export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 6, 7, 9, 10, 4];
+export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 11, 12, 18, 6, 7, 9, 10, 13, 15, 16, 17, 4];
+
+/** Crafting Table block id (referenced by the crafting proximity check). */
+export const CRAFTING_TABLE_ID = 12;
+
+/** Furnace block id (referenced by the smelting proximity check). */
+export const FURNACE_ID = 18;
 
 /**
  * @param {number} id

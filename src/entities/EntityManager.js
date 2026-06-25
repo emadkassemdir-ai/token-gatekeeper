@@ -1,0 +1,286 @@
+/**
+ * EntityManager
+ * -------------
+ * Spawns, updates and despawns all mobs, and arbitrates combat. Spawning is
+ * context-aware (per the design spec):
+ *
+ *   - Hostiles (zombie/creeper) spawn on the surface at night, and in caves
+ *     during the day at ~2x rate (and ~1.5x less at night underground).
+ *   - Passive land animals (cow/sheep) spawn on grassy biomes in daylight.
+ *   - Aquatic animals (fish/squid) spawn in nearby water.
+ *
+ * Creepers detonate near the player for 5 hearts and blow a crater. Killing a
+ * passive animal drops its food via the onDrop callback.
+ */
+
+import * as THREE from 'three';
+import { Mob, MOB_TYPES } from './Mob.js';
+import { getAttackDamage } from '../world/ItemTypes.js';
+import { BIOME } from '../world/World.js';
+
+const PLAYER_REACH = 3.6;
+const HOSTILE_CAP_SURFACE = 6;
+const HOSTILE_CAP_CAVE = 12;   // 2x in caves
+const PASSIVE_CAP = 8;
+const CREEPER_BLAST = 4;       // radius of player damage
+const CREEPER_CRATER = 3;      // radius of block destruction
+
+export class EntityManager {
+  constructor(scene, world, stats) {
+    this.scene = scene;
+    this.world = world;
+    this.stats = stats;
+    /** @type {Mob[]} */
+    this.mobs = [];
+    this._spawnTimer = 2;
+    this.enabled = !stats.isCreative;
+    this.peaceful = false;     // no hostile mobs
+    this.damageMult = 1;       // difficulty scaling for mob damage
+
+    this.onPlayerHit = null;  // (damage)
+    this.onMobKilled = null;  // (kind)
+    this.onDrop = null;       // (type, count)
+    this.onExplosion = null;  // ()
+    this.onEdit = null;       // (x,y,z,id) so block destruction persists
+  }
+
+  setEnabled(on) {
+    this.enabled = on;
+    if (!on) this.clear();
+  }
+
+  /**
+   * Apply a difficulty: peaceful disables hostiles; higher difficulty scales
+   * mob damage. Hardcore matches hard for damage (permadeath handled by host).
+   * @param {string} difficulty
+   */
+  setDifficulty(difficulty) {
+    this.peaceful = difficulty === 'peaceful';
+    this.damageMult = { peaceful: 0, easy: 0.5, normal: 1, hard: 1.5, hardcore: 1.5 }[difficulty] ?? 1;
+    if (this.peaceful) {
+      // Remove any existing hostiles immediately.
+      const keep = [];
+      for (const m of this.mobs) {
+        if (m.hostile) { this.scene.remove(m.mesh); m.dispose(); }
+        else keep.push(m);
+      }
+      this.mobs = keep;
+    }
+  }
+
+  clear() {
+    for (const m of this.mobs) { this.scene.remove(m.mesh); m.dispose(); }
+    this.mobs = [];
+  }
+
+  get count() { return this.mobs.length; }
+  _countWhere(pred) { let n = 0; for (const m of this.mobs) if (pred(m)) n++; return n; }
+
+  _spawn(kind, pos) {
+    const mob = new Mob(kind, pos);
+    this.mobs.push(mob);
+    this.scene.add(mob.mesh);
+    return mob;
+  }
+
+  /** Cheat: force-spawn a mob near a position. */
+  spawnKind(kind, pos) {
+    if (!MOB_TYPES[kind]) return false;
+    this._spawn(kind, pos.clone());
+    return true;
+  }
+
+  /** Cheat: kill the nearest mob to a point. @returns {boolean} */
+  smiteNearest(pos) {
+    let best = null, bd = Infinity;
+    for (const m of this.mobs) {
+      const d = m.position.distanceToSquared(pos);
+      if (d < bd) { bd = d; best = m; }
+    }
+    if (!best) return false;
+    best.takeDamage(9999);
+    return true;
+  }
+
+  /* ------------------------------ spawning ------------------------------- */
+
+  /**
+   * @param {number} dt
+   * @param {THREE.Vector3} playerPos feet position
+   * @param {{isNight:boolean}} time
+   */
+  update(dt, playerPos, time = { isNight: false }) {
+    if (!this.enabled || this.stats.dead) return;
+
+    this._spawnTimer -= dt;
+    if (this._spawnTimer <= 0) {
+      this._spawnTimer = 4;
+      this._trySpawn(playerPos, time);
+    }
+
+    for (const m of this.mobs) {
+      m.update(dt, this.world, playerPos);
+      if (m.kind === 'zombie' && m.canAttack(playerPos)) {
+        m.resetAttackCooldown();
+        const dmg = 0.5 * this.damageMult;
+        if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
+      }
+      if (m.detonate) this._detonate(m, playerPos);
+    }
+
+    // Reap dead mobs and emit drops for ones the player killed.
+    const survivors = [];
+    for (const m of this.mobs) {
+      if (m.alive && !m.detonate) {
+        survivors.push(m);
+      } else {
+        this.scene.remove(m.mesh);
+        m.dispose();
+        if (!m.detonate && m.cfg.drop) {
+          this.onDrop?.(m.cfg.drop, m.cfg.dropCount || 1);
+        }
+        this.onMobKilled?.(m.kind);
+      }
+    }
+    this.mobs = survivors;
+  }
+
+  _trySpawn(playerPos, time) {
+    const surfaceY = this.world.getSpawnHeight(playerPos.x, playerPos.z);
+    const inCave = surfaceY - playerPos.y > 4;
+
+    if (inCave && !this.peaceful) {
+      // Caves: hostiles, 2x cap. Slower spawn at night (1.5x less) than day.
+      const cap = HOSTILE_CAP_CAVE;
+      if (this._countWhere((m) => m.hostile) < cap) {
+        if (time.isNight && Math.random() < 1 / 1.5) return; // ~1.5x less at night
+        const spot = this._findCaveSpot(playerPos);
+        if (spot) this._spawn(Math.random() < 0.5 ? 'zombie' : 'creeper', spot);
+      }
+      return;
+    }
+
+    // Surface.
+    if (time.isNight && !this.peaceful) {
+      if (this._countWhere((m) => m.hostile) < HOSTILE_CAP_SURFACE) {
+        const spot = this._findSurfaceSpot(playerPos);
+        if (spot) this._spawn(Math.random() < 0.55 ? 'zombie' : 'creeper', spot);
+      }
+    } else {
+      // Daytime passive animals on grassy ground.
+      if (this._countWhere((m) => m.passive && !m.aquatic) < PASSIVE_CAP) {
+        const spot = this._findSurfaceSpot(playerPos);
+        if (spot && this._isGrassy(spot)) this._spawn(Math.random() < 0.5 ? 'cow' : 'sheep', spot);
+      }
+    }
+
+    // Aquatic animals whenever water is nearby.
+    if (this._countWhere((m) => m.aquatic) < PASSIVE_CAP) {
+      const wspot = this._findWaterSpot(playerPos);
+      if (wspot) this._spawn(Math.random() < 0.5 ? 'fish' : 'squid', wspot);
+    }
+  }
+
+  _isGrassy(pos) {
+    const b = this.world.sampleColumn(pos.x, pos.z).biome;
+    return b === BIOME.PLAINS || b === BIOME.JUNGLE;
+  }
+
+  _findSurfaceSpot(playerPos) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 10 + Math.random() * 8;
+    const x = Math.floor(playerPos.x + Math.cos(angle) * dist) + 0.5;
+    const z = Math.floor(playerPos.z + Math.sin(angle) * dist) + 0.5;
+    const y = this.world.getSpawnHeight(x, z);
+    return new THREE.Vector3(x, y, z);
+  }
+
+  _findCaveSpot(playerPos) {
+    for (let i = 0; i < 8; i++) {
+      const x = Math.floor(playerPos.x + (Math.random() * 16 - 8)) + 0.5;
+      const z = Math.floor(playerPos.z + (Math.random() * 16 - 8)) + 0.5;
+      const y = Math.floor(playerPos.y + (Math.random() * 6 - 3));
+      if (y < 2) continue;
+      if (this.world.isSolidAt(x, y - 1, z) &&
+          !this.world.isSolidAt(x, y, z) &&
+          !this.world.isSolidAt(x, y + 1, z)) {
+        return new THREE.Vector3(x, y, z);
+      }
+    }
+    return null;
+  }
+
+  _findWaterSpot(playerPos) {
+    for (let i = 0; i < 8; i++) {
+      const x = Math.floor(playerPos.x + (Math.random() * 20 - 10)) + 0.5;
+      const z = Math.floor(playerPos.z + (Math.random() * 20 - 10)) + 0.5;
+      for (let y = 28; y <= 31; y++) {
+        if (this.world.isLiquidAt(x, y, z)) return new THREE.Vector3(x, y, z);
+      }
+    }
+    return null;
+  }
+
+  /* ------------------------------ combat --------------------------------- */
+
+  /**
+   * Detonate a creeper: damage the player if in range and blow a crater.
+   * @param {Mob} mob @param {THREE.Vector3} playerPos
+   */
+  _detonate(mob, playerPos) {
+    const d = mob.position.distanceTo(playerPos);
+    if (d <= CREEPER_BLAST) {
+      this.stats._damageCooldown = 0;
+      const dmg = 5 * this.damageMult; // creeper: 5 hearts (scaled by difficulty)
+      if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
+    }
+    // Crater (skip bedrock and don't dig the whole world).
+    const cx = Math.floor(mob.position.x);
+    const cy = Math.floor(mob.position.y);
+    const cz = Math.floor(mob.position.z);
+    const r = CREEPER_CRATER;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dz = -r; dz <= r; dz++) {
+          if (dx * dx + dy * dy + dz * dz > r * r) continue;
+          const x = cx + dx, y = cy + dy, z = cz + dz;
+          const id = this.world.getBlock(x, y, z);
+          if (id && id !== 4 && id !== 8) { // not bedrock/water
+            this.world.setBlock(x, y, z, 0);
+            this.onEdit?.(x, y, z, 0);
+          }
+        }
+      }
+    }
+    this.onExplosion?.();
+  }
+
+  /**
+   * Player swings the held item at the nearest mob in front.
+   * @param {THREE.Vector3} origin eye position
+   * @param {THREE.Vector3} dir normalized look direction
+   * @param {string|null} heldType
+   * @returns {boolean} whether a mob was hit
+   */
+  playerAttack(origin, dir, heldType) {
+    if (!this.enabled) return false;
+    let best = null, bestDist = PLAYER_REACH;
+    for (const m of this.mobs) {
+      const cx = m.position.x - origin.x;
+      const cy = m.position.y + 0.8 - origin.y;
+      const cz = m.position.z - origin.z;
+      const dist = Math.hypot(cx, cy, cz);
+      if (dist > bestDist) continue;
+      const dot = (cx * dir.x + cy * dir.y + cz * dir.z) / (dist || 1);
+      if (dot < 0.5) continue;
+      best = m; bestDist = dist;
+    }
+    if (!best) return false;
+    const knock = new THREE.Vector3(dir.x, 0, dir.z);
+    if (knock.lengthSq() > 0) knock.normalize();
+    best.takeDamage(getAttackDamage(heldType), knock);
+    return true;
+  }
+}
+
+export default EntityManager;
