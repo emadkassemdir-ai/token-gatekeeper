@@ -100,7 +100,11 @@ export class Chat {
   /* ------------------------------ commands ------------------------------- */
 
   _handle(text) {
-    if (!text.startsWith('/')) { this._push('<you> ' + text); return; }
+    if (!text.startsWith('/')) {
+      this._push('<you> ' + text);
+      this.api.sendChat?.(text); // relay to multiplayer peers
+      return;
+    }
     const parts = text.slice(1).split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const a = this.api;

@@ -30,6 +30,10 @@ import { CraftingMenu } from './ui/CraftingMenu.js';
 import { AvatarEditor } from './ui/AvatarEditor.js';
 import { InventoryScreen } from './ui/InventoryScreen.js';
 import { SmeltingMenu } from './ui/SmeltingMenu.js';
+import { NetworkManager } from './net/NetworkManager.js';
+import { RemotePlayers } from './net/RemotePlayers.js';
+import { packState } from './net/Protocol.js';
+import { MultiplayerMenu } from './ui/MultiplayerMenu.js';
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
@@ -62,6 +66,7 @@ class Game {
     this._initState();
     this._initPlayer();
     this._initEntities();
+    this._initNet();
     this._initUI();
     this._bindLifecycle();
   }
@@ -134,7 +139,10 @@ class Game {
     this.interaction = new InteractionEngine(
       this.camera, this.world, this.scene, this.physics, this.record, this.inventory
     );
-    this.interaction.onEdit = (x, y, z, id) => this._recordEdit(x, y, z, id);
+    this.interaction.onEdit = (x, y, z, id) => {
+      this._recordEdit(x, y, z, id);
+      this.net?.sendEdit({ x, y, z, id }); // share local edits with peers
+    };
     this.interaction.onMine = (dropType) => this.inventory.add(dropType, 1);
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
@@ -164,8 +172,31 @@ class Game {
       this.inventory.add(type, count);
       this.chat?.system(`Picked up ${count} × ${type.replace(/_/g, ' ')}`);
     };
-    this.entities.onEdit = (x, y, z, id) => this._recordEdit(x, y, z, id);
+    this.entities.onEdit = (x, y, z, id) => {
+      this._recordEdit(x, y, z, id);
+      this.net?.sendEdit({ x, y, z, id });
+    };
     this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
+  }
+
+  _initNet() {
+    this.net = new NetworkManager();
+    this.net.setIdentity(this.record.username, this.avatar.toJSON());
+    this.remotePlayers = new RemotePlayers(this.scene);
+    this._netTimer = 0;
+
+    this.net.onPeerJoin = (id, info) => {
+      this.remotePlayers.add(id, info.avatar, info.name);
+      this.chat?.system(`${info.name} joined the world`);
+    };
+    this.net.onPeerLeave = (id) => this.remotePlayers.remove(id);
+    this.net.onState = (id, s) => this.remotePlayers.setTarget(id, s);
+    this.net.onEdit = (e) => {
+      // Apply a remote edit locally (do NOT rebroadcast — the host relay fans out).
+      this.world.setBlock(e.x, e.y, e.z, e.id);
+      this._recordEdit(e.x, e.y, e.z, e.id);
+    };
+    this.net.onChat = (id, name, text) => this.chat?.info(`${name}: ${text}`);
   }
 
   /** @returns {boolean} whether it is currently night. */
@@ -197,12 +228,16 @@ class Game {
       log: (msg) => this.chat?.system(msg)
     });
 
+    // Multiplayer menu (M).
+    this.mpMenu = new MultiplayerMenu(this.app, this.net, { onOpen: () => this._releasePointer() });
+
     if (TouchControls.isTouchDevice()) {
       this.touchControls = new TouchControls(this.app, this.physics, this.interaction, {
         openCraft: () => this.crafting.openMenu(),
         openChat: () => this.chat.openChat(),
         openInventory: () => this.inventoryScreen.openScreen(),
-        openSmelt: () => this.smelting.openMenu()
+        openSmelt: () => this.smelting.openMenu(),
+        openMultiplayer: () => this.mpMenu.openMenu()
       });
     }
   }
@@ -295,7 +330,9 @@ class Game {
         return ok;
       },
       killAll: () => { const n = this.entities.count; this.entities.clear(); return n; },
-      smite: () => this.entities.smiteNearest(this.physics.position)
+      smite: () => this.entities.smiteNearest(this.physics.position),
+      // Relay plain chat lines to connected peers.
+      sendChat: (text) => this.net?.sendChat(text)
     };
   }
 
@@ -356,6 +393,18 @@ class Game {
     this.world.update(dt);
     this.entities.update(dt, this.physics.position, { isNight: this._isNight() });
     this.stats.update(dt);
+
+    // Multiplayer: interpolate remote players and broadcast our state at ~10 Hz.
+    this.remotePlayers.update(dt);
+    if (this.net.connected) {
+      this._netTimer += dt;
+      if (this._netTimer >= 0.1) {
+        this._netTimer = 0;
+        const p = this.physics.position;
+        const r = this.physics.getRotation();
+        this.net.sendState(packState({ x: p.x, y: p.y, z: p.z, yaw: r.yaw, pitch: r.pitch }));
+      }
+    }
 
     this.hud.update(
       {

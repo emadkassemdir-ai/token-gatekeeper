@@ -95,6 +95,7 @@ export class TouchControls {
     utilBtns.appendChild(this._makeTapButton('tc-bag', '🎒', 'BAG', () => this.handlers.openInventory?.()));
     utilBtns.appendChild(this._makeTapButton('tc-craft', '🛠', 'CRAFT', () => this.handlers.openCraft?.()));
     utilBtns.appendChild(this._makeTapButton('tc-smelt', '🔥', 'SMELT', () => this.handlers.openSmelt?.()));
+    utilBtns.appendChild(this._makeTapButton('tc-mp', '🌐', 'PLAY', () => this.handlers.openMultiplayer?.()));
     utilBtns.appendChild(this._makeTapButton('tc-chat', '💬', 'CHAT', () => this.handlers.openChat?.()));
     this.mount.appendChild(utilBtns);
 
