@@ -79,6 +79,9 @@ export class PhysicsEngine {
     this._flyDown = false;
     // When true, skip PointerLock (touch devices have no mouse to capture).
     this.touch = false;
+    // Cheat hooks.
+    this.speedMultiplier = 1;
+    this.noclip = false;
 
     this._bindEvents();
     this._syncCamera();
@@ -187,6 +190,7 @@ export class PhysicsEngine {
    * @returns {boolean} true if the player AABB at `pos` overlaps a solid voxel.
    */
   _collides(pos) {
+    if (this.noclip) return false; // cheat: pass through blocks
     const minX = Math.floor(pos.x - HALF_WIDTH);
     const maxX = Math.floor(pos.x + HALF_WIDTH);
     const minY = Math.floor(pos.y);
@@ -291,7 +295,9 @@ export class PhysicsEngine {
       iz /= len;
     }
 
-    const speed = this.flyMode ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
+    const fly = this.flyMode || this.noclip;
+    const baseSpeed = fly ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
+    const speed = baseSpeed * this.speedMultiplier;
     const wishX = (forward.x * iz + right.x * ix) * speed;
     const wishZ = (forward.z * iz + right.z * ix) * speed;
 
@@ -299,7 +305,7 @@ export class PhysicsEngine {
     this.velocity.x = wishX;
     this.velocity.z = wishZ;
 
-    if (this.flyMode) {
+    if (fly) {
       // Creative vertical thrust; no gravity.
       let vy = 0;
       if (this._jumpHeld || this._flyUp) vy += FLY_SPEED;

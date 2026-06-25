@@ -14,7 +14,7 @@
  */
 
 import * as THREE from 'three';
-import { Mob } from './Mob.js';
+import { Mob, MOB_TYPES } from './Mob.js';
 import { getAttackDamage } from '../world/ItemTypes.js';
 import { BIOME } from '../world/World.js';
 
@@ -34,6 +34,8 @@ export class EntityManager {
     this.mobs = [];
     this._spawnTimer = 2;
     this.enabled = !stats.isCreative;
+    this.peaceful = false;     // no hostile mobs
+    this.damageMult = 1;       // difficulty scaling for mob damage
 
     this.onPlayerHit = null;  // (damage)
     this.onMobKilled = null;  // (kind)
@@ -45,6 +47,25 @@ export class EntityManager {
   setEnabled(on) {
     this.enabled = on;
     if (!on) this.clear();
+  }
+
+  /**
+   * Apply a difficulty: peaceful disables hostiles; higher difficulty scales
+   * mob damage. Hardcore matches hard for damage (permadeath handled by host).
+   * @param {string} difficulty
+   */
+  setDifficulty(difficulty) {
+    this.peaceful = difficulty === 'peaceful';
+    this.damageMult = { peaceful: 0, easy: 0.5, normal: 1, hard: 1.5, hardcore: 1.5 }[difficulty] ?? 1;
+    if (this.peaceful) {
+      // Remove any existing hostiles immediately.
+      const keep = [];
+      for (const m of this.mobs) {
+        if (m.hostile) { this.scene.remove(m.mesh); m.dispose(); }
+        else keep.push(m);
+      }
+      this.mobs = keep;
+    }
   }
 
   clear() {
@@ -60,6 +81,25 @@ export class EntityManager {
     this.mobs.push(mob);
     this.scene.add(mob.mesh);
     return mob;
+  }
+
+  /** Cheat: force-spawn a mob near a position. */
+  spawnKind(kind, pos) {
+    if (!MOB_TYPES[kind]) return false;
+    this._spawn(kind, pos.clone());
+    return true;
+  }
+
+  /** Cheat: kill the nearest mob to a point. @returns {boolean} */
+  smiteNearest(pos) {
+    let best = null, bd = Infinity;
+    for (const m of this.mobs) {
+      const d = m.position.distanceToSquared(pos);
+      if (d < bd) { bd = d; best = m; }
+    }
+    if (!best) return false;
+    best.takeDamage(9999);
+    return true;
   }
 
   /* ------------------------------ spawning ------------------------------- */
@@ -82,7 +122,8 @@ export class EntityManager {
       m.update(dt, this.world, playerPos);
       if (m.kind === 'zombie' && m.canAttack(playerPos)) {
         m.resetAttackCooldown();
-        if (this.stats.damage(0.5)) this.onPlayerHit?.(0.5);
+        const dmg = 0.5 * this.damageMult;
+        if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
       }
       if (m.detonate) this._detonate(m, playerPos);
     }
@@ -108,7 +149,7 @@ export class EntityManager {
     const surfaceY = this.world.getSpawnHeight(playerPos.x, playerPos.z);
     const inCave = surfaceY - playerPos.y > 4;
 
-    if (inCave) {
+    if (inCave && !this.peaceful) {
       // Caves: hostiles, 2x cap. Slower spawn at night (1.5x less) than day.
       const cap = HOSTILE_CAP_CAVE;
       if (this._countWhere((m) => m.hostile) < cap) {
@@ -120,7 +161,7 @@ export class EntityManager {
     }
 
     // Surface.
-    if (time.isNight) {
+    if (time.isNight && !this.peaceful) {
       if (this._countWhere((m) => m.hostile) < HOSTILE_CAP_SURFACE) {
         const spot = this._findSurfaceSpot(playerPos);
         if (spot) this._spawn(Math.random() < 0.55 ? 'zombie' : 'creeper', spot);
@@ -190,7 +231,8 @@ export class EntityManager {
     const d = mob.position.distanceTo(playerPos);
     if (d <= CREEPER_BLAST) {
       this.stats._damageCooldown = 0;
-      if (this.stats.damage(5)) this.onPlayerHit?.(5); // creeper: 5 hearts
+      const dmg = 5 * this.damageMult; // creeper: 5 hearts (scaled by difficulty)
+      if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
     }
     // Crater (skip bedrock and don't dig the whole world).
     const cx = Math.floor(mob.position.x);

@@ -24,6 +24,8 @@ export class PlayerStats {
     /** Equipped armor pieces by slot. */
     this.armor = { head: null, chest: null, legs: null, feet: null };
 
+    this.god = false; // cheat: invulnerability
+
     this._damageCooldown = 0; // i-frames after taking a hit
     this._regenTimer = 0;
     this._starveTimer = 0;
@@ -86,7 +88,7 @@ export class PlayerStats {
   }
 
   damage(amount) {
-    if (this.isCreative || this.dead || this._damageCooldown > 0) return false;
+    if (this.isCreative || this.god || this.dead || this._damageCooldown > 0) return false;
     // Armor reduces incoming damage by 4% per point, capped at 80%.
     const reduction = Math.min(0.8, this.armorTotal() * 0.04);
     amount = amount * (1 - reduction);

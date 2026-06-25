@@ -49,6 +49,7 @@ export class InteractionEngine {
     this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
+    this.reach = REACH; // mutable for the /reach cheat
 
     this._buildHighlight();
     this._bindEvents();
@@ -174,7 +175,7 @@ export class InteractionEngine {
     let nz = 0;
     let traveled = 0;
 
-    while (traveled <= REACH) {
+    while (traveled <= this.reach) {
       const id = this.world.getBlock(x, y, z);
       // Target solid blocks; ignore non-solid liquids/air so the ray passes
       // through water until it reaches something tangible.

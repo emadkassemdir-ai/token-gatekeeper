@@ -12,10 +12,10 @@
 
 import * as THREE from 'three';
 
-import { PlayerProfile } from './state/PlayerProfile.js';
 import { Inventory } from './state/Inventory.js';
 import { PlayerStats } from './state/PlayerStats.js';
 import { Avatar } from './state/Avatar.js';
+import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
 import { getFood } from './world/ItemTypes.js';
@@ -36,8 +36,12 @@ const AUTOSAVE_INTERVAL = 15; // seconds
 const TABLE_REACH = 4; // blocks to a crafting table for tool recipes
 
 class Game {
-  constructor(profile, avatar) {
-    this.profile = profile;
+  /**
+   * @param {Object} record world record from WorldStore
+   * @param {Avatar} avatar
+   */
+  constructor(record, avatar) {
+    this.record = record;
     this.avatar = avatar || Avatar.load();
     this.app = document.getElementById('app');
     this.crosshair = document.getElementById('crosshair');
@@ -45,11 +49,11 @@ class Game {
     this._clock = new THREE.Clock();
     this._autosaveTimer = 0;
     this._running = false;
-    this._spawn = { x: profile.position.x, z: profile.position.z };
+    this._spawn = { x: record.spawn?.x ?? 8, z: record.spawn?.z ?? 8 };
     this._dir = new THREE.Vector3();
 
     // Day/night: t in [0,1). 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight.
-    this._time = profile.timeOfDay ?? 0.2;
+    this._time = record.time ?? 0.2;
     this._dayLength = 600; // seconds for a full cycle
 
     this._initRenderer();
@@ -96,34 +100,41 @@ class Game {
   }
 
   _initWorld() {
-    this.world = new World(this.scene, this.profile.worldSeed);
-    const spawnCx = Math.floor(this.profile.position.x / CHUNK_SIZE);
-    const spawnCz = Math.floor(this.profile.position.z / CHUNK_SIZE);
-    this.world.generate(spawnCx, spawnCz, RENDER_RADIUS, this.profile.editedBlocks);
+    this.world = new World(this.scene, this.record.seed);
+    const spawnCx = Math.floor((this.record.spawn?.x ?? 8) / CHUNK_SIZE);
+    const spawnCz = Math.floor((this.record.spawn?.z ?? 8) / CHUNK_SIZE);
+    this.world.generate(spawnCx, spawnCz, RENDER_RADIUS, this.record.editedBlocks || {});
   }
 
   _initState() {
-    const mode = this.profile.gameMode || 'survival';
+    const mode = this.record.gameMode || 'survival';
     this.inventory = new Inventory(mode);
-    this.inventory.load(this.profile.inventoryData);
+    this.inventory.load(this.record.inventoryData);
     this.stats = new PlayerStats(mode);
-    this.stats.load(this.profile.statsData);
+    this.stats.load(this.record.statsData);
     this.stats.onDeath = () => this._handleDeath();
   }
 
+  _recordEdit(x, y, z, id) {
+    if (!this.record.editedBlocks) this.record.editedBlocks = {};
+    this.record.editedBlocks[`${x},${y},${z}`] = id;
+  }
+
   _initPlayer() {
-    if (!this.profile.lastSaved) {
-      const sx = this.profile.position.x;
-      const sz = this.profile.position.z;
-      this.profile.position.y = this.world.getSpawnHeight(sx, sz) + 0.1;
+    // New world (never played) -> seat the player on the surface at spawn.
+    const isNew = !this.record.position || this.record.position.y <= 0;
+    if (isNew) {
+      const sx = this._spawn.x, sz = this._spawn.z;
+      this.record.position = { x: sx + 0.5, y: this.world.getSpawnHeight(sx, sz) + 0.1, z: sz + 0.5 };
+      this.record.rotation = this.record.rotation || { yaw: 0, pitch: 0 };
     }
 
-    this.physics = new PhysicsEngine(this.camera, this.world, this.renderer.domElement, this.profile);
+    this.physics = new PhysicsEngine(this.camera, this.world, this.renderer.domElement, this.record);
 
     this.interaction = new InteractionEngine(
-      this.camera, this.world, this.scene, this.physics, this.profile, this.inventory
+      this.camera, this.world, this.scene, this.physics, this.record, this.inventory
     );
-    this.interaction.onEdit = (x, y, z, id) => this.profile.recordEdit(x, y, z, id);
+    this.interaction.onEdit = (x, y, z, id) => this._recordEdit(x, y, z, id);
     this.interaction.onMine = (dropType) => this.inventory.add(dropType, 1);
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
@@ -147,11 +158,13 @@ class Game {
 
   _initEntities() {
     this.entities = new EntityManager(this.scene, this.world, this.stats);
+    this.entities.setDifficulty(this.record.difficulty || 'normal');
+    this.entities.setEnabled(this.inventory.mode === 'survival');
     this.entities.onDrop = (type, count) => {
       this.inventory.add(type, count);
       this.chat?.system(`Picked up ${count} × ${type.replace(/_/g, ' ')}`);
     };
-    this.entities.onEdit = (x, y, z, id) => this.profile.recordEdit(x, y, z, id);
+    this.entities.onEdit = (x, y, z, id) => this._recordEdit(x, y, z, id);
     this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
   }
 
@@ -161,7 +174,7 @@ class Game {
   }
 
   _initUI() {
-    this.hud = new HUD(this.app, this.profile, this.inventory, this.stats);
+    this.hud = new HUD(this.app, this.record, this.inventory, this.stats);
     this.crosshair.classList.add('visible');
 
     // Crafting menu (E). Needs a crafting-table proximity test.
@@ -170,14 +183,8 @@ class Game {
       log: (msg) => this.chat?.system(msg)
     });
 
-    // Chat (T) + commands.
-    this.chat = new Chat(this.app, {
-      setGameMode: (m) => this._setGameMode(m),
-      give: (type, count) => this.inventory.add(type, count) > 0 || this.inventory.isCreative,
-      clearInventory: () => this.inventory.clear(),
-      kill: () => this._handleDeath(),
-      onOpen: () => this._releasePointer()
-    });
+    // Chat (T) + commands (25 cheat commands gated by the world's cheats flag).
+    this.chat = new Chat(this.app, this._buildCheatApi());
 
     // Inventory screen (I) with avatar display.
     this.inventoryScreen = new InventoryScreen(this.app, this.inventory, this.avatar, this.stats, {
@@ -223,8 +230,73 @@ class Game {
     this.inventory.setMode(mode);
     this.stats.setMode(mode);
     this.entities.setEnabled(mode === 'survival');
-    this.profile.gameMode = mode;
+    if (mode === 'survival') this.entities.setDifficulty(this.record.difficulty || 'normal');
+    this.record.gameMode = mode;
     return true;
+  }
+
+  /** @param {string} difficulty */
+  _setDifficulty(difficulty) {
+    if (!['peaceful', 'easy', 'normal', 'hard', 'hardcore'].includes(difficulty)) return false;
+    this.record.difficulty = difficulty;
+    this.entities.setDifficulty(difficulty);
+    return true;
+  }
+
+  /**
+   * Build the command API consumed by Chat. Cheat commands are gated on the
+   * world's cheats flag.
+   * @returns {Object}
+   */
+  _buildCheatApi() {
+    return {
+      cheats: !!this.record.cheats,
+      onOpen: () => this._releasePointer(),
+      // Always available.
+      seed: () => this.record.seed,
+      // Cheat actions.
+      setGameMode: (m) => this._setGameMode(m),
+      setDifficulty: (d) => this._setDifficulty(d),
+      give: (type, n) => this.inventory.add(type, n) > 0 || this.inventory.isCreative,
+      giveKit: () => {
+        ['diamond_pickaxe', 'diamond_axe', 'diamond_sword', 'diamond_helmet',
+         'diamond_chestplate', 'diamond_leggings', 'diamond_boots'].forEach((t) => this.inventory.add(t, 1));
+        ['diamond', 'iron_ingot', 'gold_ingot', 'coal', 'oak_planks'].forEach((t) => this.inventory.add(t, 64));
+      },
+      clearInv: () => this.inventory.clear(),
+      tp: (x, y, z) => this.physics.position.set(x, y, z),
+      getPos: () => ({ x: this.physics.position.x, y: this.physics.position.y, z: this.physics.position.z }),
+      home: () => {
+        const y = this.world.getSpawnHeight(this._spawn.x, this._spawn.z) + 0.1;
+        this.physics.position.set(this._spawn.x + 0.5, y, this._spawn.z + 0.5);
+      },
+      setSpawn: () => {
+        this._spawn = { x: Math.floor(this.physics.position.x), z: Math.floor(this.physics.position.z) };
+        this.record.spawn = this._spawn;
+      },
+      heal: () => { this.stats.health = 10; },
+      setHealth: (n) => { this.stats.health = Math.max(0, Math.min(10, n)); },
+      feed: () => { this.stats.hunger = 10; },
+      hurt: (n) => { this.stats._damageCooldown = 0; this.stats.god = false; this.stats.damage(n); },
+      kill: () => this._handleDeath(),
+      toggleGod: () => { this.stats.god = !this.stats.god; return this.stats.god; },
+      toggleFly: () => { this.physics.flyMode = !this.physics.flyMode; this.physics.velocity.y = 0; return this.physics.flyMode; },
+      setSpeed: (n) => { this.physics.speedMultiplier = Math.max(0.1, Math.min(20, n)); },
+      toggleNoclip: () => { this.physics.noclip = !this.physics.noclip; return this.physics.noclip; },
+      setReach: (n) => { this.interaction.reach = Math.max(1, Math.min(64, n)); },
+      setTime: (t) => { this._time = ((t % 1) + 1) % 1; },
+      spawnMob: (kind, n) => {
+        let ok = 0;
+        for (let i = 0; i < n; i++) {
+          const p = this.physics.position;
+          const pos = new THREE.Vector3(p.x + (Math.random() * 4 - 2), p.y, p.z + (Math.random() * 4 - 2));
+          if (this.entities.spawnKind(kind, pos)) ok++;
+        }
+        return ok;
+      },
+      killAll: () => { const n = this.entities.count; this.entities.clear(); return n; },
+      smite: () => this.entities.smiteNearest(this.physics.position)
+    };
   }
 
   /** Is the player within reach of a given block id? */
@@ -246,9 +318,19 @@ class Game {
 
   _handleDeath() {
     if (this.inventory.isCreative) return;
+
+    // Hardcore: permadeath — delete the world and return to the menu.
+    if (this.record.difficulty === 'hardcore') {
+      this.chat?.error('☠ HARDCORE: you died. This world is gone.');
+      WorldStore.delete(this.record.id);
+      this._running = false;
+      setTimeout(() => window.location.reload(), 2500);
+      return;
+    }
+
     this.chat?.error('You died! Respawning…');
     const y = this.world.getSpawnHeight(this._spawn.x, this._spawn.z) + 0.1;
-    this.physics.position.set(this._spawn.x, y, this._spawn.z);
+    this.physics.position.set(this._spawn.x + 0.5, y, this._spawn.z + 0.5);
     this.physics.velocity.set(0, 0, 0);
     this.entities.clear();
     this.stats.respawn();
@@ -313,13 +395,18 @@ class Game {
     this.ambient.intensity = 0.08 + d * 0.14;
   }
 
-  /** Persist position, rotation, edits, inventory, vitals and mode. */
+  /** Persist the world record (player state + edits + time) to WorldStore. */
   save() {
-    this.profile.inventoryData = this.inventory.toJSON();
-    this.profile.statsData = this.stats.toJSON();
-    this.profile.gameMode = this.inventory.mode;
-    this.profile.timeOfDay = this._time;
-    this.profile.save(this.physics.position, this.physics.getRotation());
+    if (!this._running && this.record.difficulty === 'hardcore') return; // world deleted
+    const p = this.physics.position;
+    const r = this.physics.getRotation();
+    this.record.position = { x: p.x, y: p.y, z: p.z };
+    this.record.rotation = { yaw: r.yaw, pitch: r.pitch };
+    this.record.inventoryData = this.inventory.toJSON();
+    this.record.statsData = this.stats.toJSON();
+    this.record.gameMode = this.inventory.mode;
+    this.record.time = this._time;
+    WorldStore.save(this.record);
   }
 }
 
@@ -332,12 +419,9 @@ async function boot() {
   const menu = new GameMenu(app, {
     onEditAvatar: () => new AvatarEditor(app, avatar).open()
   });
-  const username = await menu.show();
+  const record = await menu.show(); // username -> world select/create
 
-  const profile = new PlayerProfile(username);
-  profile.load();
-
-  const game = new Game(profile, avatar);
+  const game = new Game(record, avatar);
   game.start();
 
   window.__voxelcraft = game;
