@@ -58,7 +58,7 @@ class Game {
 
     // Day/night: t in [0,1). 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight.
     this._time = record.time ?? 0.2;
-    this._dayLength = 600; // seconds for a full cycle
+    this._dayLength = 480; // seconds for a full day/night cycle (8 min)
 
     this._initRenderer();
     this._initScene();
