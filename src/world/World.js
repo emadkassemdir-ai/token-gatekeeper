@@ -45,50 +45,235 @@ function chunkKey(cx, cz) {
 /*  Shared geometry + material registry                                        */
 /* -------------------------------------------------------------------------- */
 
+// Ambient-occlusion-ish per-face brightness: top brightest, sides mid, bottom
+// darkest. Gives blocks depth even before textures.
+const AO = { top: 1.0, side: 0.82, bottom: 0.6 };
+
+/** Stable per-pixel value noise in [0,1). */
+function pnoise(x, y) {
+  const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return h - Math.floor(h);
+}
+
+/** Per-block texture recipe: which pixel-art "kind" to paint on each face. */
+const STONE_BASE = [0.52, 0.52, 0.55];
+const TEX = {
+  1: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' },
+  2: { all: 'dirt' },
+  3: { all: 'stone' },
+  4: { all: 'bedrock' },
+  5: { top: 'log_top', side: 'log_side', bottom: 'log_top' },
+  6: { all: 'leaves' },
+  7: { all: 'sand' },
+  8: { all: 'water' },
+  9: { all: 'glass' },
+  10: { all: 'ore', base: STONE_BASE, accent: [0.82, 0.7, 0.55] }, // iron
+  11: { all: 'planks' },
+  12: { top: 'craft_top', side: 'craft_side', bottom: 'planks' },
+  13: { all: 'snow' },
+  14: { all: 'leaves' },
+  15: { all: 'ore', base: STONE_BASE, accent: [0.12, 0.12, 0.13] }, // coal
+  16: { all: 'ore', base: STONE_BASE, accent: [0.95, 0.8, 0.2] },   // gold
+  17: { all: 'ore', base: STONE_BASE, accent: [0.5, 0.9, 0.95] },   // diamond
+  18: { top: 'stone', side: 'furnace', bottom: 'stone' }
+};
+
+const TILE = 16; // texels per tile
+
+/** Paint one 16×16 tile at column `ox` of the atlas canvas. */
+function paintTile(ctx, ox, kind, base, accent) {
+  const put = (px, py, c) => {
+    ctx.fillStyle = `rgb(${Math.max(0, Math.min(255, c[0] * 255)) | 0},${Math.max(0, Math.min(255, c[1] * 255)) | 0},${Math.max(0, Math.min(255, c[2] * 255)) | 0})`;
+    ctx.fillRect(ox + px, py, 1, 1);
+  };
+  const mul = (c, m) => [c[0] * m, c[1] * m, c[2] * m];
+  const dirt = [0.5, 0.34, 0.2];
+
+  for (let py = 0; py < TILE; py++) {
+    for (let px = 0; px < TILE; px++) {
+      const n = pnoise(ox + px, py);
+      let c;
+      switch (kind) {
+        case 'grass_top':
+          c = mul(base, 0.85 + n * 0.3);
+          if (n > 0.82) c = mul(base, 1.18);
+          break;
+        case 'grass_side':
+          if (py < 4) { c = mul(base, 0.85 + n * 0.3); if (py === 3 && n > 0.6) c = mul(base, 0.7); }
+          else { c = mul(dirt, 0.8 + pnoise(px, py + 7) * 0.35); }
+          break;
+        case 'dirt':
+          c = mul(base, 0.8 + n * 0.35);
+          if (n < 0.12) c = mul(base, 0.62);
+          break;
+        case 'stone':
+          c = mul(base, 0.9 + n * 0.2);
+          if (n < 0.08) c = mul(base, 0.72);
+          break;
+        case 'bedrock':
+          c = mul(base, 0.6 + n * 0.7);
+          break;
+        case 'sand':
+          c = mul(base, 0.92 + n * 0.16);
+          if (n < 0.1) c = mul(base, 0.82);
+          break;
+        case 'snow':
+          c = mul(base, 0.95 + n * 0.07);
+          if (n > 0.9) c = [0.85, 0.9, 0.97];
+          break;
+        case 'log_top': {
+          const dx = px - 7.5, dy = py - 7.5;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          c = mul(base, (Math.sin(r * 2.2) > 0.4 ? 0.78 : 0.98) + n * 0.08);
+          break;
+        }
+        case 'log_side':
+          c = mul(base, (px % 4 === 0 ? 0.72 : 0.92) + n * 0.14);
+          break;
+        case 'planks': {
+          const row = py % 4;
+          c = mul(base, (row === 0 ? 0.7 : 0.92) + n * 0.12);
+          if ((py < 8 ? px === 7 : px === 3) && row !== 0) c = mul(base, 0.72);
+          break;
+        }
+        case 'craft_top':
+          c = mul(base, 0.9 + n * 0.1);
+          if (px === 0 || py === 0 || px === 15 || py === 15 || px === 7 || px === 8 || py === 7 || py === 8) c = mul(base, 0.62);
+          break;
+        case 'craft_side':
+          c = mul(base, (py % 4 === 0 ? 0.72 : 0.9) + n * 0.1);
+          if (py < 6 && (px === 4 || px === 11)) c = mul(base, 0.6);
+          break;
+        case 'leaves':
+          c = mul(base, 0.72 + n * 0.45);
+          if (n < 0.15) c = mul(base, 0.55);
+          break;
+        case 'water': {
+          const wave = Math.sin((py + px * 0.5) * 0.8) * 0.06;
+          c = mul(base, 0.92 + wave + n * 0.06);
+          break;
+        }
+        case 'glass':
+          if (px === 0 || py === 0 || px === 15 || py === 15) c = mul(base, 0.7);
+          else c = mul(base, 0.98 + n * 0.04);
+          break;
+        case 'furnace':
+          c = mul(base, 0.9 + n * 0.2);
+          if (px >= 4 && px <= 11 && py >= 7 && py <= 13) c = [0.12, 0.1, 0.1]; // opening
+          if (py === 7 && px >= 4 && px <= 11) c = [0.5, 0.35, 0.2];
+          break;
+        case 'ore':
+          c = mul(base, 0.9 + n * 0.2);
+          if (n < 0.08) c = mul(base, 0.72);
+          // Accent blobs clustered at a few spots.
+          if (pnoise(px * 1.7 + 3, py * 1.7 + 5) > 0.86) c = mul(accent, 0.85 + n * 0.4);
+          break;
+        default:
+          c = mul(base, 0.9 + n * 0.2);
+      }
+      put(px, py, c);
+    }
+  }
+}
+
 /**
- * Build a unit BoxGeometry with per-face vertex colours baked in (so grass can
- * be green on top and brown on the sides within a single InstancedMesh).
+ * Build a 3-tile (top|side|bottom) pixel-art atlas texture for a block, or null
+ * if no canvas is available (headless) so the engine falls back to flat colours.
  * @param {number} blockId
- * @returns {THREE.BoxGeometry}
+ * @returns {THREE.CanvasTexture|null}
  */
-function buildBlockGeometry(blockId) {
+function buildBlockTexture(blockId) {
+  if (typeof document === 'undefined') return null;
+  let canvas, ctx;
+  try {
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext && canvas.getContext('2d');
+  } catch { return null; }
+  if (!ctx) return null;
+
+  canvas.width = TILE * 3;
+  canvas.height = TILE;
+  const cfg = TEX[blockId] || { all: 'plain' };
+  const faces = ['top', 'side', 'bottom'];
+  for (let t = 0; t < 3; t++) {
+    const kind = cfg.all || cfg[faces[t]] || 'plain';
+    const base = cfg.base || getFaceColor(blockId, faces[t]);
+    paintTile(ctx, t * TILE, kind, base, cfg.accent || base);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter; // no mipmaps => no atlas-tile bleeding
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Build a unit cube with UVs remapped to the 3-tile atlas and per-vertex AO
+ * shading. When `textured` is false, the face colour is baked into the vertex
+ * colour (× AO) so the block is still tinted without a texture.
+ * @param {number} blockId @param {boolean} textured
+ */
+function buildBlockGeometry(blockId, textured) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
   const colors = new Float32Array(pos.count * 3);
 
-  // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z (4 vertices each).
+  // BoxGeometry face order: +X, -X, +Y(top), -Y(bottom), +Z, -Z (4 verts each).
   for (let i = 0; i < pos.count; i++) {
     const faceIndex = Math.floor(i / 4);
-    let face = 'side';
-    if (faceIndex === 2) face = 'top';
-    else if (faceIndex === 3) face = 'bottom';
-    const [r, g, b] = getFaceColor(blockId, face);
-    colors[i * 3] = r;
-    colors[i * 3 + 1] = g;
-    colors[i * 3 + 2] = b;
+    const face = faceIndex === 2 ? 'top' : faceIndex === 3 ? 'bottom' : 'side';
+    const ao = AO[face];
+
+    // Remap U into this face's atlas tile (top=0, side=1, bottom=2).
+    const tile = face === 'top' ? 0 : face === 'bottom' ? 2 : 1;
+    const u = uv.getX(i);
+    uv.setX(i, (tile + u) / 3);
+
+    if (textured) {
+      colors[i * 3] = ao; colors[i * 3 + 1] = ao; colors[i * 3 + 2] = ao;
+    } else {
+      const [r, g, b] = getFaceColor(blockId, face);
+      colors[i * 3] = r * ao; colors[i * 3 + 1] = g * ao; colors[i * 3 + 2] = b * ao;
+    }
   }
+  uv.needsUpdate = true;
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return geo;
 }
 
 /**
- * A lazily-populated registry of geometries and materials keyed by block id.
- * Shared across every chunk so we never duplicate GPU resources.
+ * A lazily-populated registry of geometries, textures and materials keyed by
+ * block id. Shared across every chunk so we never duplicate GPU resources.
  */
 class BlockAssetRegistry {
   constructor() {
-    /** @type {Map<number, THREE.BoxGeometry>} */
     this.geometries = new Map();
-    /** @type {Map<number, THREE.Material>} */
     this.materials = new Map();
+    this.textures = new Map();
     /** @type {THREE.Material[]} water materials, animated each frame. */
     this.waterMaterials = [];
+    this.useTextures = this._canvasSupported();
+  }
+
+  _canvasSupported() {
+    try {
+      if (typeof document === 'undefined') return false;
+      const c = document.createElement('canvas');
+      return !!(c.getContext && c.getContext('2d'));
+    } catch { return false; }
+  }
+
+  getTexture(blockId) {
+    if (!this.textures.has(blockId)) this.textures.set(blockId, buildBlockTexture(blockId));
+    return this.textures.get(blockId);
   }
 
   getGeometry(blockId) {
     let geo = this.geometries.get(blockId);
     if (!geo) {
-      geo = buildBlockGeometry(blockId);
+      geo = buildBlockGeometry(blockId, this.useTextures);
       this.geometries.set(blockId, geo);
     }
     return geo;
@@ -98,11 +283,13 @@ class BlockAssetRegistry {
     let mat = this.materials.get(blockId);
     if (!mat) {
       const def = BLOCKS[blockId];
-      mat = new THREE.MeshLambertMaterial({
+      const opts = {
         vertexColors: true,
         transparent: !!def.transparent,
         opacity: def.opacity ?? 1.0
-      });
+      };
+      if (this.useTextures) opts.map = this.getTexture(blockId);
+      mat = new THREE.MeshLambertMaterial(opts);
       if (def.transparent) {
         mat.depthWrite = !def.liquid; // liquids should not block depth.
         mat.side = THREE.DoubleSide;
