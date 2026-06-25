@@ -82,6 +82,8 @@ export class PhysicsEngine {
     // Cheat hooks.
     this.speedMultiplier = 1;
     this.noclip = false;
+    // Fly is only allowed in creative (cheats can still force it).
+    this.allowFly = true;
 
     this._bindEvents();
     this._syncCamera();
@@ -114,11 +116,13 @@ export class PhysicsEngine {
     this._flyDown = down;
   }
 
-  /** Toggle creative fly mode (mirrors the desktop 'F' key). */
+  /** Toggle creative fly mode (mirrors the desktop 'F' key). No-op if disallowed. */
   toggleFly() {
+    if (!this.allowFly) { this.flyMode = false; return false; }
     this.flyMode = !this.flyMode;
     this.profile.flyMode = this.flyMode;
     this.velocity.y = 0;
+    return this.flyMode;
   }
 
   /* ------------------------------- input --------------------------------- */
@@ -165,9 +169,7 @@ export class PhysicsEngine {
     // Toggle fly mode on a fresh 'F' press (debounced so holding won't flap).
     if (code === 'KeyF') {
       if (down && this._flyToggleArmed) {
-        this.flyMode = !this.flyMode;
-        this.profile.flyMode = this.flyMode;
-        this.velocity.y = 0;
+        this.toggleFly();
         this._flyToggleArmed = false;
       } else if (!down) {
         this._flyToggleArmed = true;

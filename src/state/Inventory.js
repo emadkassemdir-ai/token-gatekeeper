@@ -15,7 +15,7 @@
  * @see ItemTypes for item definitions and the creative palette/catalog.
  */
 
-import { ITEMS, CREATIVE_PALETTE, getItem } from '../world/ItemTypes.js';
+import { ITEMS, getItem } from '../world/ItemTypes.js';
 
 export const HOTBAR_SIZE = 9;
 export const STORAGE_SIZE = 18;
@@ -28,9 +28,9 @@ export class Inventory {
     this.slots = new Array(TOTAL_SLOTS).fill(null);
     this.selected = 0;
     this.mode = mode;
-    // Editable creative hotbar palette (types). Defaults to the standard set.
-    this.creativeHotbar = CREATIVE_PALETTE.slice(0, HOTBAR_SIZE);
-    while (this.creativeHotbar.length < HOTBAR_SIZE) this.creativeHotbar.push(null);
+    // Editable creative hotbar palette (types). Starts EMPTY — you pick items
+    // from the creative item catalog ("collect item" bar) in the inventory.
+    this.creativeHotbar = new Array(HOTBAR_SIZE).fill(null);
   }
 
   /** @param {'survival'|'creative'} mode */

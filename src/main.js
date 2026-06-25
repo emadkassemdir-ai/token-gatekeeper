@@ -135,6 +135,9 @@ class Game {
     }
 
     this.physics = new PhysicsEngine(this.camera, this.world, this.renderer.domElement, this.record);
+    // Fly is creative-only (cheats can still force it).
+    this.physics.allowFly = this.record.gameMode === 'creative';
+    if (!this.physics.allowFly) this.physics.flyMode = false;
 
     this.interaction = new InteractionEngine(
       this.camera, this.world, this.scene, this.physics, this.record, this.inventory
@@ -266,6 +269,9 @@ class Game {
     this.stats.setMode(mode);
     this.entities.setEnabled(mode === 'survival');
     if (mode === 'survival') this.entities.setDifficulty(this.record.difficulty || 'normal');
+    // Fly is creative-only.
+    this.physics.allowFly = mode === 'creative';
+    if (!this.physics.allowFly) this.physics.flyMode = false;
     this.record.gameMode = mode;
     return true;
   }

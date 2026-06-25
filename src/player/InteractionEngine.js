@@ -224,8 +224,17 @@ export class InteractionEngine {
     }
     const { x, y, z } = this.target;
     const id = this.world.getBlock(x, y, z);
+    if (isAir(id)) { this._resetBreak(); return false; }
 
-    // Bedrock (and any unbreakable block) can never be mined.
+    // Creative: any solid block breaks instantly in one tap (incl. bedrock).
+    if (this.inventory.isCreative) {
+      this.world.setBlock(x, y, z, AIR);
+      this.onEdit?.(x, y, z, AIR);
+      this._resetBreak();
+      return true;
+    }
+
+    // Survival: bedrock (and any unbreakable block) can never be mined.
     if (!isBreakable(id)) {
       this._resetBreak();
       return false;
