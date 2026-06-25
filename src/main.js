@@ -30,6 +30,7 @@ import { CraftingMenu } from './ui/CraftingMenu.js';
 import { AvatarEditor } from './ui/AvatarEditor.js';
 import { InventoryScreen } from './ui/InventoryScreen.js';
 import { SmeltingMenu } from './ui/SmeltingMenu.js';
+import { injectTheme } from './world/UITextures.js';
 import { NetworkManager } from './net/NetworkManager.js';
 import { RemotePlayers } from './net/RemotePlayers.js';
 import { packState } from './net/Protocol.js';
@@ -481,6 +482,7 @@ class Game {
 
 async function boot() {
   const app = document.getElementById('app');
+  injectTheme(); // Minecraft-style pixel font + textures for the whole UI
   const avatar = Avatar.load();
 
   const menu = new GameMenu(app, {
