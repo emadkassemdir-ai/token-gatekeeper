@@ -6,16 +6,19 @@ on:
       - "claude/minecraft-clone-engine"
   workflow_dispatch:
 
+# Allow the GITHUB_TOKEN to deploy to Pages.
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# One deployment at a time; cancel superseded runs.
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
 jobs:
+  # ---- Build the Vite site and upload it as a Pages artifact ----
   build:
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
+
       - name: Build
         run: npm run build
 
@@ -39,6 +45,7 @@ jobs:
         with:
           path: ./dist
 
+  # ---- Deploy the uploaded artifact to GitHub Pages ----
   deploy:
     needs: build
     runs-on: ubuntu-latest
