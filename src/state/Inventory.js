@@ -213,6 +213,27 @@ export class Inventory {
   }
 
   /**
+   * Remove a stack (or part of it) from a slot, for dropping it into the world.
+   * In creative the supply is infinite, so the slot is left untouched.
+   * @param {number} index slot index
+   * @param {number} [count] how many to take (default: whole stack)
+   * @returns {{ type: string, count: number } | null}
+   */
+  takeSlot(index, count = Infinity) {
+    if (this.isCreative) {
+      const type = index < HOTBAR_SIZE ? this.creativeHotbar[index] : this.slots[index]?.type;
+      if (!type) return null;
+      return { type, count: Number.isFinite(count) ? count : 1 };
+    }
+    const s = this.slots[index];
+    if (!s) return null;
+    const take = Math.min(count, s.count);
+    s.count -= take;
+    if (s.count <= 0) this.slots[index] = null;
+    return { type: s.type, count: take };
+  }
+
+  /**
    * Creative helper: drop a catalog item into the currently selected hotbar
    * slot (infinite supply).
    * @param {string} type

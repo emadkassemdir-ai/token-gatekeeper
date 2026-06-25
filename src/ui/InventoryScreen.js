@@ -72,7 +72,19 @@ export class InventoryScreen {
     this.avatarEl = root.querySelector('#inv-avatar');
     this.armorEl = root.querySelector('#inv-armor');
     root.querySelector('#inv-close').addEventListener('click', () => this.close());
-    root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
+    root.addEventListener('click', (e) => {
+      if (e.target !== root) return;
+      // Clicking the dark backdrop while holding a stack drops it into the world;
+      // otherwise it closes the screen.
+      if (this._held >= 0 && this.hooks.onDropItem) {
+        const stack = this.inventory.takeSlot(this._held);
+        if (stack) this.hooks.onDropItem(stack.type, stack.count);
+        this._held = -1;
+        this.render();
+      } else {
+        this.close();
+      }
+    });
   }
 
   _bindKeys() {
@@ -179,7 +191,7 @@ export class InventoryScreen {
     const hint = document.createElement('div');
     hint.className = 'inv-hint';
     hint.textContent = this._held >= 0
-      ? 'Click a slot to drop the held stack.'
+      ? 'Click a slot to place — or click outside to throw it into the world.'
       : 'Click a stack to pick it up, then click another slot to move it.';
     this.rightEl.appendChild(hint);
   }

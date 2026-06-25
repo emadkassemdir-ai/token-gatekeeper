@@ -15,7 +15,7 @@
  * candidate gathering); the message layer here is what the engine talks to.
  */
 
-import { MSG, encode, decode, validEdit } from './Protocol.js';
+import { MSG, encode, decode, validEdit, validAttack, validDrop } from './Protocol.js';
 
 const MAX_PLAYERS = 4; // host + 3 guests
 const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -63,6 +63,10 @@ export class NetworkManager {
     this.onEdit = null;      // (edit)
     this.onChat = null;      // (id, name, text)
     this.onStatus = null;    // (text)
+    this.onAttack = null;    // ({ target, dmg }, fromId)
+    this.onDrop = null;      // ({ id, type, count, x, y, z })
+    this.onPickup = null;    // ({ id })
+    this.onMode = null;      // ({ target, mode, cheats }, fromId)
   }
 
   get connected() { return this.peers.size > 0; }
@@ -194,6 +198,22 @@ export class NetworkManager {
       case MSG.BYE:
         this.onPeerLeave?.(msg.data.id);
         break;
+      case MSG.ATTACK:
+        if (validAttack(msg.data)) this.onAttack?.(msg.data, from);
+        if (this.role === 'host') this._relay(MSG.ATTACK, msg.data, peer.id, peer);
+        break;
+      case MSG.DROP:
+        if (validDrop(msg.data)) this.onDrop?.(msg.data);
+        if (this.role === 'host') this._relay(MSG.DROP, msg.data, peer.id, peer);
+        break;
+      case MSG.PICKUP:
+        if (msg.data && typeof msg.data.id === 'string') this.onPickup?.(msg.data);
+        if (this.role === 'host') this._relay(MSG.PICKUP, msg.data, peer.id, peer);
+        break;
+      case MSG.MODE:
+        if (msg.data && typeof msg.data.target === 'string') this.onMode?.(msg.data, from);
+        if (this.role === 'host') this._relay(MSG.MODE, msg.data, peer.id, peer);
+        break;
     }
   }
 
@@ -232,6 +252,23 @@ export class NetworkManager {
   sendState(state) { this.broadcast(MSG.STATE, state); }
   sendEdit(edit) { this.broadcast(MSG.EDIT, edit); }
   sendChat(text) { this.broadcast(MSG.CHAT, { text }); }
+  sendAttack(target, dmg) { this.broadcast(MSG.ATTACK, { target, dmg }); }
+  sendDrop(drop) { this.broadcast(MSG.DROP, drop); }
+  sendPickup(id) { this.broadcast(MSG.PICKUP, { id }); }
+  /** Host: force/announce a player's gamemode and/or cheat privileges. */
+  sendMode(target, mode, cheats) {
+    const d = { target };
+    if (mode) d.mode = mode;
+    if (typeof cheats === 'boolean') d.cheats = cheats;
+    this.broadcast(MSG.MODE, d);
+  }
+
+  /** @returns {Array<{id:string,name:string}>} connected remote players. */
+  roster() {
+    const out = [];
+    for (const peer of this.peers.values()) if (peer.id) out.push({ id: peer.id, name: peer.name });
+    return out;
+  }
 
   disconnect() {
     for (const peer of this.peers.values()) {

@@ -18,12 +18,13 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood, isShield } from './world/ItemTypes.js';
+import { getFood, isShield, getAttackDamage } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
 import { Audio } from './audio/AudioManager.js';
 import { EntityManager } from './entities/EntityManager.js';
+import { DroppedItems, dropId } from './entities/DroppedItems.js';
 import { GameMenu } from './ui/GameMenu.js';
 import { HUD } from './ui/HUD.js';
 import { TouchControls } from './ui/TouchControls.js';
@@ -158,8 +159,21 @@ class Game {
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
       this.camera.getWorldDirection(this._dir);
-      const hit = this.entities.playerAttack(this.camera.position, this._dir, this.inventory.getSelectedType());
+      const held = this.inventory.getSelectedType();
       this.viewModel?.swing();
+      // PvP: if a remote (survival) player is in our sights, hit them instead.
+      // Creative players neither deal nor take combat damage.
+      if (this.net?.connected && !this.stats.isCreative) {
+        const targetId = this.remotePlayers.pickTarget(this.camera.position, this._dir);
+        if (targetId) {
+          const dmg = getAttackDamage(held);
+          this.net.sendAttack(targetId, dmg);
+          this.remotePlayers.flashHit(targetId);
+          Audio.hit();
+          return true;
+        }
+      }
+      const hit = this.entities.playerAttack(this.camera.position, this._dir, held);
       if (hit) Audio.hit();
       return hit;
     };
@@ -208,6 +222,7 @@ class Game {
     this.net = new NetworkManager();
     this.net.setIdentity(this.record.username, this.avatar.toJSON());
     this.remotePlayers = new RemotePlayers(this.scene);
+    this.drops = new DroppedItems(this.scene);
     this._netTimer = 0;
 
     this.net.onPeerJoin = (id, info) => {
@@ -222,6 +237,29 @@ class Game {
       this._recordEdit(e.x, e.y, e.z, e.id);
     };
     this.net.onChat = (id, name, text) => this.chat?.info(`${name}: ${text}`);
+
+    // PvP: another player hit us. Only applies in survival (creative is immune).
+    this.net.onAttack = (d) => {
+      if (d.target !== this.net.selfId) return;
+      if (this.stats.isCreative) return;
+      this.stats.damage(d.dmg);
+    };
+    // A dropped item appeared / was collected elsewhere.
+    this.net.onDrop = (d) => this.drops.spawn(d.id, d.type, d.count, { x: d.x, y: d.y, z: d.z });
+    this.net.onPickup = (d) => this.drops.remove(d.id);
+    // Host admin: forced gamemode change / cheat-privilege toggle aimed at us.
+    this.net.onMode = (d) => {
+      if (d.target !== this.net.selfId) return;
+      if (typeof d.cheats === 'boolean') {
+        this.record.cheats = d.cheats;
+        if (this._cheatApi) this._cheatApi.cheats = d.cheats;
+        this.chat?.system(d.cheats ? 'The host granted you cheats.' : 'The host revoked your cheats.');
+      }
+      if (d.mode && d.mode !== this.inventory.mode) {
+        this._setGameMode(d.mode);
+        this.chat?.system(`The host set you to ${d.mode} mode.`);
+      }
+    };
   }
 
   /** @returns {boolean} whether it is currently night. */
@@ -244,11 +282,13 @@ class Game {
     });
 
     // Chat (T) + commands (25 cheat commands gated by the world's cheats flag).
-    this.chat = new Chat(this.app, this._buildCheatApi());
+    this._cheatApi = this._buildCheatApi();
+    this.chat = new Chat(this.app, this._cheatApi);
 
     // Inventory screen (I) with avatar display.
     this.inventoryScreen = new InventoryScreen(this.app, this.inventory, this.avatar, this.stats, {
-      onOpen: () => this._releasePointer()
+      onOpen: () => this._releasePointer(),
+      onDropItem: (type, count) => this._dropItem(type, count)
     });
 
     // Furnace / smelting menu (G).
@@ -365,8 +405,35 @@ class Game {
       killAll: () => { const n = this.entities.count; this.entities.clear(); return n; },
       smite: () => this.entities.smiteNearest(this.physics.position),
       // Relay plain chat lines to connected peers.
-      sendChat: (text) => this.net?.sendChat(text)
+      sendChat: (text) => this.net?.sendChat(text),
+      // ---- Multiplayer admin (host only) ----
+      isHost: () => this.net?.role === 'host',
+      players: () => this.net?.roster() ?? [],
+      adminSetMode: (name, mode) => {
+        const peer = this._findPeer(name);
+        if (!peer) return false;
+        this.net.sendMode(peer.id, mode);
+        return true;
+      },
+      adminRevoke: (name) => {
+        const peer = this._findPeer(name);
+        if (!peer) return false;
+        this.net.sendMode(peer.id, 'survival', false);
+        return true;
+      },
+      adminGrant: (name) => {
+        const peer = this._findPeer(name);
+        if (!peer) return false;
+        this.net.sendMode(peer.id, null, true);
+        return true;
+      }
     };
+  }
+
+  /** Find a connected peer by (case-insensitive) name. */
+  _findPeer(name) {
+    const n = String(name || '').toLowerCase();
+    return (this.net?.roster() ?? []).find((p) => p.name.toLowerCase() === n) || null;
   }
 
   /** Is the player within reach of a given block id? */
@@ -385,6 +452,28 @@ class Game {
 
   _nearCraftingTable() { return this._nearBlock(CRAFTING_TABLE_ID); }
   _nearFurnace() { return this._nearBlock(FURNACE_ID); }
+
+  /**
+   * Throw an item stack into the world a little in front of the player. Other
+   * players can see and collect it (multiplayer-synced by id).
+   * @param {string} type @param {number} count
+   */
+  _dropItem(type, count) {
+    if (!type || count <= 0) return;
+    this.camera.getWorldDirection(this._dir);
+    const p = this.physics.position;
+    // Toss it a couple of blocks ahead so it lands clear of the thrower (others
+    // can grab it; you step forward to pick it back up).
+    const pos = {
+      x: p.x + this._dir.x * 1.8,
+      y: p.y + 0.2,
+      z: p.z + this._dir.z * 1.8
+    };
+    const id = dropId();
+    this.drops.spawn(id, type, count, pos);
+    this.net?.sendDrop({ id, type, count, x: pos.x, y: pos.y, z: pos.z });
+    this.chat?.system(`Dropped ${count} × ${type.replace(/_/g, ' ')}`);
+  }
 
   _handleDeath() {
     if (this.inventory.isCreative) return;
@@ -440,13 +529,26 @@ class Game {
 
     // Multiplayer: interpolate remote players and broadcast our state at ~10 Hz.
     this.remotePlayers.update(dt);
+
+    // Dropped items: bob/spin and let the local player collect them.
+    this.drops.update(dt, this.physics.position, (item) => {
+      if (this.inventory.add(item.type, item.count) <= 0 && !this.inventory.isCreative) return false;
+      this.net?.sendPickup(item.id);
+      Audio.pickup();
+      this.chat?.system(`Picked up ${item.count} × ${item.type.replace(/_/g, ' ')}`);
+      return true;
+    });
+
     if (this.net.connected) {
       this._netTimer += dt;
       if (this._netTimer >= 0.1) {
         this._netTimer = 0;
         const p = this.physics.position;
         const r = this.physics.getRotation();
-        this.net.sendState(packState({ x: p.x, y: p.y, z: p.z, yaw: r.yaw, pitch: r.pitch }));
+        this.net.sendState(packState({
+          x: p.x, y: p.y, z: p.z, yaw: r.yaw, pitch: r.pitch,
+          hp: this.stats.health, creative: this.inventory.isCreative
+        }));
       }
     }
 

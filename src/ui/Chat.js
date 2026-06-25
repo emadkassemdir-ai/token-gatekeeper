@@ -168,6 +168,39 @@ export class Chat {
       }
       case 'killall': return this.system('Removed ' + a.killAll() + ' mobs.');
       case 'smite': return a.smite() ? this.system('Smote the nearest mob.') : this.error('No mob nearby.');
+
+      // ---- Host-only multiplayer admin (cheats must be on) ----
+      case 'players': case 'list': {
+        const list = a.players?.() || [];
+        if (!list.length) return this.info('No other players connected.');
+        return this.info('Players: ' + list.map((p) => p.name).join(', '));
+      }
+      case 'setmode': {
+        if (!a.isHost?.()) return this.error('Only the host can change another player’s mode.');
+        const name = parts[1];
+        const m = (parts[2] || '').toLowerCase();
+        const mode = /^(c|creative|1)$/.test(m) ? 'creative' : /^(s|survival|0)$/.test(m) ? 'survival' : null;
+        if (!name || !mode) return this.error('Usage: /setmode <player> <survival|creative>');
+        return a.adminSetMode?.(name, mode)
+          ? this.system(`Set ${name} to ${mode}.`)
+          : this.error('No player named ' + name + '.');
+      }
+      case 'revoke': {
+        if (!a.isHost?.()) return this.error('Only the host can revoke privileges.');
+        const name = parts[1];
+        if (!name) return this.error('Usage: /revoke <player>');
+        return a.adminRevoke?.(name)
+          ? this.system(`Revoked ${name}’s cheats and set them to survival.`)
+          : this.error('No player named ' + name + '.');
+      }
+      case 'grant': {
+        if (!a.isHost?.()) return this.error('Only the host can grant privileges.');
+        const name = parts[1];
+        if (!name) return this.error('Usage: /grant <player>');
+        return a.adminGrant?.(name)
+          ? this.system(`Granted ${name} cheats.`)
+          : this.error('No player named ' + name + '.');
+      }
       default: return this.error('Unknown command: /' + cmd + ' (try /help)');
     }
   }
@@ -178,6 +211,7 @@ export class Chat {
     this.info('/gamemode /difficulty /give /giveall /clear');
     this.info('/tp /home /setspawn /heal /sethealth /feed /hurt /kill');
     this.info('/god /fly /speed /noclip /reach /time /spawn /killall /smite');
+    this.info('Multiplayer: /players  (host) /setmode <player> <mode> /grant /revoke');
   }
 
   dispose() {
