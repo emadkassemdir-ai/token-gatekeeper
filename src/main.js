@@ -34,6 +34,7 @@ import { AvatarEditor } from './ui/AvatarEditor.js';
 import { InventoryScreen } from './ui/InventoryScreen.js';
 import { SmeltingMenu } from './ui/SmeltingMenu.js';
 import { injectTheme } from './world/UITextures.js';
+import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
 import { RemotePlayers } from './net/RemotePlayers.js';
 import { packState } from './net/Protocol.js';
@@ -59,6 +60,10 @@ class Game {
     this._running = false;
     this._spawn = { x: record.spawn?.x ?? 8, z: record.spawn?.z ?? 8 };
     this._dir = new THREE.Vector3();
+
+    // Easter egg: naming yourself "yassin" turns the whole game into The Photo.
+    this._yassin = isYassin(record.username);
+    if (this._yassin) applyYassinUI();
 
     // Day/night: t in [0,1). 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight.
     this._time = record.time ?? 0.2;
@@ -106,6 +111,9 @@ class Game {
     this._skyDay = new THREE.Color(0x87b9e6);
     this._skyNight = new THREE.Color(0x0a1020);
     this._skyColor = new THREE.Color();
+
+    // Easter egg: surround the player with The Photo instead of a sky.
+    if (this._yassin) applyYassinScene(this.scene);
   }
 
   _initWorld() {
@@ -501,6 +509,7 @@ class Game {
     this._running = true;
     Audio.resume();
     Audio.startMusic();
+    if (this._yassin) this.chat?.system('😃 YASSIN MODE ACTIVATED — behold.');
     this._loop();
   }
 
@@ -605,8 +614,11 @@ class Game {
     const d = Math.max(0.05, Math.sin(this._time * Math.PI * 2) * 0.5 + 0.5);
 
     this._skyColor.copy(this._skyNight).lerp(this._skyDay, d);
-    this.scene.background.copy(this._skyColor);
-    if (this.scene.fog) this.scene.fog.color.copy(this._skyColor);
+    // In Yassin mode the background is the photo texture — don't overwrite it.
+    if (!this._yassin) {
+      this.scene.background.copy(this._skyColor);
+      if (this.scene.fog) this.scene.fog.color.copy(this._skyColor);
+    }
 
     this.sun.intensity = 0.15 + d * 0.85;
     this.hemi.intensity = 0.3 + d * 0.7;
