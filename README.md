@@ -73,6 +73,24 @@ Once connected you'll see each other move, share block edits, and chat. (P2P
 connectivity depends on the browser and network/NAT; a public STUN server is
 used for connection setup.)
 
+### Sign in with Google (optional)
+
+Players can sign in with Google so their Google display name becomes their
+multiplayer identity instead of a typed username. It's fully client-side and
+**off by default** — to enable it, create an OAuth **Client ID** in Google
+Cloud Console (add your site origin, e.g. your GitHub Pages URL, as an
+Authorized JavaScript origin) and expose it before the app script in
+`index.html`:
+
+```html
+<script>window.VOXELCRAFT_GOOGLE_CLIENT_ID = 'YOUR_ID.apps.googleusercontent.com';</script>
+```
+
+When no Client ID is set (or the Google SDK can't load), the button is hidden
+and the game falls back to a manual username. There's no backend, so the ID
+token isn't verified server-side — it's a convenience identity, not a security
+boundary.
+
 ## 🧪 Cheats (25 commands)
 
 Enable **cheats** when creating a world, then open chat (`T`). Always available:

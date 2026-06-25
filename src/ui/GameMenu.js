@@ -12,6 +12,7 @@
 
 import { PlayerProfile } from '../state/PlayerProfile.js';
 import { WorldStore, DIFFICULTIES } from '../state/WorldStore.js';
+import { GoogleAuth } from '../state/GoogleAuth.js';
 
 export class GameMenu {
   /**
@@ -55,6 +56,7 @@ export class GameMenu {
                maxlength="24" placeholder="e.g. Steve" />
         <div id="username-error" class="field-error"></div>
         <button id="next-button" disabled>CONTINUE</button>
+        <div id="google-row" class="google-row"></div>
         <button id="avatar-button" class="secondary-button">CUSTOMIZE AVATAR</button>
         <div class="controls-hint">
           <strong>Controls</strong>
@@ -88,6 +90,23 @@ export class GameMenu {
     button.addEventListener('click', submit);
     validate();
     setTimeout(() => input.focus(), 50);
+
+    // Optional "Sign in with Google": uses the Google name as the multiplayer
+    // identity. Only shown when a Client ID is configured (graceful fallback).
+    const gRow = root.querySelector('#google-row');
+    if (GoogleAuth.isConfigured()) {
+      const label = document.createElement('div');
+      label.className = 'google-label';
+      label.textContent = 'or';
+      gRow.appendChild(label);
+      const btnHost = document.createElement('div');
+      gRow.appendChild(btnHost);
+      GoogleAuth.renderButton(btnHost, (user) => {
+        this.username = PlayerProfile.sanitizeUsername(user.name || 'Player');
+        this.googleUser = user;
+        this._renderWorlds();
+      }).catch((err) => { label.textContent = err.message; });
+    }
   }
 
   /* ------------------------------ worlds --------------------------------- */
@@ -226,11 +245,16 @@ export class GameMenu {
         align-items: center; justify-content: center;
         background: radial-gradient(1200px 600px at 50% -10%, #2b6cb0 0%, transparent 60%),
           linear-gradient(160deg, #0b1220 0%, #131a26 60%, #0a0c10 100%); }
+      #splash { animation: splashFade 0.35s ease; }
+      @keyframes splashFade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); } }
       .splash-card, .worlds-card {
         width: min(460px, 92vw); max-height: 92vh; overflow-y: auto;
         padding: 32px 30px 26px; background: var(--panel, rgba(18,20,24,0.92));
         border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
-        box-shadow: 0 24px 70px rgba(0,0,0,0.55); text-align: center; }
+        box-shadow: 0 24px 70px rgba(0,0,0,0.55); text-align: center;
+        animation: cardIn 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
       .splash-title { font-size: 40px; letter-spacing: 4px; font-weight: 800; color: #fff; margin-bottom: 4px; }
       .splash-title span { color: var(--accent, #6cc24a); }
       .splash-tag { color: #9fb0c3; font-size: 13px; margin-bottom: 26px; }
@@ -243,8 +267,13 @@ export class GameMenu {
       .field-error { color: #ff7a7a; font-size: 12px; min-height: 16px; text-align: left; margin: 6px 2px 0; }
       #next-button, .primary-wide {
         width: 100%; margin-top: 16px; padding: 13px; font-size: 15px; font-weight: 700; letter-spacing: 2px;
-        color: #08240a; background: var(--accent, #6cc24a); border: none; border-radius: 9px; cursor: pointer; }
+        color: #08240a; background: var(--accent, #6cc24a); border: none; border-radius: 9px; cursor: pointer;
+        transition: filter 0.15s ease, transform 0.06s ease, background 0.15s ease; }
+      #next-button:hover:not(:disabled), .primary-wide:hover { filter: brightness(1.08); }
+      #next-button:active:not(:disabled), .primary-wide:active { transform: translateY(1px); }
       #next-button:disabled { background: #3a4452; color: #788596; cursor: not-allowed; }
+      .google-row { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+      .google-label { font-size: 11px; color: #8aa0b6; text-transform: uppercase; letter-spacing: 1px; }
       .secondary-button { width: 100%; margin-top: 10px; padding: 11px; font-size: 13px; font-weight: 700;
         letter-spacing: 1px; color: #d6e2ef; background: rgba(255,255,255,0.06);
         border: 1px solid rgba(255,255,255,0.14); border-radius: 9px; cursor: pointer; }
@@ -260,7 +289,12 @@ export class GameMenu {
       .worlds-empty { color: #8aa0b6; font-size: 13px; padding: 20px; }
       .world-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
         padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 10px; text-align: left; }
+        border-radius: 10px; text-align: left;
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease; }
+      .world-row:hover { background: rgba(255,255,255,0.09); border-color: rgba(108,194,74,0.4); }
+      .world-play, .world-del { transition: filter 0.15s ease, transform 0.06s ease; }
+      .world-play:hover { filter: brightness(1.1); }
+      .cw-toggle button { transition: background 0.15s ease, color 0.15s ease; }
       .world-name { color: #f1f5fa; font-weight: 700; font-size: 14px; }
       .world-meta { color: #8aa0b6; font-size: 11px; margin-top: 2px; }
       .world-actions { display: flex; gap: 6px; flex-shrink: 0; }
