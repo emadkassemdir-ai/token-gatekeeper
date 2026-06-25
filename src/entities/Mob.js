@@ -64,22 +64,12 @@ export class Mob {
   get aquatic() { return !!this.cfg.aquatic; }
 
   _buildMesh() {
-    const c = this.cfg;
     const group = new THREE.Group();
-    const bodyMat = new THREE.MeshLambertMaterial({ color: c.body });
-    const headMat = new THREE.MeshLambertMaterial({ color: c.head });
-    const bodyH = c.h * 0.6;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(c.w, bodyH, c.w * 0.6), bodyMat);
-    body.position.y = c.h * 0.45;
-    group.add(body);
-    if (!c.aquatic) {
-      const head = new THREE.Mesh(new THREE.BoxGeometry(c.w * 0.7, c.h * 0.28, c.w * 0.6), headMat);
-      head.position.y = c.h * 0.85;
-      head.position.z = c.w * 0.25;
-      group.add(head);
-    }
-    // Creepers get a slightly taller, pillar-like body for recognisability.
-    if (this.kind === 'creeper') body.scale.y = 1.15;
+    const build = {
+      cow: buildCow, sheep: buildSheep, zombie: buildZombie,
+      creeper: buildCreeper, fish: buildFish, squid: buildSquid
+    }[this.kind] || buildGeneric;
+    build(group, this.cfg);
     return group;
   }
 
@@ -209,9 +199,119 @@ export class Mob {
   dispose() {
     this.mesh.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
-      if (o.material) o.material.dispose();
+      const m = o.material;
+      if (Array.isArray(m)) m.forEach((mm) => mm && mm.dispose && mm.dispose());
+      else if (m && m.dispose) m.dispose();
     });
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Mob models (distinct, textured shapes — built once per mob)                 */
+/* -------------------------------------------------------------------------- */
+
+function box(w, h, d, color) {
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+}
+function add(group, mesh, x, y, z) { mesh.position.set(x, y, z); group.add(mesh); return mesh; }
+
+/** Draw a 16×16 face on a canvas → texture (null when no canvas / headless). */
+function faceTexture(draw) {
+  if (typeof document === 'undefined') return null;
+  let c, ctx;
+  try { c = document.createElement('canvas'); ctx = c.getContext && c.getContext('2d'); } catch { return null; }
+  if (!ctx) return null;
+  c.width = 16; c.height = 16;
+  draw(ctx);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+  return t;
+}
+const rect = (ctx, x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
+
+/** Head box whose front (+Z) face shows `tex`, rest tinted `baseHex`. */
+function headWithFace(w, h, d, baseHex, tex) {
+  const base = new THREE.MeshLambertMaterial({ color: baseHex });
+  const front = tex ? new THREE.MeshLambertMaterial({ map: tex }) : base;
+  // BoxGeometry material order: +x,-x,+y,-y,+z,-z  (front = +z = index 4)
+  const mats = [base, base, base, base, front, base];
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats);
+}
+
+function quadLegs(group, color, x, z, h, top) {
+  for (const sx of [-x, x]) for (const sz of [-z, z]) {
+    const leg = box(0.18, h, 0.18, color);
+    add(group, leg, sx, h / 2, sz + top);
+  }
+}
+
+function buildCow(group) {
+  const brown = 0x4a3526, white = 0xddd8cf, pink = 0xd98a8a;
+  add(group, box(0.85, 0.7, 1.4, brown), 0, 0.95, 0);          // body
+  add(group, box(0.5, 0.3, 0.2, white), 0.2, 1.05, 0.2);       // white patch
+  add(group, box(0.4, 0.25, 0.2, white), -0.25, 0.9, -0.3);
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#c9a07a'); rect(ctx, 3, 5, 3, 3, '#222'); rect(ctx, 10, 5, 3, 3, '#222'); rect(ctx, 5, 11, 6, 3, '#d98a8a'); });
+  add(group, headWithFace(0.55, 0.5, 0.45, 0x6b4a32, face), 0, 1.15, 0.85); // head forward (+z)
+  add(group, box(0.12, 0.12, 0.12, 0xeee0c0), -0.18, 1.42, 0.85); // horns
+  add(group, box(0.12, 0.12, 0.12, 0xeee0c0), 0.18, 1.42, 0.85);
+  quadLegs(group, 0x3a281c, 0.3, 0.5, 0.6, 0);
+}
+
+function buildSheep(group) {
+  const wool = 0xeeeae2, skin = 0xd8c8b8;
+  add(group, box(1.0, 0.85, 1.2, wool), 0, 1.0, 0);            // fluffy body
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#d8c8b8'); rect(ctx, 3, 6, 3, 3, '#222'); rect(ctx, 10, 6, 3, 3, '#222'); });
+  add(group, headWithFace(0.45, 0.45, 0.4, skin, face), 0, 1.15, 0.7);
+  quadLegs(group, 0x4a4038, 0.32, 0.42, 0.55, 0);
+}
+
+function buildZombie(group) {
+  const skin = 0x4a8f44, shirt = 0x3a5a8c, pants = 0x2f3a6b;
+  add(group, box(0.6, 1.0, 0.35, shirt), 0, 1.0, 0);          // torso
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#3a7d35'); rect(ctx, 3, 5, 3, 3, '#0a1a0a'); rect(ctx, 10, 5, 3, 3, '#0a1a0a'); rect(ctx, 5, 11, 6, 2, '#0a1a0a'); });
+  add(group, headWithFace(0.5, 0.5, 0.5, skin, face), 0, 1.75, 0);
+  const armL = add(group, box(0.18, 0.9, 0.22, skin), -0.39, 1.05, 0.25); armL.rotation.x = -1.3; // arms out
+  const armR = add(group, box(0.18, 0.9, 0.22, skin), 0.39, 1.05, 0.25); armR.rotation.x = -1.3;
+  add(group, box(0.22, 0.9, 0.26, pants), -0.13, 0.45, 0);
+  add(group, box(0.22, 0.9, 0.26, pants), 0.13, 0.45, 0);
+}
+
+function buildCreeper(group) {
+  const green = 0x4f9d3a;
+  add(group, box(0.55, 1.1, 0.4, green), 0, 1.05, 0);          // tall body
+  const face = faceTexture((ctx) => {
+    rect(ctx, 0, 0, 16, 16, '#5bb142');
+    rect(ctx, 3, 4, 3, 3, '#0c1c0c'); rect(ctx, 10, 4, 3, 3, '#0c1c0c'); // eyes
+    rect(ctx, 6, 8, 4, 6, '#0c1c0c'); rect(ctx, 4, 8, 2, 3, '#0c1c0c'); rect(ctx, 10, 8, 2, 3, '#0c1c0c'); // mouth
+  });
+  add(group, headWithFace(0.52, 0.52, 0.52, green, face), 0, 1.85, 0);
+  // 4 stubby legs.
+  add(group, box(0.24, 0.4, 0.3, 0x3c7a2c), -0.14, 0.2, 0.18);
+  add(group, box(0.24, 0.4, 0.3, 0x3c7a2c), 0.14, 0.2, 0.18);
+  add(group, box(0.24, 0.4, 0.3, 0x3c7a2c), -0.14, 0.2, -0.18);
+  add(group, box(0.24, 0.4, 0.3, 0x3c7a2c), 0.14, 0.2, -0.18);
+}
+
+function buildFish(group) {
+  const body = box(0.5, 0.32, 0.22, 0xc8624a);
+  add(group, body, 0, 0, 0);
+  const tail = box(0.18, 0.3, 0.05, 0xa8462f); add(group, tail, -0.32, 0, 0);
+  add(group, box(0.06, 0.06, 0.06, 0x111), 0.18, 0.05, 0.12); // eye
+  add(group, box(0.3, 0.1, 0.04, 0xa8462f), 0, 0.2, 0);       // top fin
+}
+
+function buildSquid(group) {
+  const c = 0x35476b;
+  add(group, box(0.5, 0.55, 0.5, c), 0, 0.1, 0);              // mantle
+  for (const sx of [-0.15, 0, 0.15]) for (const sz of [-0.15, 0.15]) {
+    const t = box(0.08, 0.45, 0.08, 0x2a3a58); add(group, t, sx, -0.3, sz);
+  }
+  add(group, box(0.08, 0.08, 0.08, 0x111), 0.14, 0.15, 0.26); // eyes
+  add(group, box(0.08, 0.08, 0.08, 0x111), -0.14, 0.15, 0.26);
+}
+
+function buildGeneric(group, cfg) {
+  add(group, box(cfg.w, cfg.h * 0.6, cfg.w * 0.6, cfg.body), 0, cfg.h * 0.45, 0);
 }
 
 export default Mob;
