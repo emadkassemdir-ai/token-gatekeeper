@@ -318,6 +318,7 @@ class Chunk {
     /** @type {Map<number, THREE.InstancedMesh>} */
     this.meshes = new Map();
     this.dirty = true;
+    this.decorated = false; // trees/village/edits applied yet?
   }
 
   static index(lx, ly, lz) {
@@ -335,10 +336,10 @@ class Chunk {
     this.dirty = true;
   }
 
-  dispose() {
-    for (const mesh of this.meshes.values()) {
-      mesh.geometry.dispose?.(); // geometry is shared; guarded below.
-    }
+  /** Remove this chunk's instanced meshes from its group (shared GPU
+   * geometry/materials are NOT disposed — they're reused by other chunks). */
+  teardown() {
+    for (const mesh of this.meshes.values()) this.group.remove(mesh);
     this.meshes.clear();
   }
 }
@@ -417,39 +418,78 @@ export class World {
   /* --------------------------- generation -------------------------------- */
 
   /**
-   * Generate a square region of chunks around a centre, plant trees, apply any
-   * persisted player edits, then build all meshes.
-   * @param {number} centerCx @param {number} centerCz @param {number} radius
+   * Generate / stream the square region of chunks around a centre (infinite
+   * world). New chunks get terrain + caves + ores, then trees, villages and any
+   * persisted player edits; chunks that fall outside the keep-radius are
+   * unloaded. Called on spawn and whenever the player crosses a chunk border.
+   *
+   * @param {number} centerCx @param {number} centerCz
+   * @param {number} radius keep-radius in chunks
    * @param {Record<string, number>} [edits] persisted "x,y,z" -> id overrides
+   * @returns {number} how many new chunks were generated this call
    */
-  generate(centerCx, centerCz, radius, edits = {}) {
-    // Phase 1 — terrain columns (with integrated caves + ore distribution).
+  streamAround(centerCx, centerCz, radius, edits = {}) {
+    // Phase 1 — terrain for every missing chunk in range (so neighbours exist
+    // before we decorate).
+    const fresh = [];
     for (let cz = centerCz - radius; cz <= centerCz + radius; cz++) {
       for (let cx = centerCx - radius; cx <= centerCx + radius; cx++) {
+        if (this.chunks.has(chunkKey(cx, cz))) continue;
         const chunk = new Chunk(cx, cz);
         this.chunks.set(chunkKey(cx, cz), chunk);
         this.scene.add(chunk.group);
         this._fillChunkTerrain(chunk);
+        fresh.push(chunk);
       }
     }
 
-    // Phase 2 — trees + villages (need neighbouring chunks to exist so
-    // structures can overhang chunk borders).
-    for (const chunk of this.chunks.values()) {
+    // Phase 2 — decorate the new chunks (trees + villages) now neighbours exist.
+    for (const chunk of fresh) {
       this._plantTrees(chunk);
-    }
-    for (const chunk of this.chunks.values()) {
       this._generateVillage(chunk);
+      chunk.decorated = true;
     }
 
-    // Phase 3 — replay persisted player edits so they win over generation.
-    for (const key in edits) {
-      const [x, y, z] = key.split(',').map(Number);
-      this.setBlock(x, y, z, edits[key]);
+    // Phase 3 — replay persisted edits that land in the new chunks.
+    if (fresh.length) {
+      const freshKeys = new Set(fresh.map((c) => chunkKey(c.cx, c.cz)));
+      for (const key in edits) {
+        const [x, y, z] = key.split(',').map(Number);
+        const ck = chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE));
+        if (freshKeys.has(ck)) this.setBlock(x, y, z, edits[key]);
+      }
+      // Re-cull neighbours of new chunks at their shared borders.
+      for (const c of fresh) {
+        this._markDirty(c.cx + 1, c.cz); this._markDirty(c.cx - 1, c.cz);
+        this._markDirty(c.cx, c.cz + 1); this._markDirty(c.cx, c.cz - 1);
+      }
     }
 
-    // Phase 4 — build all meshes.
+    // Phase 4 — unload chunks beyond the keep-radius (+1 buffer).
+    this._unloadOutside(centerCx, centerCz, radius + 1);
+
+    // Phase 5 — (re)build any dirty meshes.
     this.rebuildDirtyChunks();
+    return fresh.length;
+  }
+
+  /** Backwards-compatible alias used for the initial spawn load. */
+  generate(centerCx, centerCz, radius, edits = {}) {
+    return this.streamAround(centerCx, centerCz, radius, edits);
+  }
+
+  /** Unload chunks whose Chebyshev distance from the centre exceeds `keep`. */
+  _unloadOutside(centerCx, centerCz, keep) {
+    for (const [key, chunk] of this.chunks) {
+      if (Math.max(Math.abs(chunk.cx - centerCx), Math.abs(chunk.cz - centerCz)) > keep) {
+        chunk.teardown();
+        this.scene.remove(chunk.group);
+        this.chunks.delete(key);
+        // Neighbours that remain should re-cull toward the now-empty space.
+        this._markDirty(chunk.cx + 1, chunk.cz); this._markDirty(chunk.cx - 1, chunk.cz);
+        this._markDirty(chunk.cx, chunk.cz + 1); this._markDirty(chunk.cx, chunk.cz - 1);
+      }
+    }
   }
 
   /**

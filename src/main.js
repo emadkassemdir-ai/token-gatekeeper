@@ -106,9 +106,12 @@ class Game {
 
   _initWorld() {
     this.world = new World(this.scene, this.record.seed);
+    this._loadRadius = RENDER_RADIUS;
     const spawnCx = Math.floor((this.record.spawn?.x ?? 8) / CHUNK_SIZE);
     const spawnCz = Math.floor((this.record.spawn?.z ?? 8) / CHUNK_SIZE);
-    this.world.generate(spawnCx, spawnCz, RENDER_RADIUS, this.record.editedBlocks || {});
+    // Stream the spawn region; chunks then load/unload as the player moves.
+    this.world.streamAround(spawnCx, spawnCz, this._loadRadius, this.record.editedBlocks || {});
+    this._lastChunk = { cx: spawnCx, cz: spawnCz };
   }
 
   _initState() {
@@ -395,6 +398,15 @@ class Game {
     this._updateDayNight(dt);
 
     this.physics.update(dt);
+
+    // Infinite world: stream chunks in/out when the player crosses a border.
+    const ccx = Math.floor(this.physics.position.x / CHUNK_SIZE);
+    const ccz = Math.floor(this.physics.position.z / CHUNK_SIZE);
+    if (ccx !== this._lastChunk.cx || ccz !== this._lastChunk.cz) {
+      this._lastChunk = { cx: ccx, cz: ccz };
+      this.world.streamAround(ccx, ccz, this._loadRadius, this.record.editedBlocks || {});
+    }
+
     this.interaction.update(dt);
     this.world.update(dt);
     this.entities.update(dt, this.physics.position, { isNight: this._isNight() });
