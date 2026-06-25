@@ -26,7 +26,8 @@ function genTile(kind) {
   const bases = {
     dirt: [0.42, 0.30, 0.18],
     stone: [0.50, 0.50, 0.53],
-    plank: [0.62, 0.46, 0.27]
+    plank: [0.62, 0.46, 0.27],
+    diamond: [0.45, 0.78, 0.82]
   };
   const base = bases[kind] || [0.5, 0.5, 0.5];
   for (let y = 0; y < TILE; y++) {
@@ -36,6 +37,11 @@ function genTile(kind) {
       if (kind === 'stone' && n < 0.1) m = 0.7;
       if (kind === 'dirt' && n < 0.14) m = 0.65;
       if (kind === 'plank') m = (y % 5 === 0 ? 0.72 : 0.9) + n * 0.12;
+      if (kind === 'diamond') {
+        // Subtle gem facet sparkle.
+        m = 0.85 + n * 0.25;
+        if ((x + y) % 8 === 0 || (x - y + 16) % 8 === 0) m = 1.15;
+      }
       const r = Math.max(0, Math.min(255, base[0] * m * 255)) | 0;
       const g = Math.max(0, Math.min(255, base[1] * m * 255)) | 0;
       const b = Math.max(0, Math.min(255, base[2] * m * 255)) | 0;
@@ -53,10 +59,12 @@ export function injectTheme() {
   const dirt = genTile('dirt');
   const stone = genTile('stone');
   const plank = genTile('plank');
+  const diamond = genTile('diamond');
   const root = document.documentElement;
   if (dirt) root.style.setProperty('--mc-dirt', `url(${dirt})`);
   if (stone) root.style.setProperty('--mc-stone', `url(${stone})`);
   if (plank) root.style.setProperty('--mc-plank', `url(${plank})`);
+  if (diamond) root.style.setProperty('--mc-diamond', `url(${diamond})`);
 
   const style = document.createElement('style');
   style.id = 'mc-theme';

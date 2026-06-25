@@ -107,9 +107,7 @@ export class Avatar {
       return d;
     };
 
-    // Ears (behind head), head, hair cap + fringe.
-    part(17, 12, 5, 8, avatar.skin);
-    part(50, 12, 5, 8, avatar.skin);
+    // Head, hair cap + fringe (no ears).
     part(22, 6, 28, 26, avatar.skin);            // head
     part(20, 1, 32, 9, avatar.hair);             // hair top (overhangs)
     flat(22, 10, 28, 4, avatar.hair);            // hair fringe

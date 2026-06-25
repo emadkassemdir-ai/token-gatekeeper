@@ -21,6 +21,8 @@ import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
 import { getFood } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
+import { ViewModel } from './player/ViewModel.js';
+import { Audio } from './audio/AudioManager.js';
 import { EntityManager } from './entities/EntityManager.js';
 import { GameMenu } from './ui/GameMenu.js';
 import { HUD } from './ui/HUD.js';
@@ -149,13 +151,20 @@ class Game {
     this.interaction.onEdit = (x, y, z, id) => {
       this._recordEdit(x, y, z, id);
       this.net?.sendEdit({ x, y, z, id }); // share local edits with peers
+      this.viewModel?.swing();
+      if (id === 0) Audio.mine(); else Audio.place();
     };
     this.interaction.onMine = (dropType) => this.inventory.add(dropType, 1);
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
       this.camera.getWorldDirection(this._dir);
-      return this.entities.playerAttack(this.camera.position, this._dir, this.inventory.getSelectedType());
+      const hit = this.entities.playerAttack(this.camera.position, this._dir, this.inventory.getSelectedType());
+      this.viewModel?.swing();
+      if (hit) Audio.hit();
+      return hit;
     };
+    // Audio cue when the player takes damage.
+    this.stats.onDamage = () => Audio.hurt();
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
       if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
@@ -215,10 +224,14 @@ class Game {
     this.hud = new HUD(this.app, this.record, this.inventory, this.stats);
     this.crosshair.classList.add('visible');
 
+    // First-person held-item viewmodel (overlay).
+    this.viewModel = new ViewModel();
+    this.viewModel.setAspect(window.innerWidth / window.innerHeight);
+
     // Crafting menu (E). Needs a crafting-table proximity test.
     this.crafting = new CraftingMenu(this.app, this.inventory, () => this._nearCraftingTable(), {
       onOpen: () => this._releasePointer(),
-      log: (msg) => this.chat?.system(msg)
+      log: (msg) => { this.chat?.system(msg); Audio.craft(); }
     });
 
     // Chat (T) + commands (25 cheat commands gated by the world's cheats flag).
@@ -232,7 +245,7 @@ class Game {
     // Furnace / smelting menu (G).
     this.smelting = new SmeltingMenu(this.app, this.inventory, () => this._nearFurnace(), {
       onOpen: () => this._releasePointer(),
-      log: (msg) => this.chat?.system(msg)
+      log: (msg) => { this.chat?.system(msg); Audio.craft(); }
     });
 
     // Multiplayer menu (M).
@@ -254,6 +267,7 @@ class Game {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.viewModel?.setAspect(window.innerWidth / window.innerHeight);
     };
     window.addEventListener('resize', this._onResize);
     this._onUnload = () => this.save();
@@ -387,6 +401,8 @@ class Game {
 
   start() {
     this._running = true;
+    Audio.resume();
+    Audio.startMusic();
     this._loop();
   }
 
@@ -436,6 +452,11 @@ class Game {
       dt
     );
 
+    // First-person held item: keep in sync, swing while mining, animate.
+    this.viewModel.setHeld(this.inventory.getSelectedType());
+    if (this.interaction.breaking && this.viewModel._swing === 0) this.viewModel.swing();
+    this.viewModel.update(dt);
+
     this._autosaveTimer += dt;
     if (this._autosaveTimer >= AUTOSAVE_INTERVAL) {
       this._autosaveTimer = 0;
@@ -443,6 +464,11 @@ class Game {
     }
 
     this.renderer.render(this.scene, this.camera);
+    // Overlay the held-item viewmodel on top of the world.
+    this.renderer.autoClear = false;
+    this.renderer.clearDepth();
+    this.renderer.render(this.viewModel.scene, this.viewModel.camera);
+    this.renderer.autoClear = true;
   };
 
   /**
@@ -480,9 +506,20 @@ class Game {
 
 /* --------------------------------- boot ---------------------------------- */
 
+/** Global UI click sound + audio unlock (audio needs a user gesture). */
+function wireUiAudio() {
+  const sel = 'button, .mc-btn, .chip, .hud-slot, .inv-cell, .inv-slot, .craft-btn, ' +
+    '.smelt-btn, .world-play, .world-del, .tc-btn, .ae-swatch, .ae-preset, .cw-toggle button, .mp-tab';
+  document.addEventListener('pointerdown', (e) => {
+    Audio.resume();
+    if (e.target.closest && e.target.closest(sel)) Audio.click();
+  }, true);
+}
+
 async function boot() {
   const app = document.getElementById('app');
   injectTheme(); // Minecraft-style pixel font + textures for the whole UI
+  wireUiAudio();
   const avatar = Avatar.load();
 
   const menu = new GameMenu(app, {

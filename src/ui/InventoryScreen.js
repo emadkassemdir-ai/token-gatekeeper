@@ -301,9 +301,10 @@ export class InventoryScreen {
       #inv.open { display: flex; }
       .inv-panel {
         width: min(620px, 94vw); max-height: 86vh; overflow: hidden;
-        background: rgba(20,23,28,0.98); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.55);
-        display: flex; flex-direction: column;
+        background-color: #234a4d; background-image: var(--mc-diamond);
+        background-size: 56px; image-rendering: pixelated;
+        border: 4px solid #0e2e31; box-shadow: 0 0 0 4px #5fc6cd, 0 18px 50px rgba(0,0,0,0.6);
+        border-radius: 0; display: flex; flex-direction: column;
       }
       .inv-head { display: flex; justify-content: space-between; align-items: center;
         padding: 14px 18px; font-weight: 800; letter-spacing: 2px; color: #fff;
