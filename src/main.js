@@ -552,6 +552,15 @@ class Game {
       }
     }
 
+    // Mobile: reveal the SMELT button only when near a placed furnace.
+    if (this.touchControls) {
+      this._furnaceTimer = (this._furnaceTimer || 0) - dt;
+      if (this._furnaceTimer <= 0) {
+        this._furnaceTimer = 0.4;
+        this.touchControls.setSmeltAvailable(this._nearFurnace());
+      }
+    }
+
     this.hud.update(
       {
         position: this.physics.position,

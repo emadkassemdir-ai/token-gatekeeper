@@ -15,6 +15,35 @@
  * Multi-touch works because a touch keeps targeting its origin element, so the
  * joystick and the look/break gesture run simultaneously.
  */
+
+/**
+ * Blocky, pixel-art button glyphs (no emoji). Each is a 16×16 SVG drawn from
+ * crisp rectangles so it stays sharp and matches the Minecraft aesthetic.
+ * `currentColor` lets them inherit the button text colour.
+ */
+const TC_ICONS = {
+  // Single up arrow.
+  jump: '<rect x="7" y="2" width="2" height="2"/><rect x="5" y="4" width="6" height="2"/><rect x="3" y="6" width="10" height="2"/><rect x="6" y="8" width="4" height="6"/>',
+  // Single down arrow.
+  down: '<rect x="6" y="2" width="4" height="6"/><rect x="3" y="8" width="10" height="2"/><rect x="5" y="10" width="6" height="2"/><rect x="7" y="12" width="2" height="2"/>',
+  // Double up chevron = ascend / fly.
+  fly: '<rect x="7" y="1" width="2" height="2"/><rect x="5" y="3" width="2" height="2"/><rect x="9" y="3" width="2" height="2"/><rect x="3" y="5" width="2" height="2"/><rect x="11" y="5" width="2" height="2"/><rect x="7" y="7" width="2" height="2"/><rect x="5" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/><rect x="3" y="11" width="2" height="2"/><rect x="11" y="11" width="2" height="2"/>',
+  // Chest (inventory).
+  bag: '<rect x="2" y="4" width="12" height="2"/><rect x="2" y="6" width="12" height="7" opacity="0.6"/><rect x="7" y="6" width="2" height="3"/>',
+  // 3×3 crafting grid.
+  craft: '<rect x="2" y="2" width="12" height="12" opacity="0.22"/><rect x="3" y="3" width="2" height="2"/><rect x="7" y="3" width="2" height="2"/><rect x="11" y="3" width="2" height="2"/><rect x="3" y="7" width="2" height="2"/><rect x="7" y="7" width="2" height="2"/><rect x="11" y="7" width="2" height="2"/><rect x="3" y="11" width="2" height="2"/><rect x="7" y="11" width="2" height="2"/><rect x="11" y="11" width="2" height="2"/>',
+  // Flame (furnace).
+  smelt: '<g opacity="0.65"><rect x="7" y="2" width="2" height="2"/><rect x="6" y="4" width="4" height="2"/><rect x="4" y="6" width="8" height="7"/></g><rect x="7" y="8" width="2" height="4"/><rect x="6" y="10" width="4" height="3"/>',
+  // Two players (multiplayer).
+  mp: '<rect x="3" y="4" width="3" height="3"/><rect x="2" y="8" width="5" height="5" opacity="0.75"/><rect x="9" y="3" width="4" height="4"/><rect x="8" y="8" width="6" height="5" opacity="0.75"/>',
+  // Speech bubble (chat).
+  chat: '<rect x="2" y="3" width="12" height="8" opacity="0.45"/><rect x="4" y="11" width="2" height="2" opacity="0.45"/><rect x="4" y="5" width="6" height="2"/><rect x="4" y="8" width="4" height="2"/>'
+};
+
+function tcSvg(name) {
+  return `<svg class="tc-ico" viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor">${TC_ICONS[name] || ''}</svg>`;
+}
+
 export class TouchControls {
   /**
    * @param {HTMLElement} mount
@@ -84,19 +113,22 @@ export class TouchControls {
     // Movement buttons (bottom-right).
     const moveBtns = document.createElement('div');
     moveBtns.className = 'tc-move-btns';
-    moveBtns.appendChild(this._makeTapButton('tc-fly', '✈', 'FLY', () => this.physics.toggleFly()));
-    moveBtns.appendChild(this._makeHoldButton('tc-jump', '⤒', 'JUMP', (d) => this.physics.setJump(d)));
-    moveBtns.appendChild(this._makeHoldButton('tc-down', '⤓', 'DOWN', (d) => this.physics.setDescend(d)));
+    moveBtns.appendChild(this._makeTapButton('tc-fly', 'fly', 'FLY', () => this.physics.toggleFly()));
+    moveBtns.appendChild(this._makeHoldButton('tc-jump', 'jump', 'JUMP', (d) => this.physics.setJump(d)));
+    moveBtns.appendChild(this._makeHoldButton('tc-down', 'down', 'DOWN', (d) => this.physics.setDescend(d)));
     this.mount.appendChild(moveBtns);
 
     // Utility buttons (right side, above movement).
     const utilBtns = document.createElement('div');
     utilBtns.className = 'tc-util-btns';
-    utilBtns.appendChild(this._makeTapButton('tc-bag', '🎒', 'BAG', () => this.handlers.openInventory?.()));
-    utilBtns.appendChild(this._makeTapButton('tc-craft', '🛠', 'CRAFT', () => this.handlers.openCraft?.()));
-    utilBtns.appendChild(this._makeTapButton('tc-smelt', '🔥', 'SMELT', () => this.handlers.openSmelt?.()));
-    utilBtns.appendChild(this._makeTapButton('tc-mp', '🌐', 'PLAY', () => this.handlers.openMultiplayer?.()));
-    utilBtns.appendChild(this._makeTapButton('tc-chat', '💬', 'CHAT', () => this.handlers.openChat?.()));
+    utilBtns.appendChild(this._makeTapButton('tc-bag', 'bag', 'BAG', () => this.handlers.openInventory?.()));
+    utilBtns.appendChild(this._makeTapButton('tc-craft', 'craft', 'CRAFT', () => this.handlers.openCraft?.()));
+    // Smelting is unavailable until the player crafts + stands near a furnace.
+    this.smeltBtn = this._makeTapButton('tc-smelt', 'smelt', 'SMELT', () => this.handlers.openSmelt?.());
+    this.smeltBtn.style.display = 'none';
+    utilBtns.appendChild(this.smeltBtn);
+    utilBtns.appendChild(this._makeTapButton('tc-mp', 'mp', 'PLAY', () => this.handlers.openMultiplayer?.()));
+    utilBtns.appendChild(this._makeTapButton('tc-chat', 'chat', 'CHAT', () => this.handlers.openChat?.()));
     this.mount.appendChild(utilBtns);
 
     // A hint shown briefly.
@@ -127,11 +159,16 @@ export class TouchControls {
     return btn;
   }
 
-  _makeButtonEl(cls, glyph, label) {
+  _makeButtonEl(cls, icon, label) {
     const btn = document.createElement('div');
     btn.className = 'tc-btn ' + cls;
-    btn.innerHTML = `<span class="tc-glyph">${glyph}</span><span class="tc-label">${label}</span>`;
+    btn.innerHTML = `<span class="tc-glyph">${tcSvg(icon)}</span><span class="tc-label">${label}</span>`;
     return btn;
+  }
+
+  /** Show/hide the SMELT button based on furnace proximity. @param {boolean} v */
+  setSmeltAvailable(v) {
+    if (this.smeltBtn) this.smeltBtn.style.display = v ? '' : 'none';
   }
 
   /* ----------------------- look / break / place ------------------------- */
@@ -287,8 +324,11 @@ export class TouchControls {
         background: rgba(10,12,16,0.5); border: 2px solid rgba(255,255,255,0.18); color: #eaf2fb; }
       .tc-btn.active { background: rgba(108,194,74,0.35); border-color: var(--accent, #6cc24a); transform: scale(0.94); }
       .tc-btn.tc-jump { width: 78px; height: 78px; }
-      .tc-glyph { font-size: 24px; line-height: 1; }
-      .tc-label { font-size: 8.5px; letter-spacing: 1px; margin-top: 3px; opacity: 0.85; }
+      .tc-glyph { display: flex; align-items: center; justify-content: center; line-height: 1; }
+      .tc-ico { width: 26px; height: 26px; image-rendering: pixelated; display: block; }
+      .tc-btn.tc-jump .tc-ico { width: 30px; height: 30px; }
+      .tc-label { font-size: 8.5px; letter-spacing: 1px; margin-top: 3px; opacity: 0.85;
+        font-family: var(--pixel-font, 'Segoe UI'), system-ui, sans-serif; }
       .tc-hint {
         position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 55;
         background: rgba(10,12,16,0.6); color: #cfe0f0; font-size: 12px;
