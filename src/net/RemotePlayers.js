@@ -118,7 +118,7 @@ export class RemotePlayers {
    * @param {THREE.Vector3} origin @param {THREE.Vector3} dir @param {number} reach
    * @returns {string|null} player id
    */
-  pickTarget(origin, dir, reach = 3.5) {
+  pickTarget(origin, dir, reach = 4.2) {
     let bestId = null, bestDist = reach;
     for (const [id, p] of this.players) {
       if (p.creative) continue; // creative players can't be hit
@@ -128,7 +128,7 @@ export class RemotePlayers {
       const dist = Math.hypot(cx, cy, cz);
       if (dist > bestDist) continue;
       const dot = (cx * dir.x + cy * dir.y + cz * dir.z) / (dist || 1);
-      if (dot < 0.6) continue;
+      if (dot < 0.4) continue; // forgiving aim cone for touch PvP
       bestId = id; bestDist = dist;
     }
     return bestId;

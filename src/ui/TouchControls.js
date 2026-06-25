@@ -134,7 +134,7 @@ export class TouchControls {
     // A hint shown briefly.
     const hint = document.createElement('div');
     hint.className = 'tc-hint';
-    hint.textContent = 'Drag to look · Hold to mine · Tap to place';
+    hint.textContent = 'Drag to look · Tap a mob to hit · Hold to mine · Tap to place';
     this.mount.appendChild(hint);
     setTimeout(() => hint.classList.add('fade'), 4000);
 
@@ -223,8 +223,11 @@ export class TouchControls {
     if (this._breaking) {
       this.interaction.setBreaking(false);
     } else if (!this._moved && performance.now() - this._startT < this._lpDelay) {
-      // Short, stationary tap -> place a block.
-      this.interaction.requestPlace();
+      // Short, stationary tap: hit a mob/player in our sights first (so you can
+      // actually fight for food & defence on touch); otherwise place a block.
+      if (!(this.interaction.onAttack && this.interaction.onAttack())) {
+        this.interaction.requestPlace();
+      }
     }
 
     this._lookId = null;

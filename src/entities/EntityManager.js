@@ -18,7 +18,7 @@ import { Mob, MOB_TYPES } from './Mob.js';
 import { getAttackDamage } from '../world/ItemTypes.js';
 import { BIOME } from '../world/World.js';
 
-const PLAYER_REACH = 3.6;
+const PLAYER_REACH = 4.2;
 const HOSTILE_CAP_SURFACE = 6;
 const HOSTILE_CAP_CAVE = 12;   // 2x in caves
 const PASSIVE_CAP = 8;
@@ -272,7 +272,7 @@ export class EntityManager {
       const dist = Math.hypot(cx, cy, cz);
       if (dist > bestDist) continue;
       const dot = (cx * dir.x + cy * dir.y + cz * dir.z) / (dist || 1);
-      if (dot < 0.5) continue;
+      if (dot < 0.35) continue; // forgiving melee cone (~70°) so touch aiming works
       best = m; bestDist = dist;
     }
     if (!best) return false;
