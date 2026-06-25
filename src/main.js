@@ -18,7 +18,7 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood } from './world/ItemTypes.js';
+import { getFood, isShield } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
@@ -165,6 +165,15 @@ class Game {
     };
     // Audio cue when the player takes damage.
     this.stats.onDamage = () => Audio.hurt();
+    // Totem of Undying: consume one to cheat death.
+    this.stats.onLethal = () => {
+      if (this.inventory.remove('totem', 1)) {
+        this.chat?.system('✨ A Totem of Undying saved you!');
+        Audio.pickup();
+        return true;
+      }
+      return false;
+    };
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
       if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
@@ -452,8 +461,12 @@ class Game {
       dt
     );
 
+    // Shield: holding a shield reduces damage (more while actively blocking).
+    const held = this.inventory.getSelectedType();
+    this.stats.damageBlock = isShield(held) ? (this.interaction.placing ? 0.85 : 0.5) : 0;
+
     // First-person held item: keep in sync, swing while mining, animate.
-    this.viewModel.setHeld(this.inventory.getSelectedType());
+    this.viewModel.setHeld(held);
     if (this.interaction.breaking && this.viewModel._swing === 0) this.viewModel.swing();
     this.viewModel.update(dt);
 

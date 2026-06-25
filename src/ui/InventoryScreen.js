@@ -108,9 +108,9 @@ export class InventoryScreen {
   /* ------------------------------- render -------------------------------- */
 
   render() {
-    // Avatar display.
+    // Avatar display (with equipped armor shown on the character).
     this.avatarEl.innerHTML = '';
-    this.avatarEl.appendChild(Avatar.buildPreview(this.avatar, 1.5));
+    this.avatarEl.appendChild(Avatar.buildPreview(this.avatar, 1.5, this.stats?.armor));
 
     this._renderArmor();
 

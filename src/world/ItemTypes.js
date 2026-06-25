@@ -139,8 +139,17 @@ export const ITEMS = {
   diamond_helmet:     { type: 'diamond_helmet', name: 'Diamond Helmet', maxStack: 1, armor: 3, slot: 'head', glyph: '⛑' },
   diamond_chestplate: { type: 'diamond_chestplate', name: 'Diamond Chestplate', maxStack: 1, armor: 8, slot: 'chest', glyph: '🦺' },
   diamond_leggings:   { type: 'diamond_leggings', name: 'Diamond Leggings', maxStack: 1, armor: 6, slot: 'legs', glyph: '👖' },
-  diamond_boots:      { type: 'diamond_boots', name: 'Diamond Boots', maxStack: 1, armor: 3, slot: 'feet', glyph: '🥾' }
+  diamond_boots:      { type: 'diamond_boots', name: 'Diamond Boots', maxStack: 1, armor: 3, slot: 'feet', glyph: '🥾' },
+
+  // Defensive items.
+  shield: { type: 'shield', name: 'Shield', maxStack: 1, shield: true, glyph: '🛡' },
+  totem:  { type: 'totem', name: 'Totem of Undying', maxStack: 1, totem: true, glyph: '🪙' }
 };
+
+/** @param {string|null} type @returns {boolean} */
+export function isShield(type) { return !!ITEMS[type]?.shield; }
+/** @param {string|null} type @returns {boolean} */
+export function isTotem(type) { return !!ITEMS[type]?.totem; }
 
 /** Mining-speed multiplier per tool tier (wood = baseline = the spec'd times). */
 export const TIER_SPEED = { wood: 1, stone: 1.6, iron: 2.5, gold: 4, diamond: 3.5 };

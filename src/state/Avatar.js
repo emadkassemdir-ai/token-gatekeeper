@@ -85,7 +85,12 @@ export class Avatar {
    * @param {number} [scale=1]
    * @returns {HTMLElement}
    */
-  static buildPreview(avatar, scale = 1) {
+  /**
+   * @param {Avatar} avatar
+   * @param {number} [scale=1]
+   * @param {{head?:string,chest?:string,legs?:string,feet?:string}} [armor] equipped pieces
+   */
+  static buildPreview(avatar, scale = 1, armor = null) {
     const wrap = document.createElement('div');
     wrap.className = 'avatar-preview';
     wrap.style.cssText = `position:relative;width:${72 * scale}px;height:${132 * scale}px;image-rendering:pixelated;`;
@@ -129,6 +134,15 @@ export class Avatar {
     part(36, 74, 14, 48, avatar.pants);
     flat(20, 122, 16, 4, mixDark(avatar.pants)); // shoe shadow
     flat(36, 122, 16, 4, mixDark(avatar.pants));
+
+    // Equipped armor overlays (tinted plates over the matching body part).
+    if (armor) {
+      const tint = (t) => ({ iron: '#c9c9cf', gold: '#e6c22e', diamond: '#62d4dc' }[String(t).split('_')[0]] || '#bbb');
+      if (armor.head) part(20, 4, 32, 16, tint(armor.head), 'opacity:0.92;');
+      if (armor.chest) { part(16, 30, 40, 30, tint(armor.chest), 'opacity:0.85;'); part(4, 33, 14, 22, tint(armor.chest), 'opacity:0.85;'); part(54, 33, 14, 22, tint(armor.chest), 'opacity:0.85;'); }
+      if (armor.legs) { part(21, 74, 15, 30, tint(armor.legs), 'opacity:0.85;'); part(36, 74, 15, 30, tint(armor.legs), 'opacity:0.85;'); }
+      if (armor.feet) { part(20, 104, 17, 20, tint(armor.feet), 'opacity:0.9;'); part(36, 104, 17, 20, tint(armor.feet), 'opacity:0.9;'); }
+    }
 
     return wrap;
   }

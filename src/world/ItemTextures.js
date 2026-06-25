@@ -128,6 +128,28 @@ function drawMaterial(ctx, type) {
   }
 }
 
+function drawShield(ctx) {
+  const wood = [0.5, 0.36, 0.2], iron = [0.82, 0.82, 0.85];
+  for (let y = 2; y <= 14; y++) {
+    const inset = y > 11 ? (y - 11) : 0; // taper to a point at the bottom
+    for (let x = 3 + inset; x <= 12 - inset; x++) {
+      let c = mul(wood, 0.85 + pnoise(x, y) * 0.25);
+      if (x === 3 + inset || x === 12 - inset || y === 2) c = iron; // metal rim
+      if (x >= 7 && x <= 8 && y >= 5 && y <= 9) c = iron; // central boss
+      px(ctx, x, y, c);
+    }
+  }
+}
+
+function drawTotem(ctx) {
+  const gold = [0.95, 0.8, 0.2], dark = [0.6, 0.45, 0.1];
+  for (let y = 3; y <= 13; y++) for (let x = 5; x <= 10; x++) px(ctx, x, y, mul(gold, 0.85 + pnoise(x, y) * 0.25));
+  // little arms + face
+  px(ctx, 3, 7, gold); px(ctx, 4, 7, gold); px(ctx, 11, 7, gold); px(ctx, 12, 7, gold);
+  px(ctx, 6, 6, dark); px(ctx, 9, 6, dark); // eyes
+  px(ctx, 7, 9, dark); px(ctx, 8, 9, dark); // mouth
+}
+
 function drawFood(ctx, type) {
   const meat = { raw_beef: [0.85, 0.3, 0.3], raw_mutton: [0.88, 0.4, 0.4], steak: [0.5, 0.3, 0.15], cooked_mutton: [0.55, 0.34, 0.18] }[type];
   const fish = { raw_salmon: [0.92, 0.5, 0.5], cooked_salmon: [0.85, 0.5, 0.25] }[type];
@@ -159,6 +181,8 @@ export function getItemIcon(type) {
   if (blockId) drawBlock(ctx, blockId);
   else if (def.tool) drawTool(ctx, def.tool, def.tier);
   else if (def.slot) drawArmor(ctx, def.slot, type.split('_')[0]);
+  else if (def.shield) drawShield(ctx);
+  else if (def.totem) drawTotem(ctx);
   else if (def.food) drawFood(ctx, type);
   else drawMaterial(ctx, type);
 

@@ -63,6 +63,18 @@ export const RECIPES = [
     inputs: [{ type: 'stone', count: 8 }],
     requiresTable: true
   },
+  {
+    id: 'shield',
+    output: 'shield', outputCount: 1,
+    inputs: [{ type: 'oak_planks', count: 6 }, { type: 'iron_ingot', count: 1 }],
+    requiresTable: true
+  },
+  {
+    id: 'totem',
+    output: 'totem', outputCount: 1,
+    inputs: [{ type: 'gold_ingot', count: 8 }, { type: 'diamond', count: 1 }],
+    requiresTable: true
+  },
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

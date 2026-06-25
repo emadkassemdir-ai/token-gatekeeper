@@ -25,6 +25,9 @@ export class PlayerStats {
     this.armor = { head: null, chest: null, legs: null, feet: null };
 
     this.god = false; // cheat: invulnerability
+    this.damageBlock = 0; // 0..1 shield damage reduction (set by the engine)
+    /** Called when about to die; return true if a totem saved the player. */
+    this.onLethal = null;
 
     this._damageCooldown = 0; // i-frames after taking a hit
     this._regenTimer = 0;
@@ -89,14 +92,24 @@ export class PlayerStats {
 
   damage(amount) {
     if (this.isCreative || this.god || this.dead || this._damageCooldown > 0) return false;
-    // Armor reduces incoming damage by 4% per point, capped at 80%.
+    // Shield reduction first, then armor (4%/point, capped 80%).
+    amount = amount * (1 - (this.damageBlock || 0));
     const reduction = Math.min(0.8, this.armorTotal() * 0.04);
     amount = amount * (1 - reduction);
     this.health = Math.max(0, this.health - amount);
     this._damageCooldown = 0.6;
     this._regenTimer = 0;
     this.onDamage?.(amount);
-    if (this.health <= 0) this._die();
+    if (this.health <= 0) {
+      // Totem of Undying: cheat death once if available.
+      if (this.onLethal && this.onLethal()) {
+        this.health = 5;
+        this.hunger = Math.max(this.hunger, 5);
+        this.dead = false;
+      } else {
+        this._die();
+      }
+    }
     return true;
   }
 
