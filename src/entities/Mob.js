@@ -29,6 +29,20 @@ export const MOB_TYPES = {
     drops: [['string', 1], ['spider_eye', 1]], body: 0x2a2420, head: 0x2a2420, w: 1.0, h: 0.7 },
   enderman: { passive: true, hp: 16, speed: 2.4, drop: 'ender_pearl', dropCount: 1,
     body: 0x14141c, head: 0x14141c, w: 0.5, h: 2.6 },
+  husk: { hostile: true, melee: true, hp: 8, speed: 2.4, aggro: 18, drop: 'rotten_flesh',
+    body: 0xb6a06a, head: 0xc6b07a, w: 0.6, h: 1.8 },
+  stray: { hostile: true, ranged: true, hp: 8, speed: 2.4, aggro: 18, drops: [['bone', 1], ['arrow', 1]],
+    body: 0xc6d2d6, head: 0xd2dde0, w: 0.5, h: 1.8 },
+  drowned: { hostile: true, melee: true, aquatic: true, hp: 8, speed: 1.8, aggro: 16, drop: 'rotten_flesh',
+    body: 0x3a6a64, head: 0x4a7a72, w: 0.6, h: 1.8 },
+  witch: { hostile: true, ranged: true, hp: 14, speed: 2.2, aggro: 18, drop: 'redstone', dropCount: 2,
+    body: 0x4a2a5a, head: 0x6a8a6a, w: 0.6, h: 1.8 },
+  slime: { hostile: true, melee: true, hp: 4, speed: 2.0, aggro: 16, drop: 'slimeball', dropCount: 1,
+    body: 0x6ec24a, head: 0x6ec24a, w: 0.8, h: 0.8 },
+  rabbit: { passive: true, hp: 3, speed: 2.2, drops: [['raw_rabbit', 1], ['rabbit_foot', 1]],
+    body: 0xb89878, head: 0xb89878, w: 0.4, h: 0.5 },
+  bat: { passive: true, flying: true, hp: 2, speed: 2.6, drop: null,
+    body: 0x3a2e24, head: 0x3a2e24, w: 0.4, h: 0.4 },
   // ---- Nether mobs ----
   pigman: { hostile: true, melee: true, nether: true, hp: 10, speed: 2.4, aggro: 16,
     drop: 'cooked_porkchop', dropCount: 1, body: 0x9c7a6a, head: 0xd8a0a0, w: 0.6, h: 1.8 },
@@ -91,7 +105,9 @@ export class Mob {
       creeper: buildCreeper, fish: buildFish, squid: buildSquid,
       pigman: buildPigman, blaze: buildBlaze, ghast: buildGhast,
       pig: buildPig, chicken: buildChicken, skeleton: buildSkeleton,
-      spider: buildSpider, enderman: buildEnderman, ender_dragon: buildDragon
+      spider: buildSpider, enderman: buildEnderman, ender_dragon: buildDragon,
+      husk: buildZombie, drowned: buildZombie, stray: buildSkeleton,
+      witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -312,8 +328,8 @@ function buildSheep(group) {
   quadLegs(group, 0x4a4038, 0.32, 0.42, 0.55, 0);
 }
 
-function buildZombie(group) {
-  const skin = 0x4a8f44, shirt = 0x3a5a8c, pants = 0x2f3a6b;
+function buildZombie(group, cfg) {
+  const skin = cfg?.head ?? 0x4a8f44, shirt = 0x3a5a8c, pants = 0x2f3a6b;
   add(group, box(0.6, 1.0, 0.35, shirt), 0, 1.0, 0);          // torso
   const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#3a7d35'); rect(ctx, 3, 5, 3, 3, '#0a1a0a'); rect(ctx, 10, 5, 3, 3, '#0a1a0a'); rect(ctx, 5, 11, 6, 2, '#0a1a0a'); });
   add(group, headWithFace(0.5, 0.5, 0.5, skin, face), 0, 1.75, 0);
@@ -413,8 +429,8 @@ function buildChicken(group) {
   add(group, box(0.1, 0.3, 0.3, 0xdedede), 0.24, 0.5, 0);
 }
 
-function buildSkeleton(group) {
-  const bone = 0xe2e2dc;
+function buildSkeleton(group, cfg) {
+  const bone = cfg?.head ?? 0xe2e2dc;
   add(group, box(0.32, 0.9, 0.2, bone), 0, 1.0, 0);           // ribcage
   add(group, box(0.08, 0.9, 0.08, bone), 0, 1.0, 0);          // spine
   const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#e2e2dc'); rect(ctx, 3, 6, 3, 3, '#111'); rect(ctx, 10, 6, 3, 3, '#111'); rect(ctx, 5, 11, 6, 1, '#555'); });
@@ -462,6 +478,46 @@ function buildDragon(group) {
   add(group, box(0.35, 0.35, 1.2, skin), 0, 1.4, -3.0);
   // Stubby legs.
   quadLegs(group, skin, 0.5, 0.7, 0.7, 0);
+}
+
+function buildWitch(group) {
+  const robe = 0x3a2a4a, skin = 0x6a8a6a, hat = 0x222028;
+  add(group, box(0.55, 1.0, 0.4, robe), 0, 1.0, 0);          // robe
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#6a8a6a'); rect(ctx, 3, 6, 3, 3, '#111'); rect(ctx, 10, 6, 3, 3, '#111'); rect(ctx, 6, 10, 4, 2, '#3a2a2a'); rect(ctx, 7, 8, 2, 3, '#8a5a4a'); });
+  add(group, headWithFace(0.5, 0.5, 0.5, skin, face), 0, 1.7, 0);
+  add(group, box(0.55, 0.16, 0.55, hat), 0, 1.98, 0);        // hat brim
+  add(group, box(0.28, 0.4, 0.28, hat), 0.05, 2.2, 0);       // hat cone
+  add(group, box(0.14, 0.8, 0.16, robe), -0.32, 1.0, 0.05);  // arms
+  add(group, box(0.14, 0.8, 0.16, robe), 0.32, 1.0, 0.05);
+}
+
+function buildSlime(group, cfg) {
+  const g = cfg?.body ?? 0x6ec24a;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    new THREE.MeshLambertMaterial({ color: g, transparent: true, opacity: 0.8 }));
+  add(group, body, 0, 0.4, 0);
+  add(group, box(0.5, 0.5, 0.5, 0x4f9d3a), 0, 0.4, 0);       // inner cube
+  add(group, box(0.08, 0.08, 0.08, 0x111), 0.14, 0.5, 0.4);  // eyes
+  add(group, box(0.08, 0.08, 0.08, 0x111), -0.14, 0.5, 0.4);
+}
+
+function buildRabbit(group, cfg) {
+  const fur = cfg?.body ?? 0xb89878;
+  add(group, box(0.34, 0.3, 0.45, fur), 0, 0.28, 0);          // body
+  add(group, box(0.28, 0.28, 0.28, fur), 0, 0.42, 0.28);      // head
+  add(group, box(0.06, 0.22, 0.06, fur), -0.06, 0.62, 0.28);  // ears
+  add(group, box(0.06, 0.22, 0.06, fur), 0.06, 0.62, 0.28);
+  add(group, box(0.05, 0.05, 0.05, 0x553333), 0, 0.42, 0.43); // nose
+  add(group, box(0.12, 0.12, 0.12, 0xeeeeee), 0, 0.24, -0.26); // tail
+}
+
+function buildBat(group) {
+  const dark = 0x3a2e24;
+  add(group, box(0.3, 0.35, 0.25, dark), 0, 1.0, 0);          // body
+  add(group, box(0.06, 0.12, 0.06, dark), -0.06, 1.22, 0);    // ears
+  add(group, box(0.06, 0.12, 0.06, dark), 0.06, 1.22, 0);
+  const wL = add(group, box(0.5, 0.3, 0.04, 0x2a2018), -0.38, 1.05, 0); wL.rotation.z = 0.3;
+  const wR = add(group, box(0.5, 0.3, 0.04, 0x2a2018), 0.38, 1.05, 0); wR.rotation.z = -0.3;
 }
 
 function buildGeneric(group, cfg) {

@@ -33,6 +33,11 @@ export class PlayerStats {
     /** Enchantment level per item type (efficiency / sharpness / protection). */
     this.enchants = {};
 
+    /** Status effects: name -> seconds remaining (potions, golden apples). */
+    this.effects = {};
+    this.absorptionHp = 0; // extra "yellow heart" buffer from absorption
+    this._effectTick = 0;
+
     /** Called when about to die; return true if a totem saved the player. */
     this.onLethal = null;
 
@@ -105,6 +110,25 @@ export class PlayerStats {
     this.enchants[type] = Math.max(this.enchants[type] || 0, level);
   }
 
+  /* ------------------------------- status effects ------------------------ */
+
+  /** Grant a timed status effect (extends if already active). */
+  applyEffect(name, seconds) {
+    this.effects[name] = Math.max(this.effects[name] || 0, seconds);
+    if (name === 'instant_health') { this.heal(6); delete this.effects[name]; }
+    else if (name === 'instant_damage') { this._damageCooldown = 0; this.damage(6); delete this.effects[name]; }
+    else if (name === 'absorption') this.absorptionHp = Math.max(this.absorptionHp, 4);
+  }
+
+  hasEffect(name) { return (this.effects[name] || 0) > 0; }
+
+  /** Speed/Slowness movement multiplier. */
+  speedMult() { return (this.hasEffect('speed') ? 1.25 : 1) * (this.hasEffect('slowness') ? 0.7 : 1); }
+  /** Jump Boost multiplier. */
+  jumpMult() { return this.hasEffect('jump_boost') ? 1.35 : 1; }
+  /** Strength/Weakness flat melee damage modifier (hearts). */
+  damageMod() { return (this.hasEffect('strength') ? 1.5 : 0) - (this.hasEffect('weakness') ? 1 : 0); }
+
   /**
    * Equip an armor item into its slot.
    * @param {string} type
@@ -135,6 +159,11 @@ export class PlayerStats {
     amount = amount * (1 - (this.damageBlock || 0));
     const reduction = Math.min(0.8, this.armorTotal() * 0.04);
     amount = amount * (1 - reduction);
+    // Absorption (golden apple) soaks damage before health.
+    if (this.absorptionHp > 0) {
+      const a = Math.min(this.absorptionHp, amount);
+      this.absorptionHp -= a; amount -= a;
+    }
     this.health = Math.max(0, this.health - amount);
     this._damageCooldown = 0.6;
     this._regenTimer = 0;
@@ -201,11 +230,31 @@ export class PlayerStats {
     this._damageCooldown = 0;
   }
 
+  /** Count down active effects and apply per-second regeneration/poison. */
+  _tickEffects(dt) {
+    let any = false;
+    for (const name in this.effects) {
+      this.effects[name] -= dt;
+      if (this.effects[name] <= 0) { delete this.effects[name]; if (name === 'absorption') this.absorptionHp = 0; }
+      else any = true;
+    }
+    if (!any) return;
+    this._effectTick += dt;
+    if (this._effectTick >= 1) {
+      this._effectTick = 0;
+      if (this.hasEffect('regeneration') && this.health < MAX_HEALTH) this.heal(1);
+      if (this.hasEffect('poison') && this.health > 0.5 && !this.isCreative) {
+        this._damageCooldown = 0; this.health = Math.max(0.5, this.health - 1);
+      }
+    }
+  }
+
   /**
    * Per-frame vitals tick.
    * @param {number} dt seconds
    */
   update(dt) {
+    this._tickEffects(dt); // potions/golden apples tick even in creative
     if (this.isCreative || this.dead) return;
 
     if (this._damageCooldown > 0) this._damageCooldown -= dt;
@@ -243,7 +292,8 @@ export class PlayerStats {
   toJSON() {
     return {
       mode: this.mode, health: this.health, hunger: this.hunger, armor: this.armor,
-      levels: this.levels, xpProgress: this.xpProgress, enchants: this.enchants
+      levels: this.levels, xpProgress: this.xpProgress, enchants: this.enchants,
+      effects: this.effects, absorptionHp: this.absorptionHp
     };
   }
 
@@ -255,6 +305,8 @@ export class PlayerStats {
     if (typeof data.levels === 'number') this.levels = data.levels;
     if (typeof data.xpProgress === 'number') this.xpProgress = data.xpProgress;
     if (data.enchants && typeof data.enchants === 'object') this.enchants = { ...data.enchants };
+    if (data.effects && typeof data.effects === 'object') this.effects = { ...data.effects };
+    if (typeof data.absorptionHp === 'number') this.absorptionHp = data.absorptionHp;
     if (data.armor && typeof data.armor === 'object') {
       for (const slot of ['head', 'chest', 'legs', 'feet']) {
         if (isArmor(data.armor[slot])) this.armor[slot] = data.armor[slot];

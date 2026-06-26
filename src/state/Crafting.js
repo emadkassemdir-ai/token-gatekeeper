@@ -113,6 +113,18 @@ export const RECIPES = [
   { id: 'bed', output: 'bed', outputCount: 1, inputs: [{ type: 'white_wool', count: 3 }, { type: 'oak_planks', count: 3 }], requiresTable: true },
   { id: 'enchanting_table', output: 'enchanting_table', outputCount: 1, inputs: [{ type: 'obsidian', count: 4 }, { type: 'diamond', count: 2 }, { type: 'book', count: 1 }], requiresTable: true },
 
+  // ---- Brewing + potions support ----
+  { id: 'glass_bottle', output: 'glass_bottle', outputCount: 3, inputs: [{ type: 'glass', count: 3 }], requiresTable: true },
+  { id: 'water_bottle', output: 'water_bottle', outputCount: 1, inputs: [{ type: 'glass_bottle', count: 1 }], requiresTable: false },
+  { id: 'sugar', output: 'sugar', outputCount: 1, inputs: [{ type: 'wheat', count: 1 }], requiresTable: false },
+  { id: 'fermented_spider_eye', output: 'fermented_spider_eye', outputCount: 1, inputs: [{ type: 'spider_eye', count: 1 }, { type: 'sugar', count: 1 }], requiresTable: true },
+  { id: 'magma_cream', output: 'magma_cream', outputCount: 1, inputs: [{ type: 'blaze_powder', count: 1 }, { type: 'slimeball', count: 1 }], requiresTable: true },
+  { id: 'brewing_stand', output: 'brewing_stand', outputCount: 1, inputs: [{ type: 'blaze_rod', count: 1 }, { type: 'cobblestone', count: 3 }], requiresTable: true },
+  { id: 'golden_apple', output: 'golden_apple', outputCount: 1, inputs: [{ type: 'apple', count: 1 }, { type: 'gold_ingot', count: 8 }], requiresTable: true },
+  { id: 'enchanted_golden_apple', output: 'enchanted_golden_apple', outputCount: 1, inputs: [{ type: 'apple', count: 1 }, { type: 'gold_block', count: 8 }], requiresTable: true },
+  { id: 'golden_carrot', output: 'golden_carrot', outputCount: 1, inputs: [{ type: 'wheat', count: 1 }, { type: 'gold_ingot', count: 2 }], requiresTable: true },
+  { id: 'copper_block', output: 'copper_block', outputCount: 1, inputs: [{ type: 'copper_ingot', count: 9 }], requiresTable: true },
+
   // ---- The End ----
   { id: 'blaze_powder', output: 'blaze_powder', outputCount: 2, inputs: [{ type: 'blaze_rod', count: 1 }], requiresTable: false },
   { id: 'eye_of_ender', output: 'eye_of_ender', outputCount: 1, inputs: [{ type: 'ender_pearl', count: 1 }, { type: 'blaze_powder', count: 1 }], requiresTable: false },

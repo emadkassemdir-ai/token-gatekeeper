@@ -41,7 +41,9 @@ export const CATEGORY = {
   // End:
   60: 'stone', 62: 'stone',
   // Utility:
-  63: 'stone', 64: 'soft', 65: 'wood'
+  63: 'stone', 64: 'soft', 65: 'wood',
+  // More blocks:
+  66: 'leaves', 67: 'stone', 68: 'stone', 69: 'stone', 70: 'stone', 71: 'stone', 72: 'glass'
 };
 
 /**
@@ -91,7 +93,10 @@ export const BLOCK_DROPS = {
   // End:
   60: 'end_stone', 61: null, 62: 'dragon_egg',
   // Utility:
-  63: 'enchanting_table', 64: 'bed', 65: 'chest'
+  63: 'enchanting_table', 64: 'bed', 65: 'chest',
+  // More blocks:
+  66: 'nether_wart', 67: 'brewing_stand', 68: 'raw_copper', 69: 'copper_block',
+  70: 'deepslate', 71: 'smooth_stone', 72: 'sea_lantern'
 };
 
 /**
@@ -171,6 +176,13 @@ export const ITEMS = {
   enchanting_table:  { type: 'enchanting_table', name: 'Enchanting Table', maxStack: 64, place: 63 },
   bed:               { type: 'bed', name: 'Bed', maxStack: 64, place: 64 },
   chest:             { type: 'chest', name: 'Chest', maxStack: 64, place: 65 },
+  nether_wart:       { type: 'nether_wart', name: 'Nether Wart', maxStack: 64, place: 66 },
+  brewing_stand:     { type: 'brewing_stand', name: 'Brewing Stand', maxStack: 64, place: 67 },
+  copper_ore:        { type: 'copper_ore', name: 'Copper Ore', maxStack: 64, place: 68 },
+  copper_block:      { type: 'copper_block', name: 'Block of Copper', maxStack: 64, place: 69 },
+  deepslate:         { type: 'deepslate', name: 'Deepslate', maxStack: 64, place: 70 },
+  smooth_stone:      { type: 'smooth_stone', name: 'Smooth Stone', maxStack: 64, place: 71 },
+  sea_lantern:       { type: 'sea_lantern', name: 'Sea Lantern', maxStack: 64, place: 72 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -217,6 +229,38 @@ export const ITEMS = {
   rotten_flesh:   { type: 'rotten_flesh', name: 'Rotten Flesh', maxStack: 64, glyph: '🍖', food: { hunger: 1, raw: true } },
   raw_chicken:    { type: 'raw_chicken', name: 'Raw Chicken', maxStack: 64, glyph: '🍗', food: { hunger: 1.5, raw: true } },
   cooked_chicken: { type: 'cooked_chicken', name: 'Cooked Chicken', maxStack: 64, glyph: '🍗', food: { hunger: 3 } },
+
+  // ---- Brewing + potions ----
+  raw_copper:     { type: 'raw_copper', name: 'Raw Copper', maxStack: 64, glyph: '◆' },
+  copper_ingot:   { type: 'copper_ingot', name: 'Copper Ingot', maxStack: 64, glyph: '▬' },
+  sugar:          { type: 'sugar', name: 'Sugar', maxStack: 64, glyph: '·' },
+  slimeball:      { type: 'slimeball', name: 'Slimeball', maxStack: 64, glyph: '●' },
+  magma_cream:    { type: 'magma_cream', name: 'Magma Cream', maxStack: 64, glyph: '●' },
+  rabbit_foot:    { type: 'rabbit_foot', name: "Rabbit's Foot", maxStack: 64, glyph: '🐾' },
+  fermented_spider_eye: { type: 'fermented_spider_eye', name: 'Fermented Spider Eye', maxStack: 64, glyph: '👁' },
+  glass_bottle:   { type: 'glass_bottle', name: 'Glass Bottle', maxStack: 64, glyph: '⚗' },
+  water_bottle:   { type: 'water_bottle', name: 'Water Bottle', maxStack: 64, potion: true, glyph: '⚗' },
+  awkward_potion: { type: 'awkward_potion', name: 'Awkward Potion', maxStack: 64, potion: true, glyph: '⚗' },
+  potion_healing:         { type: 'potion_healing', name: 'Potion of Healing', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_harming:         { type: 'potion_harming', name: 'Potion of Harming', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_regeneration:    { type: 'potion_regeneration', name: 'Potion of Regeneration', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_strength:        { type: 'potion_strength', name: 'Potion of Strength', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_swiftness:       { type: 'potion_swiftness', name: 'Potion of Swiftness', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_leaping:         { type: 'potion_leaping', name: 'Potion of Leaping', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_fire_resistance: { type: 'potion_fire_resistance', name: 'Potion of Fire Resistance', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_water_breathing: { type: 'potion_water_breathing', name: 'Potion of Water Breathing', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_night_vision:    { type: 'potion_night_vision', name: 'Potion of Night Vision', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_poison:          { type: 'potion_poison', name: 'Potion of Poison', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_weakness:        { type: 'potion_weakness', name: 'Potion of Weakness', maxStack: 1, potion: true, glyph: '⚗' },
+  potion_slowness:        { type: 'potion_slowness', name: 'Potion of Slowness', maxStack: 1, potion: true, glyph: '⚗' },
+
+  // ---- New mob drops + foods ----
+  pufferfish:     { type: 'pufferfish', name: 'Pufferfish', maxStack: 64, glyph: '🐡', food: { hunger: 0.5, raw: true } },
+  raw_rabbit:     { type: 'raw_rabbit', name: 'Raw Rabbit', maxStack: 64, glyph: '🍖', food: { hunger: 1.5, raw: true } },
+  cooked_rabbit:  { type: 'cooked_rabbit', name: 'Cooked Rabbit', maxStack: 64, glyph: '🍖', food: { hunger: 2.5 } },
+  golden_apple:   { type: 'golden_apple', name: 'Golden Apple', maxStack: 64, glyph: '🍏', food: { hunger: 2 }, golden: 'apple' },
+  enchanted_golden_apple: { type: 'enchanted_golden_apple', name: 'Enchanted Golden Apple', maxStack: 64, glyph: '🍏', food: { hunger: 2 }, golden: 'god' },
+  golden_carrot:  { type: 'golden_carrot', name: 'Golden Carrot', maxStack: 64, glyph: '🥕', food: { hunger: 3 } },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -294,7 +338,8 @@ export const CREATIVE_PALETTE = [
   'white_wool', 'red_wool', 'blue_wool', 'green_wool',
   'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block',
   'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt',
-  'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf'
+  'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf',
+  'brewing_stand', 'copper_ore', 'copper_block', 'deepslate', 'smooth_stone', 'sea_lantern', 'nether_wart'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

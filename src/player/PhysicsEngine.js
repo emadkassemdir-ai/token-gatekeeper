@@ -81,6 +81,9 @@ export class PhysicsEngine {
     this.touch = false;
     // Cheat hooks.
     this.speedMultiplier = 1;
+    // Status-effect multipliers (Speed/Slowness, Jump Boost) set by the engine.
+    this.statusSpeed = 1;
+    this.statusJump = 1;
     this.noclip = false;
     // Fly is only allowed in creative (cheats can still force it).
     this.allowFly = true;
@@ -299,7 +302,7 @@ export class PhysicsEngine {
 
     const fly = this.flyMode || this.noclip;
     const baseSpeed = fly ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
-    const speed = baseSpeed * this.speedMultiplier;
+    const speed = baseSpeed * this.speedMultiplier * this.statusSpeed;
     const wishX = (forward.x * iz + right.x * ix) * speed;
     const wishZ = (forward.z * iz + right.z * ix) * speed;
 
@@ -328,7 +331,7 @@ export class PhysicsEngine {
 
     // Grounded jump with a short variable-height sustain window.
     if (this.onGround && this._jumpHeld) {
-      this.velocity.y = JUMP_VELOCITY;
+      this.velocity.y = JUMP_VELOCITY * this.statusJump;
       this.onGround = false;
       this._jumpTimer = 0;
     } else if (!this.onGround && this._jumpHeld && this._jumpTimer < MAX_JUMP_HOLD) {

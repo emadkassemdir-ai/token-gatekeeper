@@ -28,7 +28,10 @@ export const SMELT_RECIPES = [
   { id: 'porkchop', input: 'raw_porkchop', output: 'cooked_porkchop' },
   { id: 'nether_brick', input: 'netherrack', output: 'nether_brick' },
   { id: 'green_dye', input: 'cactus', output: 'green_dye' },
-  { id: 'chicken', input: 'raw_chicken', output: 'cooked_chicken' }
+  { id: 'chicken', input: 'raw_chicken', output: 'cooked_chicken' },
+  { id: 'rabbit', input: 'raw_rabbit', output: 'cooked_rabbit' },
+  { id: 'copper', input: 'raw_copper', output: 'copper_ingot' },
+  { id: 'smooth_stone', input: 'stone', output: 'smooth_stone' }
 ];
 
 /** Items usable as furnace fuel (any one suffices). */

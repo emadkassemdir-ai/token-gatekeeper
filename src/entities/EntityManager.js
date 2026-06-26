@@ -206,15 +206,19 @@ export class EntityManager {
       if (this._countWhere((m) => m.passive && !m.aquatic) < PASSIVE_CAP) {
         const spot = this._findSurfaceSpot(playerPos);
         if (spot && this._isGrassy(spot)) {
-          this._spawn(['cow', 'sheep', 'pig', 'chicken'][Math.floor(Math.random() * 4)], spot);
+          this._spawn(['cow', 'sheep', 'pig', 'chicken', 'rabbit'][Math.floor(Math.random() * 5)], spot);
         }
       }
     }
 
-    // Aquatic animals whenever water is nearby.
+    // Aquatic animals whenever water is nearby (drowned lurk at night).
     if (this._countWhere((m) => m.aquatic) < PASSIVE_CAP) {
       const wspot = this._findWaterSpot(playerPos);
-      if (wspot) this._spawn(Math.random() < 0.5 ? 'fish' : 'squid', wspot);
+      if (wspot) {
+        const kind = (time.isNight && !this.peaceful && Math.random() < 0.4) ? 'drowned'
+          : (Math.random() < 0.5 ? 'fish' : 'squid');
+        this._spawn(kind, wspot);
+      }
     }
   }
 
@@ -224,9 +228,10 @@ export class EntityManager {
       b === BIOME.FOREST || b === BIOME.SAVANNA || b === BIOME.TAIGA;
   }
 
-  /** Pick an overworld hostile (zombie/creeper/skeleton/spider). */
+  /** Pick an overworld hostile (witch is rarer). */
   _pickHostile() {
-    return ['zombie', 'creeper', 'skeleton', 'spider'][Math.floor(Math.random() * 4)];
+    if (Math.random() < 0.08) return 'witch';
+    return ['zombie', 'creeper', 'skeleton', 'spider', 'husk', 'stray', 'slime'][Math.floor(Math.random() * 7)];
   }
 
   _findSurfaceSpot(playerPos) {

@@ -35,6 +35,8 @@ import { InventoryScreen } from './ui/InventoryScreen.js';
 import { SmeltingMenu } from './ui/SmeltingMenu.js';
 import { EnchantingMenu } from './ui/EnchantingMenu.js';
 import { ChestMenu, CHEST_SLOTS } from './ui/ChestMenu.js';
+import { BrewingMenu } from './ui/BrewingMenu.js';
+import { isPotion, drinkPotion } from './state/Potions.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
@@ -202,8 +204,8 @@ class Game {
         if (tid) { this.net.sendAttack(tid, 4); this.remotePlayers.flashHit(tid); return true; }
         return this.entities.playerAttack(this.camera.position, this._dir, held, 40);
       }
-      // Sharpness enchant adds attack damage.
-      const bonus = this.stats.getEnchant(held) * 0.5;
+      // Sharpness enchant + Strength/Weakness potions modify attack damage.
+      const bonus = this.stats.getEnchant(held) * 0.5 + this.stats.damageMod();
       // PvP: if a remote (survival) player is in our sights, hit them instead.
       // Creative players neither deal nor take combat damage.
       if (this.net?.connected && !this.stats.isCreative) {
@@ -236,8 +238,16 @@ class Game {
     this.interaction.onInteractBlock = (id, target) => this._interactBlock(id, target);
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
-      if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
-      else if (res.eaten) this.chat?.system('Tasty!');
+      if (!res.eaten) return false;
+      // Golden apples grant Regeneration + Absorption (enchanted = much stronger).
+      if (type === 'golden_apple') { this.stats.applyEffect('regeneration', 5); this.stats.applyEffect('absorption', 120); }
+      else if (type === 'enchanted_golden_apple') {
+        this.stats.applyEffect('regeneration', 30); this.stats.applyEffect('absorption', 120);
+        this.stats.applyEffect('fire_resistance', 300); this.stats.absorptionHp = 8;
+      }
+      else if (type === 'golden_carrot') this.stats.applyEffect('night_vision', 120);
+      if (res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
+      else this.chat?.system('Tasty!');
       return res.eaten;
     };
     this.interaction.onEquip = (type) => {
@@ -356,6 +366,10 @@ class Game {
 
     // Chest storage (per-position).
     this.chestMenu = new ChestMenu(this.app, this.inventory, { onOpen: () => this._releasePointer() });
+
+    // Brewing stand (potions).
+    this.brewing = new BrewingMenu(this.app, this.inventory, () => this._nearBlock(67),
+      { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
 
     // Multiplayer menu (M).
     this.mpMenu = new MultiplayerMenu(this.app, this.net, { onOpen: () => this._releasePointer() });
@@ -531,6 +545,7 @@ class Game {
       case 63: this.enchanting.openMenu(); return true;           // enchanting table
       case 64: return this._sleep();                              // bed
       case 65: this._openChest(target); return true;             // chest
+      case 67: this.brewing.openMenu(); return true;             // brewing stand
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
       case FURNACE_ID: this.smelting.openMenu(); return true;
       default: return false;
@@ -577,7 +592,21 @@ class Game {
     if (isEndEye(type)) return this._openEndPortal(target);
     if (type === 'bonemeal') return this._useBonemeal(target);
     if (type === 'ender_pearl') return this._throwEnderPearl();
+    if (isPotion(type)) return this._drinkPotion(type);
     return false;
+  }
+
+  /** Drink a potion: apply its effect and return an empty bottle. */
+  _drinkPotion(type) {
+    drinkPotion(this.stats, type);
+    if (!this.inventory.isCreative) {
+      this.inventory.remove(type, 1);
+      this.inventory.add('glass_bottle', 1);
+    }
+    Audio.pickup();
+    const name = (type.replace('potion_', '').replace(/_/g, ' '));
+    this.chat?.system(type.startsWith('potion_') ? `Drank Potion of ${name}.` : 'Glug, glug…');
+    return true;
   }
 
   /** Use an Eye of Ender on flat ground to open a horizontal End portal. */
@@ -892,7 +921,7 @@ class Game {
       this._portalTimer = Math.min(0, this._portalTimer + dt); // burn off post-travel grace
     }
     const inLava = this.world.getBlock(fx, fy, fz) === 54 || this.world.getBlock(fx, fy + 1, fz) === 54;
-    if (inLava) {
+    if (inLava && !this.stats.hasEffect('fire_resistance')) {
       this._lavaTimer += dt;
       if (this._lavaTimer >= 0.5) { this._lavaTimer = 0; this.stats._damageCooldown = 0; this.stats.damage(2); }
     } else {
@@ -949,6 +978,9 @@ class Game {
     this.stats.damageBlock = isShield(held) ? (this.interaction.placing ? 0.85 : 0.5) : 0;
     // Efficiency enchant speeds up mining with the held tool.
     this.interaction.mineSpeedMult = 1 + this.stats.getEnchant(held) * 0.25;
+    // Status effects → movement (Speed/Slowness, Jump Boost).
+    this.physics.statusSpeed = this.stats.speedMult();
+    this.physics.statusJump = this.stats.jumpMult();
 
     // First-person held item: keep in sync, swing while mining, animate.
     this.viewModel.setHeld(held);

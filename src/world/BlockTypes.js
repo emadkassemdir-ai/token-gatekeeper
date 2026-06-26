@@ -208,7 +208,18 @@ export const BLOCKS = {
     solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
   65: { id: 65, name: 'Chest', color: [0.6, 0.45, 0.24],
     faceColors: { top: [0.66, 0.5, 0.28], bottom: [0.5, 0.38, 0.2], side: [0.6, 0.45, 0.24] },
-    solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false }
+    solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+
+  // ---- More blocks ----
+  66: { id: 66, name: 'Nether Wart', color: [0.5, 0.1, 0.12], solid: false, transparent: true, breakable: true, hardness: 0.2, liquid: false },
+  67: { id: 67, name: 'Brewing Stand', color: [0.45, 0.42, 0.4],
+    faceColors: { top: [0.7, 0.4, 0.2], bottom: [0.4, 0.38, 0.36], side: [0.45, 0.42, 0.4] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  68: { id: 68, name: 'Copper Ore', color: [0.55, 0.45, 0.4], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  69: { id: 69, name: 'Block of Copper', color: [0.78, 0.45, 0.3], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  70: { id: 70, name: 'Deepslate', color: [0.28, 0.28, 0.32], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  71: { id: 71, name: 'Smooth Stone', color: [0.62, 0.62, 0.64], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+  72: { id: 72, name: 'Sea Lantern', color: [0.82, 0.92, 0.9], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -219,7 +230,8 @@ export const PLACEABLE_BLOCKS = [
   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
   53, 55, 56, 57, 59, // nether blocks (lava/portal not hand-placeable)
   60, 62,             // end blocks (portal not hand-placeable)
-  63, 64, 65          // utility blocks
+  63, 64, 65,         // utility blocks
+  66, 67, 68, 69, 70, 71, 72 // brewing/copper/stone/light
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

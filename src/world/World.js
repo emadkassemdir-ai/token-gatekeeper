@@ -129,7 +129,14 @@ const TEX = {
   62: { all: 'dragonegg' },
   63: { top: 'enchtop', side: 'obsidian', bottom: 'obsidian' },
   64: { top: 'bedtop', side: 'bedside', bottom: 'planks' },
-  65: { top: 'chesttop', side: 'chestside', bottom: 'planks' }
+  65: { top: 'chesttop', side: 'chestside', bottom: 'planks' },
+  66: { all: 'netherwart' },
+  67: { top: 'brewtop', side: 'brewside', bottom: 'stone' },
+  68: { all: 'ore', base: STONE_BASE, accent: [0.85, 0.5, 0.3] }, // copper ore
+  69: { all: 'metal' },
+  70: { all: 'stone' },   // deepslate (dark colour applied)
+  71: { all: 'smoothstone' },
+  72: { all: 'sealantern' }
 };
 
 const TILE = 16; // texels per tile
@@ -399,6 +406,25 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = mul(base, 0.88 + n * 0.12);
           if (px === 0 || py === 0 || px === 15 || py === 15) c = mul(base, 0.6);
           if (py >= 6 && py <= 8 && px >= 6 && px <= 9) c = [0.25, 0.2, 0.1]; // latch
+          break;
+        case 'netherwart':
+          c = [0.18, 0.05, 0.06]; // dark backing
+          if (pnoise(px * 1.3, py * 1.3) > 0.55) c = mul([0.6, 0.12, 0.14], 0.8 + n * 0.5); // clumps
+          break;
+        case 'brewtop':
+          c = mul([0.4, 0.38, 0.36], 0.9 + n * 0.15);
+          if (px >= 6 && px <= 9 && py >= 2 && py <= 13) c = [0.75, 0.45, 0.2]; // blaze rod spine
+          break;
+        case 'brewside':
+          c = mul(base, 0.85 + n * 0.15);
+          if (py > 10) c = mul([0.55, 0.52, 0.5], 0.9); // stone base
+          break;
+        case 'smoothstone':
+          c = mul(base, 0.94 + n * 0.06);
+          break;
+        case 'sealantern':
+          c = mul(base, 0.92 + n * 0.1);
+          if ((px % 4 < 2) === (py % 4 < 2)) c = [0.95, 1.0, 0.98]; // bright tiles
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);
@@ -893,6 +919,14 @@ export class World {
             if (chunk.getLocal(lx, y, lz) === AIR) { chunk.setLocal(lx, y, lz, 36); break; }
           }
         }
+        // Nether wart sprouting on exposed soul sand.
+        if (this.noise.hash2(wx * 1.7 + 3, wz * 1.7 + 9) < 0.04) {
+          for (let y = floorH; y > LAVA; y--) {
+            if (chunk.getLocal(lx, y, lz) === 55 && chunk.getLocal(lx, y + 1, lz) === AIR) {
+              chunk.setLocal(lx, y + 1, lz, 66); break;
+            }
+          }
+        }
       }
     }
   }
@@ -977,8 +1011,9 @@ export class World {
     if (v >= 0.110 && v < 0.140) return 20;             // gravel
     if (v >= 0.140 && v < 0.180) return 27;             // granite
     if (v >= 0.180 && v < 0.220) return 26;             // diorite
+    if (y < 40 && v >= 0.260 && v < 0.300) return 68;   // copper ore
     if (v >= 0.220 && v < 0.260) return 25;             // andesite
-    return 3;                                           // stone
+    return y < 8 ? 70 : 3;                              // deepslate deep down, else stone
   }
 
   /**
