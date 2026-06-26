@@ -120,9 +120,15 @@ export class EntityManager {
 
     for (const m of this.mobs) {
       m.update(dt, this.world, playerPos);
-      if (m.kind === 'zombie' && m.canAttack(playerPos)) {
+      if (m.cfg.melee && m.canAttack(playerPos)) {
         m.resetAttackCooldown();
-        const dmg = 0.5 * this.damageMult;
+        const dmg = (m.kind === 'pigman' ? 1.5 : 0.5) * this.damageMult;
+        if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
+      }
+      if (m.cfg.ranged && m.canRanged(playerPos)) {
+        m.resetRanged();
+        const dmg = (m.kind === 'ghast' ? 3 : 2) * this.damageMult;
+        this.stats._damageCooldown = 0;
         if (dmg > 0 && this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
       }
       if (m.detonate) this._detonate(m, playerPos);
@@ -146,6 +152,24 @@ export class EntityManager {
   }
 
   _trySpawn(playerPos, time) {
+    // The Nether has its own inhabitants (no day/night, no overworld animals).
+    if (this.world.dimension === 'nether') {
+      if (this.peaceful) return;
+      if (this._countWhere((m) => m.hostile) >= HOSTILE_CAP_CAVE) return;
+      const r = Math.random();
+      if (r < 0.5) {
+        const s = this._findCaveSpot(playerPos);     // pigman walks the netherrack
+        if (s) this._spawn('pigman', s);
+      } else if (r < 0.8) {
+        const s = this._findAirSpot(playerPos);       // blaze hovers
+        if (s) this._spawn('blaze', s);
+      } else {
+        const s = this._findAirSpot(playerPos);       // ghast drifts
+        if (s) this._spawn('ghast', s);
+      }
+      return;
+    }
+
     const surfaceY = this.world.getSpawnHeight(playerPos.x, playerPos.z);
     const inCave = surfaceY - playerPos.y > 4;
 
@@ -204,6 +228,19 @@ export class EntityManager {
       if (this.world.isSolidAt(x, y - 1, z) &&
           !this.world.isSolidAt(x, y, z) &&
           !this.world.isSolidAt(x, y + 1, z)) {
+        return new THREE.Vector3(x, y, z);
+      }
+    }
+    return null;
+  }
+
+  /** A pocket of open air a few blocks from the player (for flying mobs). */
+  _findAirSpot(playerPos) {
+    for (let i = 0; i < 8; i++) {
+      const x = Math.floor(playerPos.x + (Math.random() * 18 - 9)) + 0.5;
+      const z = Math.floor(playerPos.z + (Math.random() * 18 - 9)) + 0.5;
+      const y = Math.floor(playerPos.y + (Math.random() * 6 + 1));
+      if (!this.world.isSolidAt(x, y, z) && !this.world.isSolidAt(x, y + 1, z)) {
         return new THREE.Vector3(x, y, z);
       }
     }

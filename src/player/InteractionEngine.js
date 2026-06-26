@@ -85,6 +85,37 @@ export class InteractionEngine {
     this.crack.visible = false;
     this.crack.renderOrder = 1000;
     this.scene.add(this.crack);
+
+    // Placement preview: a translucent green ghost showing EXACTLY where the
+    // held block will land, plus a bright outline. Makes placing precise.
+    const ghostMat = new THREE.MeshBasicMaterial({
+      color: 0x66ff66, transparent: true, opacity: 0.3, depthWrite: false
+    });
+    this.placeGhost = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), ghostMat);
+    this.placeGhost.visible = false;
+    this.placeGhost.renderOrder = 998;
+    this.scene.add(this.placeGhost);
+
+    const ghostEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(1.0, 1.0, 1.0)),
+      new THREE.LineBasicMaterial({ color: 0x2aff2a, transparent: true, opacity: 0.9 })
+    );
+    ghostEdges.visible = false;
+    ghostEdges.renderOrder = 999;
+    this.placeGhostEdges = ghostEdges;
+    this.scene.add(ghostEdges);
+  }
+
+  /** Where the held block would be placed right now, or null. */
+  placementCell() {
+    if (!this.target) return null;
+    if (!placeBlockId(this.inventory.getSelectedType())) return null;
+    const px = this.target.x + this.target.nx;
+    const py = this.target.y + this.target.ny;
+    const pz = this.target.z + this.target.nz;
+    if (!isAir(this.world.getBlock(px, py, pz))) return null;
+    if (this._intersectsPlayer(px, py, pz)) return null;
+    return { x: px, y: py, z: pz };
   }
 
   _bindEvents() {
@@ -378,6 +409,18 @@ export class InteractionEngine {
     } else {
       this.highlight.visible = false;
       this._resetBreak();
+    }
+
+    // Live placement preview ghost (exactly where the held block will land).
+    const cell = this.placementCell();
+    if (cell) {
+      this.placeGhost.position.set(cell.x + 0.5, cell.y + 0.5, cell.z + 0.5);
+      this.placeGhostEdges.position.copy(this.placeGhost.position);
+      this.placeGhost.visible = true;
+      this.placeGhostEdges.visible = true;
+    } else {
+      this.placeGhost.visible = false;
+      this.placeGhostEdges.visible = false;
     }
 
     if (this.breaking) {

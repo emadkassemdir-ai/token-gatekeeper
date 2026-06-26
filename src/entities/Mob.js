@@ -19,10 +19,17 @@ import * as THREE from 'three';
 
 /** Per-kind configuration. */
 export const MOB_TYPES = {
-  zombie: { hostile: true, hp: 8, speed: 2.6, aggro: 18, drop: null,
+  zombie: { hostile: true, melee: true, hp: 8, speed: 2.6, aggro: 18, drop: null,
     body: 0x3a7d35, head: 0x4a8f44, w: 0.6, h: 1.8 },
   creeper: { hostile: true, hp: 6, speed: 3.0, aggro: 20, drop: null,
     body: 0x4f9d3a, head: 0x4f9d3a, w: 0.6, h: 1.7 },
+  // ---- Nether mobs ----
+  pigman: { hostile: true, melee: true, nether: true, hp: 10, speed: 2.4, aggro: 16,
+    drop: 'cooked_porkchop', dropCount: 1, body: 0x9c7a6a, head: 0xd8a0a0, w: 0.6, h: 1.8 },
+  blaze: { hostile: true, ranged: true, flying: true, nether: true, hp: 8, speed: 2.2, aggro: 18,
+    drop: 'gunpowder', dropCount: 1, body: 0xf0b000, head: 0xffd33a, w: 0.5, h: 1.6 },
+  ghast: { hostile: true, ranged: true, flying: true, nether: true, hp: 6, speed: 1.5, aggro: 30,
+    drop: 'gunpowder', dropCount: 2, body: 0xeae6e0, head: 0xeae6e0, w: 1.4, h: 1.4 },
   cow: { passive: true, hp: 5, speed: 1.4, drop: 'raw_beef', dropCount: 2,
     body: 0x4a3526, head: 0xd8d2c8, w: 0.8, h: 1.3 },
   sheep: { passive: true, hp: 5, speed: 1.3, drop: 'raw_mutton', dropCount: 1,
@@ -67,7 +74,8 @@ export class Mob {
     const group = new THREE.Group();
     const build = {
       cow: buildCow, sheep: buildSheep, zombie: buildZombie,
-      creeper: buildCreeper, fish: buildFish, squid: buildSquid
+      creeper: buildCreeper, fish: buildFish, squid: buildSquid,
+      pigman: buildPigman, blaze: buildBlaze, ghast: buildGhast
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -145,12 +153,27 @@ export class Mob {
     mz += this._knock.z * dt;
     this._knock.multiplyScalar(Math.max(0, 1 - dt * 6));
 
-    if (this.aquatic) {
+    if (this.cfg.flying) {
+      this._updateFlying(dt, world, mx, mz, playerPos);
+    } else if (this.aquatic) {
       this._updateAquatic(dt, world, mx, mz);
     } else {
       this._updateLand(dt, world, mx, mz);
     }
     this.syncMesh();
+  }
+
+  /** Flying mobs (blaze/ghast) hover near the player and bob, ignoring gravity. */
+  _updateFlying(dt, world, mx, mz, playerPos) {
+    this.position.x += mx;
+    this.position.z += mz;
+    // Float toward a hover altitude a few blocks above the player.
+    const desiredY = playerPos.y + 3;
+    const step = Math.sign(desiredY - this.position.y) * Math.min(Math.abs(desiredY - this.position.y), this.cfg.speed * dt);
+    this.position.y += step + Math.sin(performance.now() / 500 + this.position.x) * 0.15 * dt;
+    // Never sink into solid ground.
+    const floor = world.getSpawnHeight(this.position.x, this.position.z);
+    if (this.position.y < floor + 1) this.position.y = floor + 1;
   }
 
   _updateLand(dt, world, mx, mz) {
@@ -185,16 +208,24 @@ export class Mob {
     }
   }
 
-  /** Zombie contact attack check. @param {THREE.Vector3} playerPos */
+  /** Melee contact attack check (zombie, pigman). @param {THREE.Vector3} playerPos */
   canAttack(playerPos) {
-    if (this.kind !== 'zombie' || this._attackCooldown > 0) return false;
+    if (!this.cfg.melee || this._attackCooldown > 0) return false;
     const dx = playerPos.x - this.position.x;
     const dz = playerPos.z - this.position.z;
     const dy = playerPos.y - this.position.y;
     return Math.hypot(dx, dz) < 1.1 && Math.abs(dy) < 2.0;
   }
 
+  /** Ranged attack check (blaze, ghast) — a "fireball" within aggro range. */
+  canRanged(playerPos) {
+    if (!this.cfg.ranged || this._attackCooldown > 0) return false;
+    const d = Math.hypot(playerPos.x - this.position.x, playerPos.y - this.position.y, playerPos.z - this.position.z);
+    return d < this.cfg.aggro;
+  }
+
   resetAttackCooldown() { this._attackCooldown = 1.0; }
+  resetRanged() { this._attackCooldown = 2.5; }
 
   dispose() {
     this.mesh.traverse((o) => {
@@ -308,6 +339,42 @@ function buildSquid(group) {
   }
   add(group, box(0.08, 0.08, 0.08, 0x111), 0.14, 0.15, 0.26); // eyes
   add(group, box(0.08, 0.08, 0.08, 0x111), -0.14, 0.15, 0.26);
+}
+
+function buildPigman(group) {
+  const flesh = 0xc78a7a, skin = 0x9c7a6a, pants = 0x3a5a3a;
+  add(group, box(0.6, 1.0, 0.35, skin), 0, 1.0, 0);            // torso
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#c78a7a'); rect(ctx, 3, 5, 3, 3, '#3a1010'); rect(ctx, 10, 5, 3, 3, '#3a1010'); rect(ctx, 6, 10, 4, 3, '#e0a0a0'); rect(ctx, 5, 11, 1, 2, '#d8d8d8'); rect(ctx, 10, 11, 1, 2, '#d8d8d8'); });
+  add(group, headWithFace(0.5, 0.5, 0.5, flesh, face), 0, 1.75, 0);
+  const armL = add(group, box(0.18, 0.9, 0.22, flesh), -0.39, 1.05, 0.2); armL.rotation.x = -1.2;
+  const armR = add(group, box(0.18, 0.9, 0.22, flesh), 0.39, 1.05, 0.2); armR.rotation.x = -1.2;
+  add(group, box(0.22, 0.9, 0.26, pants), -0.13, 0.45, 0);
+  add(group, box(0.22, 0.9, 0.26, pants), 0.13, 0.45, 0);
+}
+
+function buildBlaze(group) {
+  const core = 0xffd33a, rod = 0xf0b000;
+  add(group, box(0.45, 0.5, 0.45, core), 0, 1.0, 0);          // glowing head/core
+  add(group, box(0.16, 0.16, 0.16, 0x3a2a00), -0.1, 1.05, 0.24); // eyes
+  add(group, box(0.16, 0.16, 0.16, 0x3a2a00), 0.1, 1.05, 0.24);
+  // Spinning rods around the body.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    add(group, box(0.1, 0.7, 0.1, rod), Math.cos(a) * 0.3, 0.65, Math.sin(a) * 0.3);
+    add(group, box(0.1, 0.7, 0.1, rod), Math.cos(a + 0.5) * 0.3, 1.25, Math.sin(a + 0.5) * 0.3);
+  }
+}
+
+function buildGhast(group) {
+  const body = 0xeae6e0, tent = 0xd8d2c8;
+  add(group, box(1.3, 1.3, 1.3, body), 0, 1.3, 0);            // big cube body
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#eae6e0'); rect(ctx, 2, 5, 3, 4, '#3a3a3a'); rect(ctx, 11, 5, 3, 4, '#3a3a3a'); rect(ctx, 5, 11, 6, 3, '#3a3a3a'); });
+  // Front face overlay (sad ghast face).
+  const f = headWithFace(1.31, 1.31, 1.31, body, face); add(group, f, 0, 1.3, 0);
+  // Drooping tentacles underneath.
+  for (const sx of [-0.4, 0, 0.4]) for (const sz of [-0.4, 0.4]) {
+    add(group, box(0.16, 0.7, 0.16, tent), sx, 0.3, sz);
+  }
 }
 
 function buildGeneric(group, cfg) {
