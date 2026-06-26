@@ -219,7 +219,20 @@ export const BLOCKS = {
   69: { id: 69, name: 'Block of Copper', color: [0.78, 0.45, 0.3], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
   70: { id: 70, name: 'Deepslate', color: [0.28, 0.28, 0.32], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
   71: { id: 71, name: 'Smooth Stone', color: [0.62, 0.62, 0.64], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
-  72: { id: 72, name: 'Sea Lantern', color: [0.82, 0.92, 0.9], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false }
+  72: { id: 72, name: 'Sea Lantern', color: [0.82, 0.92, 0.9], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+
+  // ---- Netherite + more functional blocks ----
+  73: { id: 73, name: 'Ancient Debris', color: [0.4, 0.28, 0.22], solid: true, transparent: false, breakable: true, hardness: 5.0, liquid: false },
+  74: { id: 74, name: 'Block of Netherite', color: [0.2, 0.18, 0.2], solid: true, transparent: false, breakable: true, hardness: 5.0, liquid: false },
+  75: { id: 75, name: 'Smithing Table', color: [0.24, 0.22, 0.22],
+    faceColors: { top: [0.32, 0.3, 0.32], bottom: [0.2, 0.18, 0.18], side: [0.24, 0.22, 0.22] },
+    solid: true, transparent: false, breakable: true, hardness: 1.2, liquid: false },
+  76: { id: 76, name: 'Barrel', color: [0.52, 0.4, 0.24],
+    faceColors: { top: [0.3, 0.24, 0.16], bottom: [0.3, 0.24, 0.16], side: [0.52, 0.4, 0.24] },
+    solid: true, transparent: false, breakable: true, hardness: 1.2, liquid: false },
+  77: { id: 77, name: 'Ender Chest', color: [0.1, 0.18, 0.18],
+    faceColors: { top: [0.12, 0.22, 0.22], bottom: [0.08, 0.14, 0.14], side: [0.1, 0.18, 0.18] },
+    solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -231,7 +244,8 @@ export const PLACEABLE_BLOCKS = [
   53, 55, 56, 57, 59, // nether blocks (lava/portal not hand-placeable)
   60, 62,             // end blocks (portal not hand-placeable)
   63, 64, 65,         // utility blocks
-  66, 67, 68, 69, 70, 71, 72 // brewing/copper/stone/light
+  66, 67, 68, 69, 70, 71, 72, // brewing/copper/stone/light
+  73, 74, 75, 76, 77          // netherite + functional
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

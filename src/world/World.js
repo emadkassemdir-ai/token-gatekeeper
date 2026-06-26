@@ -136,7 +136,12 @@ const TEX = {
   69: { all: 'metal' },
   70: { all: 'stone' },   // deepslate (dark colour applied)
   71: { all: 'smoothstone' },
-  72: { all: 'sealantern' }
+  72: { all: 'sealantern' },
+  73: { all: 'ore', base: [0.32, 0.22, 0.18], accent: [0.55, 0.42, 0.3] }, // ancient debris
+  74: { all: 'metal' },
+  75: { top: 'smithtop', side: 'chestside', bottom: 'planks' },
+  76: { top: 'barreltop', side: 'chestside', bottom: 'planks' },
+  77: { top: 'chesttop', side: 'chestside', bottom: 'obsidian' }
 };
 
 const TILE = 16; // texels per tile
@@ -425,6 +430,15 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'sealantern':
           c = mul(base, 0.92 + n * 0.1);
           if ((px % 4 < 2) === (py % 4 < 2)) c = [0.95, 1.0, 0.98]; // bright tiles
+          break;
+        case 'smithtop':
+          c = mul([0.3, 0.28, 0.3], 0.9 + n * 0.12);
+          if (py >= 3 && py <= 12 && px >= 3 && px <= 12) c = mul([0.5, 0.5, 0.55], 0.9); // iron top
+          if (px === 4 || px === 11) c = [0.2, 0.2, 0.22];
+          break;
+        case 'barreltop':
+          c = mul([0.34, 0.26, 0.16], 0.9 + n * 0.1);
+          if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.2, 0.15, 0.1]; // lid hole
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);
@@ -906,6 +920,7 @@ export class World {
             const v = this.noise.hash3(wx, y, wz);
             if (y <= floorH && v < 0.03) id = 55;        // soul sand near the floor
             else if (v >= 0.03 && v < 0.05) id = 56;     // nether quartz ore
+            else if (y < 22 && v >= 0.05 && v < 0.054) id = 73; // ancient debris (rare, deep)
           }
           if (id !== AIR) chunk.setLocal(lx, y, lz, id);
         }

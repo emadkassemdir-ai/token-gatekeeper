@@ -125,6 +125,13 @@ export const RECIPES = [
   { id: 'golden_carrot', output: 'golden_carrot', outputCount: 1, inputs: [{ type: 'wheat', count: 1 }, { type: 'gold_ingot', count: 2 }], requiresTable: true },
   { id: 'copper_block', output: 'copper_block', outputCount: 1, inputs: [{ type: 'copper_ingot', count: 9 }], requiresTable: true },
 
+  // ---- Netherite + functional blocks ----
+  { id: 'netherite_ingot', output: 'netherite_ingot', outputCount: 1, inputs: [{ type: 'netherite_scrap', count: 4 }, { type: 'gold_ingot', count: 4 }], requiresTable: true },
+  { id: 'netherite_block', output: 'netherite_block', outputCount: 1, inputs: [{ type: 'netherite_ingot', count: 9 }], requiresTable: true },
+  { id: 'smithing_table', output: 'smithing_table', outputCount: 1, inputs: [{ type: 'oak_planks', count: 4 }, { type: 'iron_ingot', count: 2 }], requiresTable: true },
+  { id: 'barrel', output: 'barrel', outputCount: 1, inputs: [{ type: 'oak_planks', count: 6 }, { type: 'oak_log', count: 2 }], requiresTable: true },
+  { id: 'ender_chest', output: 'ender_chest', outputCount: 1, inputs: [{ type: 'obsidian', count: 8 }, { type: 'eye_of_ender', count: 1 }], requiresTable: true },
+
   // ---- The End ----
   { id: 'blaze_powder', output: 'blaze_powder', outputCount: 2, inputs: [{ type: 'blaze_rod', count: 1 }], requiresTable: false },
   { id: 'eye_of_ender', output: 'eye_of_ender', outputCount: 1, inputs: [{ type: 'ender_pearl', count: 1 }, { type: 'blaze_powder', count: 1 }], requiresTable: false },

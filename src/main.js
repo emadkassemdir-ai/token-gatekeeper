@@ -36,6 +36,7 @@ import { SmeltingMenu } from './ui/SmeltingMenu.js';
 import { EnchantingMenu } from './ui/EnchantingMenu.js';
 import { ChestMenu, CHEST_SLOTS } from './ui/ChestMenu.js';
 import { BrewingMenu } from './ui/BrewingMenu.js';
+import { SmithingMenu } from './ui/SmithingMenu.js';
 import { isPotion, drinkPotion } from './state/Potions.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
@@ -371,6 +372,10 @@ class Game {
     this.brewing = new BrewingMenu(this.app, this.inventory, () => this._nearBlock(67),
       { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
 
+    // Smithing table (netherite upgrades).
+    this.smithing = new SmithingMenu(this.app, this.inventory, () => this._nearBlock(75),
+      { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
+
     // Multiplayer menu (M).
     this.mpMenu = new MultiplayerMenu(this.app, this.net, { onOpen: () => this._releasePointer() });
 
@@ -545,7 +550,10 @@ class Game {
       case 63: this.enchanting.openMenu(); return true;           // enchanting table
       case 64: return this._sleep();                              // bed
       case 65: this._openChest(target); return true;             // chest
+      case 76: this._openChest(target); return true;             // barrel (same storage)
+      case 77: this._openEnderChest(); return true;              // ender chest (shared)
       case 67: this.brewing.openMenu(); return true;             // brewing stand
+      case 75: this.smithing.openMenu(); return true;            // smithing table
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
       case FURNACE_ID: this.smelting.openMenu(); return true;
       default: return false;
@@ -570,6 +578,13 @@ class Game {
     if (!this.record.chests[key]) this.record.chests[key] = new Array(CHEST_SLOTS).fill(null);
     this._releasePointer();
     this.chestMenu.openWith(this.record.chests[key]);
+  }
+
+  /** Open the Ender Chest — one shared storage accessible from any ender chest. */
+  _openEnderChest() {
+    if (!this.record.enderChest) this.record.enderChest = new Array(CHEST_SLOTS).fill(null);
+    this._releasePointer();
+    this.chestMenu.openWith(this.record.enderChest);
   }
 
   /* ----------------------- item uses + the Nether ------------------------ */

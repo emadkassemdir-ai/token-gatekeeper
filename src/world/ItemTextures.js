@@ -38,7 +38,7 @@ function tierColor(tier) {
     wood: [0.55, 0.42, 0.22], wooden: [0.55, 0.42, 0.22],
     stone: [0.5, 0.5, 0.52], iron: [0.82, 0.82, 0.85],
     gold: [0.95, 0.8, 0.2], diamond: [0.4, 0.85, 0.9],
-    leather: [0.62, 0.42, 0.26]
+    leather: [0.62, 0.42, 0.26], netherite: [0.28, 0.24, 0.26]
   }[tier] || [0.7, 0.7, 0.72];
 }
 
@@ -66,9 +66,9 @@ const mul = (c, m) => [c[0] * m, c[1] * m, c[2] * m];
 function drawBlock(ctx, blockId) {
   const def = BLOCKS[blockId];
   const top = getFaceColor(blockId, 'top');
-  const isOre = [10, 15, 16, 17, 40, 41, 42].includes(blockId);
+  const isOre = [10, 15, 16, 17, 40, 41, 42, 68, 73].includes(blockId);
   const accent = { 10: [0.82, 0.7, 0.55], 15: [0.12, 0.12, 0.13], 16: [0.95, 0.8, 0.2], 17: [0.5, 0.9, 0.95],
-    40: [0.16, 0.3, 0.85], 41: [0.85, 0.12, 0.12], 42: [0.15, 0.85, 0.45] }[blockId];
+    40: [0.16, 0.3, 0.85], 41: [0.85, 0.12, 0.12], 42: [0.15, 0.85, 0.45], 68: [0.85, 0.5, 0.3], 73: [0.55, 0.42, 0.3] }[blockId];
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
       const n = pnoise(x, y);
@@ -170,7 +170,8 @@ const MAT_COLORS = {
   ghast_tear: [0.85, 0.95, 0.9], spider_eye: [0.6, 0.1, 0.12],
   raw_copper: [0.78, 0.45, 0.3], copper_ingot: [0.85, 0.52, 0.36], sugar: [0.95, 0.95, 0.98],
   slimeball: [0.5, 0.8, 0.4], magma_cream: [0.85, 0.45, 0.15], rabbit_foot: [0.8, 0.7, 0.55],
-  fermented_spider_eye: [0.4, 0.3, 0.5], glass_bottle: [0.7, 0.85, 0.9]
+  fermented_spider_eye: [0.4, 0.3, 0.5], glass_bottle: [0.7, 0.85, 0.9],
+  netherite_scrap: [0.5, 0.38, 0.3], netherite_ingot: [0.3, 0.26, 0.28]
 };
 
 /** Potion liquid colours for the bottle icon. */

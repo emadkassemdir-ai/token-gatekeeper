@@ -206,7 +206,7 @@ export class EntityManager {
       if (this._countWhere((m) => m.passive && !m.aquatic) < PASSIVE_CAP) {
         const spot = this._findSurfaceSpot(playerPos);
         if (spot && this._isGrassy(spot)) {
-          this._spawn(['cow', 'sheep', 'pig', 'chicken', 'rabbit'][Math.floor(Math.random() * 5)], spot);
+          this._spawn(['cow', 'sheep', 'pig', 'chicken', 'rabbit', 'wolf', 'fox', 'goat', 'villager'][Math.floor(Math.random() * 9)], spot);
         }
       }
     }

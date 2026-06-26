@@ -41,6 +41,10 @@ export const MOB_TYPES = {
     body: 0x6ec24a, head: 0x6ec24a, w: 0.8, h: 0.8 },
   rabbit: { passive: true, hp: 3, speed: 2.2, drops: [['raw_rabbit', 1], ['rabbit_foot', 1]],
     body: 0xb89878, head: 0xb89878, w: 0.4, h: 0.5 },
+  wolf: { passive: true, hp: 8, speed: 2.6, drop: null, body: 0xc8c4bc, head: 0xc8c4bc, w: 0.6, h: 0.85 },
+  fox: { passive: true, hp: 5, speed: 2.8, drop: null, body: 0xd07a3a, head: 0xd07a3a, w: 0.5, h: 0.6 },
+  goat: { passive: true, hp: 10, speed: 2.2, drop: null, body: 0xd8d2c6, head: 0xe0dccf, w: 0.7, h: 1.2 },
+  villager: { passive: true, hp: 10, speed: 1.4, drop: null, body: 0x9a8268, head: 0xc8a888, w: 0.6, h: 1.9 },
   bat: { passive: true, flying: true, hp: 2, speed: 2.6, drop: null,
     body: 0x3a2e24, head: 0x3a2e24, w: 0.4, h: 0.4 },
   // ---- Nether mobs ----
@@ -107,7 +111,8 @@ export class Mob {
       pig: buildPig, chicken: buildChicken, skeleton: buildSkeleton,
       spider: buildSpider, enderman: buildEnderman, ender_dragon: buildDragon,
       husk: buildZombie, drowned: buildZombie, stray: buildSkeleton,
-      witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat
+      witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
+      wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -518,6 +523,51 @@ function buildBat(group) {
   add(group, box(0.06, 0.12, 0.06, dark), 0.06, 1.22, 0);
   const wL = add(group, box(0.5, 0.3, 0.04, 0x2a2018), -0.38, 1.05, 0); wL.rotation.z = 0.3;
   const wR = add(group, box(0.5, 0.3, 0.04, 0x2a2018), 0.38, 1.05, 0); wR.rotation.z = -0.3;
+}
+
+function buildQuadruped(group, cfg) {
+  const c = cfg?.body ?? 0xc8c4bc;
+  add(group, box(0.45, 0.4, 0.9, c), 0, 0.55, 0);            // body
+  add(group, box(0.4, 0.4, 0.4, c), 0, 0.7, 0.55);           // head
+  add(group, box(0.1, 0.18, 0.06, c), -0.1, 0.95, 0.6);      // ears
+  add(group, box(0.1, 0.18, 0.06, c), 0.1, 0.95, 0.6);
+  add(group, box(0.07, 0.07, 0.07, 0x111), 0.1, 0.72, 0.78); // eyes
+  add(group, box(0.07, 0.07, 0.07, 0x111), -0.1, 0.72, 0.78);
+  add(group, box(0.12, 0.3, 0.12, c), -0.32, 0.45, -0.45);   // tail
+  quadLegs(group, mulHex(c, 0.85), 0.16, 0.32, 0.4, 0);
+}
+
+function buildFox(group, cfg) {
+  buildQuadruped(group, cfg);
+  add(group, box(0.16, 0.16, 0.12, 0xf0e6d8), 0, 0.66, 0.76); // white snout
+  add(group, box(0.34, 0.16, 0.16, 0xeaeae0), -0.34, 0.42, -0.5); // bushy white tail tip
+}
+
+function buildGoat(group, cfg) {
+  const c = cfg?.body ?? 0xd8d2c6;
+  add(group, box(0.55, 0.6, 1.0, c), 0, 0.8, 0);             // body
+  add(group, box(0.4, 0.4, 0.4, c), 0, 1.0, 0.6);            // head
+  add(group, box(0.08, 0.22, 0.08, 0x6a5a4a), -0.12, 1.3, 0.55); // horns
+  add(group, box(0.08, 0.22, 0.08, 0x6a5a4a), 0.12, 1.3, 0.55);
+  add(group, box(0.07, 0.07, 0.07, 0x111), 0.12, 1.02, 0.78);
+  add(group, box(0.07, 0.07, 0.07, 0x111), -0.12, 1.02, 0.78);
+  quadLegs(group, mulHex(c, 0.85), 0.2, 0.36, 0.55, 0);
+}
+
+function buildVillager(group, cfg) {
+  const robe = cfg?.body ?? 0x9a8268, skin = cfg?.head ?? 0xc8a888;
+  add(group, box(0.55, 1.0, 0.4, robe), 0, 1.0, 0);          // robe
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#c8a888'); rect(ctx, 3, 5, 3, 3, '#3a2a20'); rect(ctx, 10, 5, 3, 3, '#3a2a20'); rect(ctx, 6, 7, 4, 5, '#a07a5a'); rect(ctx, 5, 12, 6, 1, '#5a4030'); });
+  add(group, headWithFace(0.5, 0.55, 0.5, skin, face), 0, 1.75, 0);
+  add(group, box(0.5, 0.3, 0.42, 0x5a4a38), 0, 1.55, 0);     // crossed-arms band
+  add(group, box(0.18, 0.5, 0.2, robe), -0.1, 0.4, 0);       // robe legs
+  add(group, box(0.18, 0.5, 0.2, robe), 0.1, 0.4, 0);
+}
+
+/** Multiply a packed hex colour by m (for shaded limbs). */
+function mulHex(hex, m) {
+  const r = ((hex >> 16) & 255) * m, g = ((hex >> 8) & 255) * m, b = (hex & 255) * m;
+  return ((r & 255) << 16) | ((g & 255) << 8) | (b & 255);
 }
 
 function buildGeneric(group, cfg) {

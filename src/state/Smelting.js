@@ -31,7 +31,8 @@ export const SMELT_RECIPES = [
   { id: 'chicken', input: 'raw_chicken', output: 'cooked_chicken' },
   { id: 'rabbit', input: 'raw_rabbit', output: 'cooked_rabbit' },
   { id: 'copper', input: 'raw_copper', output: 'copper_ingot' },
-  { id: 'smooth_stone', input: 'stone', output: 'smooth_stone' }
+  { id: 'smooth_stone', input: 'stone', output: 'smooth_stone' },
+  { id: 'netherite_scrap', input: 'ancient_debris', output: 'netherite_scrap' }
 ];
 
 /** Items usable as furnace fuel (any one suffices). */

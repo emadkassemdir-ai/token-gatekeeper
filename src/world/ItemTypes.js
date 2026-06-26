@@ -43,7 +43,9 @@ export const CATEGORY = {
   // Utility:
   63: 'stone', 64: 'soft', 65: 'wood',
   // More blocks:
-  66: 'leaves', 67: 'stone', 68: 'stone', 69: 'stone', 70: 'stone', 71: 'stone', 72: 'glass'
+  66: 'leaves', 67: 'stone', 68: 'stone', 69: 'stone', 70: 'stone', 71: 'stone', 72: 'glass',
+  // Netherite + functional:
+  73: 'stone', 74: 'stone', 75: 'wood', 76: 'wood', 77: 'stone'
 };
 
 /**
@@ -96,7 +98,9 @@ export const BLOCK_DROPS = {
   63: 'enchanting_table', 64: 'bed', 65: 'chest',
   // More blocks:
   66: 'nether_wart', 67: 'brewing_stand', 68: 'raw_copper', 69: 'copper_block',
-  70: 'deepslate', 71: 'smooth_stone', 72: 'sea_lantern'
+  70: 'deepslate', 71: 'smooth_stone', 72: 'sea_lantern',
+  // Netherite + functional:
+  73: 'ancient_debris', 74: 'netherite_block', 75: 'smithing_table', 76: 'barrel', 77: 'ender_chest'
 };
 
 /**
@@ -183,6 +187,11 @@ export const ITEMS = {
   deepslate:         { type: 'deepslate', name: 'Deepslate', maxStack: 64, place: 70 },
   smooth_stone:      { type: 'smooth_stone', name: 'Smooth Stone', maxStack: 64, place: 71 },
   sea_lantern:       { type: 'sea_lantern', name: 'Sea Lantern', maxStack: 64, place: 72 },
+  ancient_debris:    { type: 'ancient_debris', name: 'Ancient Debris', maxStack: 64, place: 73 },
+  netherite_block:   { type: 'netherite_block', name: 'Block of Netherite', maxStack: 64, place: 74 },
+  smithing_table:    { type: 'smithing_table', name: 'Smithing Table', maxStack: 64, place: 75 },
+  barrel:            { type: 'barrel', name: 'Barrel', maxStack: 64, place: 76 },
+  ender_chest:       { type: 'ender_chest', name: 'Ender Chest', maxStack: 64, place: 77 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -261,6 +270,8 @@ export const ITEMS = {
   golden_apple:   { type: 'golden_apple', name: 'Golden Apple', maxStack: 64, glyph: '🍏', food: { hunger: 2 }, golden: 'apple' },
   enchanted_golden_apple: { type: 'enchanted_golden_apple', name: 'Enchanted Golden Apple', maxStack: 64, glyph: '🍏', food: { hunger: 2 }, golden: 'god' },
   golden_carrot:  { type: 'golden_carrot', name: 'Golden Carrot', maxStack: 64, glyph: '🥕', food: { hunger: 3 } },
+  netherite_scrap: { type: 'netherite_scrap', name: 'Netherite Scrap', maxStack: 64, glyph: '◆' },
+  netherite_ingot: { type: 'netherite_ingot', name: 'Netherite Ingot', maxStack: 64, glyph: '▬' },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -293,6 +304,9 @@ export const ITEMS = {
   diamond_pickaxe: { type: 'diamond_pickaxe', name: 'Diamond Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'diamond', damage: 2.0, glyph: '⛏' },
   diamond_axe:     { type: 'diamond_axe', name: 'Diamond Axe', maxStack: 1, tool: 'axe', tier: 'diamond', damage: 2.5, glyph: '🪓' },
   diamond_sword:   { type: 'diamond_sword', name: 'Diamond Sword', maxStack: 1, tool: 'sword', tier: 'diamond', damage: 3.5, glyph: '🗡' },
+  netherite_pickaxe: { type: 'netherite_pickaxe', name: 'Netherite Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'netherite', damage: 2.5, glyph: '⛏' },
+  netherite_axe:     { type: 'netherite_axe', name: 'Netherite Axe', maxStack: 1, tool: 'axe', tier: 'netherite', damage: 3.0, glyph: '🪓' },
+  netherite_sword:   { type: 'netherite_sword', name: 'Netherite Sword', maxStack: 1, tool: 'sword', tier: 'netherite', damage: 4.0, glyph: '🗡' },
 
   // Armor (iron/gold/diamond). `armor` = protection points; `slot` = body part.
   iron_helmet:      { type: 'iron_helmet', name: 'Iron Helmet', maxStack: 1, armor: 2, slot: 'head', glyph: '⛑' },
@@ -307,6 +321,10 @@ export const ITEMS = {
   diamond_chestplate: { type: 'diamond_chestplate', name: 'Diamond Chestplate', maxStack: 1, armor: 8, slot: 'chest', glyph: '🦺' },
   diamond_leggings:   { type: 'diamond_leggings', name: 'Diamond Leggings', maxStack: 1, armor: 6, slot: 'legs', glyph: '👖' },
   diamond_boots:      { type: 'diamond_boots', name: 'Diamond Boots', maxStack: 1, armor: 3, slot: 'feet', glyph: '🥾' },
+  netherite_helmet:     { type: 'netherite_helmet', name: 'Netherite Helmet', maxStack: 1, armor: 3, slot: 'head', glyph: '⛑' },
+  netherite_chestplate: { type: 'netherite_chestplate', name: 'Netherite Chestplate', maxStack: 1, armor: 8, slot: 'chest', glyph: '🦺' },
+  netherite_leggings:   { type: 'netherite_leggings', name: 'Netherite Leggings', maxStack: 1, armor: 6, slot: 'legs', glyph: '👖' },
+  netherite_boots:      { type: 'netherite_boots', name: 'Netherite Boots', maxStack: 1, armor: 3, slot: 'feet', glyph: '🥾' },
 
   // Defensive items.
   shield: { type: 'shield', name: 'Shield', maxStack: 1, shield: true, glyph: '🛡' },
@@ -325,7 +343,7 @@ export function isEndEye(type) { return !!ITEMS[type]?.endeye; }
 export function isTotem(type) { return !!ITEMS[type]?.totem; }
 
 /** Mining-speed multiplier per tool tier (wood = baseline = the spec'd times). */
-export const TIER_SPEED = { wood: 1, stone: 1.6, iron: 2.5, gold: 4, diamond: 3.5 };
+export const TIER_SPEED = { wood: 1, stone: 1.6, iron: 2.5, gold: 4, diamond: 3.5, netherite: 4.5 };
 
 /** The creative-mode palette: every placeable block, infinite supply. */
 export const CREATIVE_PALETTE = [
@@ -339,7 +357,8 @@ export const CREATIVE_PALETTE = [
   'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block',
   'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt',
   'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf',
-  'brewing_stand', 'copper_ore', 'copper_block', 'deepslate', 'smooth_stone', 'sea_lantern', 'nether_wart'
+  'brewing_stand', 'copper_ore', 'copper_block', 'deepslate', 'smooth_stone', 'sea_lantern', 'nether_wart',
+  'ancient_debris', 'netherite_block', 'smithing_table', 'barrel', 'ender_chest'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */
