@@ -28,7 +28,14 @@ export const CATEGORY = {
   18: 'stone', // furnace
   6: 'leaves', // oak leaves
   14: 'leaves',// jungle leaves
-  9: 'glass'   // glass
+  9: 'glass',  // glass
+  // Expansion:
+  19: 'stone', 20: 'soft', 21: 'stone', 22: 'stone', 23: 'stone', 24: 'stone',
+  25: 'stone', 26: 'stone', 27: 'stone', 28: 'wood', 29: 'leaves', 30: 'wood',
+  31: 'leaves', 32: 'soft', 33: 'soft', 34: 'soft', 35: 'stone', 36: 'glass',
+  37: 'wood', 38: 'glass', 39: 'soft', 40: 'stone', 41: 'stone', 42: 'stone',
+  43: 'soft', 44: 'soft', 45: 'soft', 46: 'soft', 47: 'stone', 48: 'stone',
+  49: 'stone', 50: 'stone', 51: 'stone', 52: 'stone'
 };
 
 /**
@@ -62,7 +69,16 @@ export const BLOCK_DROPS = {
   15: 'coal',      // coal ore -> coal
   16: 'gold_ore',  // raw gold (smelt later)
   17: 'diamond',   // diamond ore -> diamond gem (usable directly)
-  18: 'furnace'
+  18: 'furnace',
+  // Expansion drops:
+  19: 'cobblestone', 20: 'gravel', 21: 'sandstone', 22: 'bricks',
+  23: 'mossy_cobblestone', 24: 'stone_bricks', 25: 'andesite', 26: 'diorite',
+  27: 'granite', 28: 'birch_log', 29: null, 30: 'spruce_log', 31: null,
+  32: 'cactus', 33: 'pumpkin', 34: 'melon', 35: 'obsidian', 36: 'glowstone',
+  37: 'bookshelf', 38: null, 39: 'clay_ball', 40: 'lapis', 41: 'redstone',
+  42: 'emerald', 43: 'white_wool', 44: 'red_wool', 45: 'blue_wool',
+  46: 'green_wool', 47: 'iron_block', 48: 'gold_block', 49: 'diamond_block',
+  50: 'lapis_block', 51: 'emerald_block', 52: 'coal_block'
 };
 
 /**
@@ -95,12 +111,71 @@ export const ITEMS = {
   gold_ore:       { type: 'gold_ore', name: 'Raw Gold', maxStack: 64, place: 16 },
   furnace:        { type: 'furnace', name: 'Furnace', maxStack: 64, place: 18 },
 
+  // Expansion: placeable blocks.
+  cobblestone:       { type: 'cobblestone', name: 'Cobblestone', maxStack: 64, place: 19 },
+  gravel:            { type: 'gravel', name: 'Gravel', maxStack: 64, place: 20 },
+  sandstone:         { type: 'sandstone', name: 'Sandstone', maxStack: 64, place: 21 },
+  bricks:            { type: 'bricks', name: 'Bricks', maxStack: 64, place: 22 },
+  mossy_cobblestone: { type: 'mossy_cobblestone', name: 'Mossy Cobblestone', maxStack: 64, place: 23 },
+  stone_bricks:      { type: 'stone_bricks', name: 'Stone Bricks', maxStack: 64, place: 24 },
+  andesite:          { type: 'andesite', name: 'Andesite', maxStack: 64, place: 25 },
+  diorite:           { type: 'diorite', name: 'Diorite', maxStack: 64, place: 26 },
+  granite:           { type: 'granite', name: 'Granite', maxStack: 64, place: 27 },
+  birch_log:         { type: 'birch_log', name: 'Birch Log', maxStack: 64, place: 28 },
+  birch_leaves:      { type: 'birch_leaves', name: 'Birch Leaves', maxStack: 64, place: 29 },
+  spruce_log:        { type: 'spruce_log', name: 'Spruce Log', maxStack: 64, place: 30 },
+  spruce_leaves:     { type: 'spruce_leaves', name: 'Spruce Leaves', maxStack: 64, place: 31 },
+  cactus:            { type: 'cactus', name: 'Cactus', maxStack: 64, place: 32 },
+  pumpkin:           { type: 'pumpkin', name: 'Pumpkin', maxStack: 64, place: 33 },
+  melon:             { type: 'melon', name: 'Melon', maxStack: 64, place: 34 },
+  obsidian:          { type: 'obsidian', name: 'Obsidian', maxStack: 64, place: 35 },
+  glowstone:         { type: 'glowstone', name: 'Glowstone', maxStack: 64, place: 36 },
+  bookshelf:         { type: 'bookshelf', name: 'Bookshelf', maxStack: 64, place: 37 },
+  ice:               { type: 'ice', name: 'Ice', maxStack: 64, place: 38 },
+  clay:              { type: 'clay', name: 'Clay', maxStack: 64, place: 39 },
+  lapis_ore:         { type: 'lapis_ore', name: 'Lapis Ore', maxStack: 64, place: 40 },
+  redstone_ore:      { type: 'redstone_ore', name: 'Redstone Ore', maxStack: 64, place: 41 },
+  emerald_ore:       { type: 'emerald_ore', name: 'Emerald Ore', maxStack: 64, place: 42 },
+  white_wool:        { type: 'white_wool', name: 'White Wool', maxStack: 64, place: 43 },
+  red_wool:          { type: 'red_wool', name: 'Red Wool', maxStack: 64, place: 44 },
+  blue_wool:         { type: 'blue_wool', name: 'Blue Wool', maxStack: 64, place: 45 },
+  green_wool:        { type: 'green_wool', name: 'Green Wool', maxStack: 64, place: 46 },
+  iron_block:        { type: 'iron_block', name: 'Block of Iron', maxStack: 64, place: 47 },
+  gold_block:        { type: 'gold_block', name: 'Block of Gold', maxStack: 64, place: 48 },
+  diamond_block:     { type: 'diamond_block', name: 'Block of Diamond', maxStack: 64, place: 49 },
+  lapis_block:       { type: 'lapis_block', name: 'Lapis Block', maxStack: 64, place: 50 },
+  emerald_block:     { type: 'emerald_block', name: 'Emerald Block', maxStack: 64, place: 51 },
+  coal_block:        { type: 'coal_block', name: 'Block of Coal', maxStack: 64, place: 52 },
+
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
   coal:           { type: 'coal', name: 'Coal', maxStack: 64, glyph: '⬛' },
   diamond:        { type: 'diamond', name: 'Diamond', maxStack: 64, glyph: '💎' },
   iron_ingot:     { type: 'iron_ingot', name: 'Iron Ingot', maxStack: 64, glyph: '▬' },
   gold_ingot:     { type: 'gold_ingot', name: 'Gold Ingot', maxStack: 64, glyph: '▭' },
+  // Expansion: materials.
+  lapis:          { type: 'lapis', name: 'Lapis Lazuli', maxStack: 64, glyph: '🔷' },
+  redstone:       { type: 'redstone', name: 'Redstone Dust', maxStack: 64, glyph: '🔴' },
+  emerald:        { type: 'emerald', name: 'Emerald', maxStack: 64, glyph: '💚' },
+  flint:          { type: 'flint', name: 'Flint', maxStack: 64, glyph: '🔹' },
+  clay_ball:      { type: 'clay_ball', name: 'Clay Ball', maxStack: 64, glyph: '●' },
+  brick:          { type: 'brick', name: 'Brick', maxStack: 64, glyph: '▮' },
+  charcoal:       { type: 'charcoal', name: 'Charcoal', maxStack: 64, glyph: '⬛' },
+  string:         { type: 'string', name: 'String', maxStack: 64, glyph: '〰' },
+  bone:           { type: 'bone', name: 'Bone', maxStack: 64, glyph: '🦴' },
+  feather:        { type: 'feather', name: 'Feather', maxStack: 64, glyph: '🪶' },
+  leather:        { type: 'leather', name: 'Leather', maxStack: 64, glyph: '🟫' },
+  gunpowder:      { type: 'gunpowder', name: 'Gunpowder', maxStack: 64, glyph: '⚫' },
+  paper:          { type: 'paper', name: 'Paper', maxStack: 64, glyph: '📄' },
+  book:           { type: 'book', name: 'Book', maxStack: 64, glyph: '📕' },
+  ender_pearl:    { type: 'ender_pearl', name: 'Ender Pearl', maxStack: 16, glyph: '🟢' },
+  // Expansion: food.
+  apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
+  bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
+  wheat:          { type: 'wheat', name: 'Wheat', maxStack: 64, glyph: '🌾' },
+  raw_porkchop:   { type: 'raw_porkchop', name: 'Raw Porkchop', maxStack: 64, glyph: '🥩', food: { hunger: 1.5, raw: true } },
+  cooked_porkchop:{ type: 'cooked_porkchop', name: 'Cooked Porkchop', maxStack: 64, glyph: '🍖', food: { hunger: 4 } },
+  melon_slice:    { type: 'melon_slice', name: 'Melon Slice', maxStack: 64, glyph: '🍈', food: { hunger: 1 } },
 
   // Food (eaten to restore hunger; raw food can poison).
   raw_beef:       { type: 'raw_beef', name: 'Raw Beef', maxStack: 64, glyph: '🥩', food: { hunger: 1.5, raw: true } },
@@ -156,8 +231,14 @@ export const TIER_SPEED = { wood: 1, stone: 1.6, iron: 2.5, gold: 4, diamond: 3.
 
 /** The creative-mode palette: every placeable block, infinite supply. */
 export const CREATIVE_PALETTE = [
-  'grass', 'dirt', 'stone', 'oak_log', 'oak_planks',
-  'crafting_table', 'oak_leaves', 'sand', 'glass'
+  'grass', 'dirt', 'stone', 'cobblestone', 'oak_log', 'oak_planks',
+  'crafting_table', 'furnace', 'oak_leaves', 'sand', 'sandstone', 'gravel', 'glass',
+  'bricks', 'stone_bricks', 'mossy_cobblestone', 'andesite', 'diorite', 'granite',
+  'birch_log', 'birch_leaves', 'spruce_log', 'spruce_leaves',
+  'cactus', 'pumpkin', 'melon', 'obsidian', 'glowstone', 'bookshelf', 'ice', 'clay',
+  'iron_ore', 'gold_ore', 'lapis_ore', 'redstone_ore', 'emerald_ore',
+  'white_wool', 'red_wool', 'blue_wool', 'green_wool',
+  'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

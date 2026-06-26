@@ -75,6 +75,24 @@ export const RECIPES = [
     inputs: [{ type: 'gold_ingot', count: 8 }, { type: 'diamond', count: 1 }],
     requiresTable: true
   },
+  // ---- Expansion recipes ----
+  { id: 'stone_bricks', output: 'stone_bricks', outputCount: 4, inputs: [{ type: 'stone', count: 4 }], requiresTable: true },
+  { id: 'sandstone', output: 'sandstone', outputCount: 1, inputs: [{ type: 'sand', count: 4 }], requiresTable: true },
+  { id: 'bricks', output: 'bricks', outputCount: 1, inputs: [{ type: 'brick', count: 4 }], requiresTable: true },
+  { id: 'iron_block', output: 'iron_block', outputCount: 1, inputs: [{ type: 'iron_ingot', count: 9 }], requiresTable: true },
+  { id: 'gold_block', output: 'gold_block', outputCount: 1, inputs: [{ type: 'gold_ingot', count: 9 }], requiresTable: true },
+  { id: 'diamond_block', output: 'diamond_block', outputCount: 1, inputs: [{ type: 'diamond', count: 9 }], requiresTable: true },
+  { id: 'lapis_block', output: 'lapis_block', outputCount: 1, inputs: [{ type: 'lapis', count: 9 }], requiresTable: true },
+  { id: 'emerald_block', output: 'emerald_block', outputCount: 1, inputs: [{ type: 'emerald', count: 9 }], requiresTable: true },
+  { id: 'coal_block', output: 'coal_block', outputCount: 1, inputs: [{ type: 'coal', count: 9 }], requiresTable: true },
+  { id: 'white_wool', output: 'white_wool', outputCount: 1, inputs: [{ type: 'string', count: 4 }], requiresTable: true },
+  { id: 'birch_planks', output: 'oak_planks', outputCount: 4, inputs: [{ type: 'birch_log', count: 1 }], requiresTable: false },
+  { id: 'spruce_planks', output: 'oak_planks', outputCount: 4, inputs: [{ type: 'spruce_log', count: 1 }], requiresTable: false },
+  { id: 'paper', output: 'paper', outputCount: 1, inputs: [{ type: 'wheat', count: 3 }], requiresTable: true },
+  { id: 'book', output: 'book', outputCount: 1, inputs: [{ type: 'paper', count: 3 }, { type: 'leather', count: 1 }], requiresTable: true },
+  { id: 'bookshelf', output: 'bookshelf', outputCount: 1, inputs: [{ type: 'oak_planks', count: 6 }, { type: 'book', count: 3 }], requiresTable: true },
+  { id: 'bread', output: 'bread', outputCount: 1, inputs: [{ type: 'wheat', count: 3 }], requiresTable: true },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

@@ -117,11 +117,76 @@ export const BLOCKS = {
     id: 18, name: 'Furnace', color: [0.34, 0.34, 0.36],
     faceColors: { top: [0.3, 0.3, 0.32], bottom: [0.3, 0.3, 0.32], side: [0.36, 0.36, 0.38] },
     solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false
-  }
+  },
+
+  // ---- Expansion: stone family ----
+  19: { id: 19, name: 'Cobblestone', color: [0.5, 0.5, 0.52], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  20: { id: 20, name: 'Gravel', color: [0.5, 0.47, 0.45], solid: true, transparent: false, breakable: true, hardness: 0.6, liquid: false },
+  21: { id: 21, name: 'Sandstone', color: [0.86, 0.8, 0.58],
+    faceColors: { top: [0.9, 0.84, 0.62], bottom: [0.8, 0.74, 0.54], side: [0.86, 0.8, 0.58] },
+    solid: true, transparent: false, breakable: true, hardness: 1.6, liquid: false },
+  22: { id: 22, name: 'Bricks', color: [0.6, 0.28, 0.22], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  23: { id: 23, name: 'Mossy Cobblestone', color: [0.42, 0.48, 0.4], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  24: { id: 24, name: 'Stone Bricks', color: [0.5, 0.5, 0.52], solid: true, transparent: false, breakable: true, hardness: 1.8, liquid: false },
+  25: { id: 25, name: 'Andesite', color: [0.55, 0.55, 0.56], solid: true, transparent: false, breakable: true, hardness: 1.6, liquid: false },
+  26: { id: 26, name: 'Diorite', color: [0.84, 0.84, 0.85], solid: true, transparent: false, breakable: true, hardness: 1.6, liquid: false },
+  27: { id: 27, name: 'Granite', color: [0.68, 0.46, 0.39], solid: true, transparent: false, breakable: true, hardness: 1.6, liquid: false },
+
+  // ---- Expansion: trees ----
+  28: { id: 28, name: 'Birch Log', color: [0.82, 0.8, 0.72],
+    faceColors: { top: [0.8, 0.72, 0.55], bottom: [0.8, 0.72, 0.55], side: [0.86, 0.85, 0.8] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  29: { id: 29, name: 'Birch Leaves', color: [0.5, 0.62, 0.34], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.86 },
+  30: { id: 30, name: 'Spruce Log', color: [0.32, 0.23, 0.14],
+    faceColors: { top: [0.45, 0.34, 0.2], bottom: [0.45, 0.34, 0.2], side: [0.3, 0.22, 0.13] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  31: { id: 31, name: 'Spruce Leaves', color: [0.2, 0.34, 0.22], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.9 },
+
+  // ---- Expansion: plants & misc ----
+  32: { id: 32, name: 'Cactus', color: [0.3, 0.55, 0.25],
+    faceColors: { top: [0.34, 0.6, 0.28], bottom: [0.26, 0.46, 0.2], side: [0.3, 0.55, 0.25] },
+    solid: true, transparent: true, breakable: true, hardness: 0.5, liquid: false },
+  33: { id: 33, name: 'Pumpkin', color: [0.85, 0.5, 0.12],
+    faceColors: { top: [0.7, 0.5, 0.2], bottom: [0.7, 0.5, 0.2], side: [0.85, 0.5, 0.12] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  34: { id: 34, name: 'Melon', color: [0.4, 0.62, 0.2],
+    faceColors: { top: [0.38, 0.56, 0.22], bottom: [0.38, 0.56, 0.22], side: [0.4, 0.62, 0.2] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  35: { id: 35, name: 'Obsidian', color: [0.13, 0.1, 0.18], solid: true, transparent: false, breakable: true, hardness: 5.0, liquid: false },
+  36: { id: 36, name: 'Glowstone', color: [0.9, 0.78, 0.4], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+  37: { id: 37, name: 'Bookshelf', color: [0.6, 0.45, 0.28],
+    faceColors: { top: [0.65, 0.5, 0.28], bottom: [0.65, 0.5, 0.28], side: [0.6, 0.45, 0.28] },
+    solid: true, transparent: false, breakable: true, hardness: 1.2, liquid: false },
+  38: { id: 38, name: 'Ice', color: [0.62, 0.78, 0.95], solid: true, transparent: true, breakable: true, hardness: 0.5, liquid: false, opacity: 0.7 },
+  39: { id: 39, name: 'Clay', color: [0.66, 0.68, 0.72], solid: true, transparent: false, breakable: true, hardness: 0.6, liquid: false },
+
+  // ---- Expansion: ores ----
+  40: { id: 40, name: 'Lapis Ore', color: [0.5, 0.52, 0.56], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  41: { id: 41, name: 'Redstone Ore', color: [0.52, 0.5, 0.5], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  42: { id: 42, name: 'Emerald Ore', color: [0.52, 0.56, 0.52], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+
+  // ---- Expansion: wool ----
+  43: { id: 43, name: 'White Wool', color: [0.93, 0.93, 0.93], solid: true, transparent: false, breakable: true, hardness: 0.5, liquid: false },
+  44: { id: 44, name: 'Red Wool', color: [0.72, 0.2, 0.2], solid: true, transparent: false, breakable: true, hardness: 0.5, liquid: false },
+  45: { id: 45, name: 'Blue Wool', color: [0.2, 0.3, 0.72], solid: true, transparent: false, breakable: true, hardness: 0.5, liquid: false },
+  46: { id: 46, name: 'Green Wool', color: [0.3, 0.55, 0.25], solid: true, transparent: false, breakable: true, hardness: 0.5, liquid: false },
+
+  // ---- Expansion: storage / mineral blocks ----
+  47: { id: 47, name: 'Block of Iron', color: [0.85, 0.85, 0.87], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+  48: { id: 48, name: 'Block of Gold', color: [0.95, 0.8, 0.2], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+  49: { id: 49, name: 'Block of Diamond', color: [0.4, 0.85, 0.9], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+  50: { id: 50, name: 'Lapis Block', color: [0.15, 0.3, 0.7], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  51: { id: 51, name: 'Emerald Block', color: [0.15, 0.8, 0.4], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+  52: { id: 52, name: 'Block of Coal', color: [0.12, 0.12, 0.14], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
-export const PLACEABLE_BLOCKS = [1, 2, 3, 5, 11, 12, 18, 6, 7, 9, 10, 13, 15, 16, 17, 4];
+export const PLACEABLE_BLOCKS = [
+  1, 2, 3, 5, 11, 12, 18, 6, 7, 9, 10, 13, 15, 16, 17, 4,
+  // Expansion blocks:
+  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52
+];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */
 export const CRAFTING_TABLE_ID = 12;

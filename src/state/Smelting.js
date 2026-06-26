@@ -20,7 +20,12 @@ export const SMELT_RECIPES = [
   { id: 'glass', input: 'sand', output: 'glass' },
   { id: 'steak', input: 'raw_beef', output: 'steak' },
   { id: 'mutton', input: 'raw_mutton', output: 'cooked_mutton' },
-  { id: 'salmon', input: 'raw_salmon', output: 'cooked_salmon' }
+  { id: 'salmon', input: 'raw_salmon', output: 'cooked_salmon' },
+  // Expansion smelting:
+  { id: 'stone', input: 'cobblestone', output: 'stone' },
+  { id: 'brick', input: 'clay_ball', output: 'brick' },
+  { id: 'charcoal', input: 'oak_log', output: 'charcoal' },
+  { id: 'porkchop', input: 'raw_porkchop', output: 'cooked_porkchop' }
 ];
 
 export const FUEL = 'coal';

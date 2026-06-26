@@ -65,8 +65,9 @@ const mul = (c, m) => [c[0] * m, c[1] * m, c[2] * m];
 function drawBlock(ctx, blockId) {
   const def = BLOCKS[blockId];
   const top = getFaceColor(blockId, 'top');
-  const isOre = [10, 15, 16, 17].includes(blockId);
-  const accent = { 10: [0.82, 0.7, 0.55], 15: [0.12, 0.12, 0.13], 16: [0.95, 0.8, 0.2], 17: [0.5, 0.9, 0.95] }[blockId];
+  const isOre = [10, 15, 16, 17, 40, 41, 42].includes(blockId);
+  const accent = { 10: [0.82, 0.7, 0.55], 15: [0.12, 0.12, 0.13], 16: [0.95, 0.8, 0.2], 17: [0.5, 0.9, 0.95],
+    40: [0.16, 0.3, 0.85], 41: [0.85, 0.12, 0.12], 42: [0.15, 0.85, 0.45] }[blockId];
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
       const n = pnoise(x, y);
@@ -125,8 +126,31 @@ function drawMaterial(ctx, type) {
   } else if (type === 'iron_ingot' || type === 'gold_ingot') {
     const col = type === 'gold_ingot' ? [0.95, 0.8, 0.2] : [0.82, 0.82, 0.85];
     for (let y = 6; y <= 11; y++) for (let x = 3 + (y - 6); x <= 13 - (y - 6); x++) px(ctx, x, y, mul(col, y === 6 ? 1.15 : 0.85 + (x % 2) * 0.2));
+  } else if (type === 'lapis' || type === 'emerald' || type === 'redstone' || type === 'flint' || type === 'gunpowder') {
+    // Small gem/dust pile.
+    const col = MAT_COLORS[type];
+    for (let y = 4; y <= 13; y++) for (let x = 3; x <= 12; x++) { const dx = x - 7.5, dy = y - 9; if (dx * dx + dy * dy < 24) px(ctx, x, y, mul(col, 0.8 + pnoise(x, y) * 0.4)); }
+  } else if (type === 'stick' || type === 'bone' || type === 'feather') {
+    // (stick handled above) bone/feather: a thin vertical shape.
+    const col = MAT_COLORS[type] || [0.5, 0.36, 0.2];
+    for (let y = 2; y <= 13; y++) px(ctx, 7, y, col), px(ctx, 8, y, mul(col, 0.85));
+    if (type === 'bone') { for (const yy of [2, 13]) { px(ctx, 6, yy, col); px(ctx, 9, yy, col); } }
+  } else if (MAT_COLORS[type]) {
+    // Generic material/ingredient: a rounded nugget in its colour.
+    const col = MAT_COLORS[type];
+    for (let y = 4; y <= 12; y++) for (let x = 3; x <= 12; x++) { const dx = x - 7.5, dy = y - 8; if (dx * dx + dy * dy < 20) px(ctx, x, y, mul(col, 0.82 + pnoise(x, y) * 0.32)); }
   }
 }
+
+/** Fallback colours for procedurally-drawn material/ingredient icons. */
+const MAT_COLORS = {
+  lapis: [0.16, 0.3, 0.85], redstone: [0.85, 0.12, 0.12], emerald: [0.15, 0.85, 0.45],
+  flint: [0.22, 0.22, 0.24], clay_ball: [0.66, 0.68, 0.72], brick: [0.7, 0.32, 0.26],
+  charcoal: [0.18, 0.18, 0.2], string: [0.9, 0.9, 0.9], bone: [0.95, 0.95, 0.88],
+  feather: [0.95, 0.96, 0.98], leather: [0.6, 0.4, 0.25], gunpowder: [0.3, 0.3, 0.32],
+  paper: [0.95, 0.95, 0.9], book: [0.65, 0.25, 0.2], ender_pearl: [0.1, 0.55, 0.5],
+  wheat: [0.85, 0.74, 0.32]
+};
 
 function drawShield(ctx) {
   const wood = [0.5, 0.36, 0.2], iron = [0.82, 0.82, 0.85];
@@ -151,7 +175,22 @@ function drawTotem(ctx) {
 }
 
 function drawFood(ctx, type) {
-  const meat = { raw_beef: [0.85, 0.3, 0.3], raw_mutton: [0.88, 0.4, 0.4], steak: [0.5, 0.3, 0.15], cooked_mutton: [0.55, 0.34, 0.18] }[type];
+  // Apple / bread / melon: simple distinctive shapes.
+  if (type === 'apple') {
+    for (let y = 4; y <= 13; y++) for (let x = 3; x <= 12; x++) { const dx = x - 7.5, dy = y - 9; if (dx * dx + dy * dy < 20) px(ctx, x, y, mul([0.85, 0.15, 0.15], 0.8 + pnoise(x, y) * 0.35)); }
+    px(ctx, 8, 3, [0.4, 0.28, 0.14]); px(ctx, 9, 2, [0.3, 0.6, 0.25]); // stem + leaf
+    return;
+  }
+  if (type === 'bread') {
+    for (let y = 6; y <= 11; y++) for (let x = 2; x <= 13; x++) { const dy = y - 8.5; if (Math.abs(dy) <= 2.5) px(ctx, x, y, mul([0.78, 0.56, 0.28], 0.85 + pnoise(x, y) * 0.3)); }
+    for (let x = 4; x <= 11; x += 2) px(ctx, x, 7, [0.5, 0.34, 0.16]); // score marks
+    return;
+  }
+  if (type === 'melon_slice') {
+    for (let y = 4; y <= 13; y++) { const w = (y - 4); for (let x = 7 - w / 2; x <= 8 + w / 2; x++) px(ctx, x | 0, y, y > 11 ? [0.25, 0.5, 0.2] : mul([0.9, 0.25, 0.3], 0.85 + pnoise(x | 0, y) * 0.3)); }
+    return;
+  }
+  const meat = { raw_beef: [0.85, 0.3, 0.3], raw_mutton: [0.88, 0.4, 0.4], steak: [0.5, 0.3, 0.15], cooked_mutton: [0.55, 0.34, 0.18], raw_porkchop: [0.9, 0.55, 0.55], cooked_porkchop: [0.6, 0.38, 0.2] }[type];
   const fish = { raw_salmon: [0.92, 0.5, 0.5], cooked_salmon: [0.85, 0.5, 0.25] }[type];
   if (meat) {
     for (let y = 4; y <= 12; y++) for (let x = 3; x <= 12; x++) { const dx = x - 7.5, dy = y - 8; if (dx * dx + dy * dy < 22) px(ctx, x, y, mul(meat, 0.85 + pnoise(x, y) * 0.3)); }

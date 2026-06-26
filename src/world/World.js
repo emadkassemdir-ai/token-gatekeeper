@@ -34,7 +34,11 @@ export const BIOME = Object.freeze({
   MOUNTAIN: 'mountain',
   SNOWY: 'snowy',
   JUNGLE: 'jungle',
-  OCEAN: 'ocean'
+  OCEAN: 'ocean',
+  FOREST: 'forest',
+  TAIGA: 'taiga',
+  SAVANNA: 'savanna',
+  BEACH: 'beach'
 });
 
 function chunkKey(cx, cz) {
@@ -75,7 +79,43 @@ const TEX = {
   15: { all: 'ore', base: STONE_BASE, accent: [0.12, 0.12, 0.13] }, // coal
   16: { all: 'ore', base: STONE_BASE, accent: [0.95, 0.8, 0.2] },   // gold
   17: { all: 'ore', base: STONE_BASE, accent: [0.5, 0.9, 0.95] },   // diamond
-  18: { top: 'stone', side: 'furnace', bottom: 'stone' }
+  18: { top: 'stone', side: 'furnace', bottom: 'stone' },
+
+  // ---- Expansion textures ----
+  19: { all: 'cobble' },
+  20: { all: 'gravel' },
+  21: { top: 'sandstone_top', side: 'sandstone', bottom: 'sandstone_top' },
+  22: { all: 'bricks' },
+  23: { all: 'mossy' },
+  24: { all: 'stonebricks' },
+  25: { all: 'stone' },   // andesite (block colour applied)
+  26: { all: 'stone' },   // diorite
+  27: { all: 'stone' },   // granite
+  28: { top: 'birch_top', side: 'birch_side', bottom: 'birch_top' },
+  29: { all: 'leaves' },
+  30: { top: 'spruce_top', side: 'spruce_side', bottom: 'spruce_top' },
+  31: { all: 'leaves' },
+  32: { top: 'cactus_top', side: 'cactus', bottom: 'cactus_top' },
+  33: { top: 'pumpkin_top', side: 'pumpkin_side', bottom: 'pumpkin_top' },
+  34: { top: 'melon_top', side: 'melon_side', bottom: 'melon_top' },
+  35: { all: 'obsidian' },
+  36: { all: 'glowstone' },
+  37: { top: 'planks', side: 'bookshelf', bottom: 'planks' },
+  38: { all: 'ice' },
+  39: { all: 'clay' },
+  40: { all: 'ore', base: STONE_BASE, accent: [0.16, 0.3, 0.85] }, // lapis
+  41: { all: 'ore', base: STONE_BASE, accent: [0.85, 0.12, 0.12] }, // redstone
+  42: { all: 'ore', base: STONE_BASE, accent: [0.15, 0.85, 0.45] }, // emerald
+  43: { all: 'wool' },
+  44: { all: 'wool' },
+  45: { all: 'wool' },
+  46: { all: 'wool' },
+  47: { all: 'metal' },
+  48: { all: 'metal' },
+  49: { all: 'gem' },
+  50: { all: 'metal' },
+  51: { all: 'gem' },
+  52: { all: 'metal' }
 };
 
 const TILE = 16; // texels per tile
@@ -168,6 +208,114 @@ function paintTile(ctx, ox, kind, base, accent) {
           // Accent blobs clustered at a few spots.
           if (pnoise(px * 1.7 + 3, py * 1.7 + 5) > 0.86) c = mul(accent, 0.85 + n * 0.4);
           break;
+        case 'cobble': {
+          // Rounded cobbles separated by dark mortar.
+          const cellX = (px + 1) % 8 < 4 ? 0 : 1;
+          const cellY = py % 8 < 4 ? 0 : 1;
+          const edge = (px % 4 === 0) || (py % 4 === 0);
+          c = edge ? mul(base, 0.5) : mul(base, (cellX ^ cellY ? 0.78 : 1.0) + n * 0.18);
+          break;
+        }
+        case 'gravel':
+          c = mul(base, 0.7 + n * 0.5);
+          if (pnoise(px * 2.1, py * 2.1) > 0.8) c = mul(base, 0.55);
+          break;
+        case 'sandstone':
+          // Horizontal sedimentary bands.
+          c = mul(base, (py % 5 === 0 ? 0.78 : 0.95) + n * 0.08);
+          break;
+        case 'sandstone_top':
+          c = mul(base, 0.92 + n * 0.12);
+          break;
+        case 'bricks': {
+          const row = Math.floor(py / 4);
+          const off = row % 2 ? 4 : 0;        // running bond
+          const mortar = (py % 4 === 0) || ((px + off) % 8 === 0);
+          c = mortar ? [0.78, 0.74, 0.7] : mul(base, 0.82 + n * 0.25);
+          break;
+        }
+        case 'stonebricks': {
+          const mortar = (py % 8 === 0) || (px % 8 === 0) ||
+            (py % 8 >= 4 ? px % 8 === 4 : false);
+          c = mortar ? mul(base, 0.55) : mul(base, 0.92 + n * 0.16);
+          break;
+        }
+        case 'mossy': {
+          const edge = (px % 4 === 0) || (py % 4 === 0);
+          c = edge ? mul([0.32, 0.4, 0.3], 0.7) : mul([0.5, 0.5, 0.52], 0.85 + n * 0.18);
+          if (pnoise(px * 1.3 + 9, py * 1.3) > 0.7) c = mul([0.3, 0.5, 0.28], 0.8 + n * 0.4); // moss
+          break;
+        }
+        case 'birch_top':
+        case 'spruce_top': {
+          const dx = px - 7.5, dy = py - 7.5;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          c = mul(base, (Math.sin(r * 2.2) > 0.4 ? 0.8 : 0.98) + n * 0.08);
+          break;
+        }
+        case 'birch_side':
+          c = mul(base, 0.95 + n * 0.08);
+          if (pnoise(px * 3 + 2, py * 0.7) > 0.88) c = [0.2, 0.2, 0.18]; // dark knots
+          break;
+        case 'spruce_side':
+          c = mul(base, (px % 4 === 0 ? 0.7 : 0.9) + n * 0.16);
+          break;
+        case 'cactus':
+          c = mul(base, 0.82 + n * 0.2);
+          if (px === 0 || px === 15) c = mul(base, 0.6);
+          if (px % 5 === 2 && pnoise(px, py * 2) > 0.7) c = mul(base, 1.15); // spine dots
+          break;
+        case 'cactus_top':
+          c = mul(base, 0.85 + n * 0.18);
+          if (px > 2 && px < 13 && py > 2 && py < 13) c = mul(base, 1.05 + n * 0.1);
+          break;
+        case 'pumpkin_side':
+          c = mul(base, (px % 3 === 0 ? 0.78 : 0.96) + n * 0.1); // vertical ribs
+          break;
+        case 'pumpkin_top':
+          c = mul(base, 0.9 + n * 0.1);
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [0.4, 0.32, 0.16]; // stem
+          break;
+        case 'melon_side':
+          c = (px % 4 < 2) ? mul([0.25, 0.45, 0.16], 0.9 + n * 0.1) : mul(base, 0.9 + n * 0.15); // stripes
+          break;
+        case 'melon_top':
+          c = mul(base, 0.85 + n * 0.2);
+          break;
+        case 'obsidian':
+          c = mul(base, 0.7 + n * 0.6);
+          if (pnoise(px * 1.5, py * 1.5 + 4) > 0.85) c = [0.32, 0.2, 0.42]; // purple sheen
+          break;
+        case 'glowstone':
+          c = mul(base, 0.7 + n * 0.6);
+          if (pnoise(px * 1.6 + 2, py * 1.6) > 0.7) c = [1.0, 0.95, 0.6]; // bright specks
+          break;
+        case 'bookshelf': {
+          if (py < 2 || py > 13) { c = mul([0.6, 0.45, 0.28], 0.8 + n * 0.1); break; } // plank frame
+          const spine = [[0.7, 0.2, 0.2], [0.2, 0.4, 0.7], [0.2, 0.6, 0.3], [0.7, 0.6, 0.2], [0.5, 0.3, 0.6]][px % 5];
+          c = (px % 5 === 4) ? [0.35, 0.25, 0.15] : mul(spine, 0.8 + n * 0.3); // books + gaps
+          break;
+        }
+        case 'ice':
+          c = mul(base, 0.92 + n * 0.12);
+          if (pnoise(px * 1.2 + 5, py * 1.2) > 0.86) c = [0.85, 0.92, 1.0]; // glint/cracks
+          break;
+        case 'clay':
+          c = mul(base, 0.92 + n * 0.1);
+          break;
+        case 'wool':
+          c = mul(base, 0.85 + n * 0.28);
+          if (n < 0.12) c = mul(base, 0.72);
+          break;
+        case 'metal':
+          c = mul(base, 0.86 + n * 0.16);
+          if (px === py || px === 15 - py) c = mul(base, 1.12); // subtle sheen
+          break;
+        case 'gem': {
+          const dx = px - 7.5, dy = py - 7.5;
+          c = (Math.abs(dx) + Math.abs(dy) < 8) ? mul(base, 0.85 + ((px + py) % 2) * 0.3) : mul(base, 0.7);
+          break;
+        }
         default:
           c = mul(base, 0.9 + n * 0.2);
       }
@@ -515,14 +663,22 @@ export class World {
     let biome;
     if (height < SEA_LEVEL - 1) {
       biome = BIOME.OCEAN;
+    } else if (height <= SEA_LEVEL + 1) {
+      biome = BIOME.BEACH;            // sandy shoreline just above the water
     } else if (height > SEA_LEVEL + 16) {
       biome = BIOME.MOUNTAIN;
     } else if (temperature < -0.25) {
       biome = BIOME.SNOWY;
+    } else if (temperature < -0.05) {
+      biome = BIOME.TAIGA;            // cold conifer forest (spruce)
     } else if (temperature > 0.28 && moisture > 0.1) {
       biome = BIOME.JUNGLE;
     } else if (temperature > 0.25 && moisture < -0.05) {
       biome = BIOME.DESERT;
+    } else if (temperature > 0.12 && moisture < 0.0) {
+      biome = BIOME.SAVANNA;          // warm, dry grassland
+    } else if (moisture > 0.12) {
+      biome = BIOME.FOREST;           // wet temperate woodland (oak + birch)
     } else {
       biome = BIOME.PLAINS;
     }
@@ -552,9 +708,16 @@ export class World {
             id = this._surfaceBlock(biome, height, underwater);
           } else if (y > height - 4) {
             // Sub-surface.
-            if (biome === BIOME.DESERT || biome === BIOME.OCEAN || underwater) id = 7;
-            else if (biome === BIOME.MOUNTAIN) id = 3;
-            else id = 2; // dirt
+            if (biome === BIOME.DESERT) {
+              id = y >= height - 2 ? 7 : 21;          // sand over sandstone
+            } else if (biome === BIOME.OCEAN || biome === BIOME.BEACH || underwater) {
+              // Sandy bed with the odd clay deposit near the surface.
+              id = (y >= height - 2 && this.noise.hash3(wx, y, wz) < 0.07) ? 39 : 7;
+            } else if (biome === BIOME.MOUNTAIN) {
+              id = 3;
+            } else {
+              id = 2; // dirt
+            }
           } else {
             id = this._stoneOrOre(wx, y, wz); // deep: stone with ore pockets
           }
@@ -566,9 +729,13 @@ export class World {
           if (id !== AIR) chunk.setLocal(lx, y, lz, id);
         }
 
-        // Flood water up to sea level over submerged columns.
+        // Flood water up to sea level over submerged columns. In cold biomes
+        // the very top freezes into a sheet of ice.
         if (underwater) {
-          for (let y = height + 1; y <= SEA_LEVEL; y++) chunk.setLocal(lx, y, lz, 8);
+          for (let y = height + 1; y <= SEA_LEVEL; y++) {
+            const freeze = (biome === BIOME.SNOWY || biome === BIOME.TAIGA) && y === SEA_LEVEL;
+            chunk.setLocal(lx, y, lz, freeze ? 38 : 8);
+          }
         }
       }
     }
@@ -579,10 +746,14 @@ export class World {
     if (underwater) return 7;              // sandy bed
     switch (biome) {
       case BIOME.OCEAN: return 7;          // sand
+      case BIOME.BEACH: return 7;          // sand
       case BIOME.DESERT: return 7;         // sand
       case BIOME.SNOWY: return 13;         // snow
+      case BIOME.TAIGA: return 1;          // grass (snow dusting via trees)
       case BIOME.MOUNTAIN: return height > SEA_LEVEL + 26 ? 13 : 3; // snowy peaks
       case BIOME.JUNGLE:
+      case BIOME.FOREST:
+      case BIOME.SAVANNA:
       case BIOME.PLAINS:
       default: return 1;                   // grass
     }
@@ -600,6 +771,14 @@ export class World {
     if (y < 22 && v >= 0.010 && v < 0.022) return 16;   // gold
     if (y < 44 && v >= 0.022 && v < 0.045) return 10;   // iron
     if (v >= 0.045 && v < 0.080) return 15;             // coal (any depth)
+    if (y < 16 && v >= 0.080 && v < 0.095) return 41;   // redstone (deep)
+    if (y < 30 && v >= 0.095 && v < 0.106) return 40;   // lapis
+    if (y < 24 && v >= 0.106 && v < 0.109) return 42;   // emerald (rare)
+    // Stone variant pockets (cosmetic geology).
+    if (v >= 0.110 && v < 0.140) return 20;             // gravel
+    if (v >= 0.140 && v < 0.180) return 27;             // granite
+    if (v >= 0.180 && v < 0.220) return 26;             // diorite
+    if (v >= 0.220 && v < 0.260) return 25;             // andesite
     return 3;                                           // stone
   }
 
@@ -632,10 +811,37 @@ export class World {
         const surface = chunk.getLocal(lx, height, lz);
         const onGrass = surface === 1;
         const onSnow = surface === 13;
-        let density = 0;
-        if (biome === BIOME.JUNGLE && onGrass) density = 0.10;
-        else if (biome === BIOME.PLAINS && onGrass) density = 0.04;
-        else if (biome === BIOME.SNOWY && onSnow) density = 0.03;
+        const onSand = surface === 7;
+
+        // Desert: occasional 1–3 tall cactus columns.
+        if (biome === BIOME.DESERT && onSand) {
+          const r = this.noise.hash2(wx * 1.7 + 5, wz * 1.7 + 3);
+          if (r < 0.014 && this.noise.hash2(wx + 1, wz) > 0.05 && this.noise.hash2(wx, wz + 1) > 0.05) {
+            const tall = 1 + (Math.floor(r * 9000) % 3);
+            for (let i = 0; i < tall; i++) this.setBlock(wx, height + 1 + i, wz, 32);
+          }
+          continue;
+        }
+        // Plains/savanna: rare pumpkins on the grass.
+        if ((biome === BIOME.PLAINS || biome === BIOME.SAVANNA) && onGrass) {
+          if (this.noise.hash2(wx * 2.3 + 11, wz * 2.3 + 7) < 0.004) {
+            this.setBlock(wx, height + 1, wz, 33);
+            continue;
+          }
+        }
+
+        if (!onGrass && !onSnow) continue;
+
+        let density = 0, type = 'oak';
+        switch (biome) {
+          case BIOME.JUNGLE:  density = 0.10; type = 'jungle'; break;
+          case BIOME.FOREST:  density = 0.12; type = this.noise.hash2(wx * 3, wz * 3) < 0.4 ? 'birch' : 'oak'; break;
+          case BIOME.TAIGA:   density = 0.10; type = 'spruce'; break;
+          case BIOME.PLAINS:  density = 0.035; type = this.noise.hash2(wx * 3, wz * 3) < 0.25 ? 'birch' : 'oak'; break;
+          case BIOME.SAVANNA: density = 0.02; type = 'oak'; break;
+          case BIOME.SNOWY:   density = 0.03; type = 'spruce'; break;
+          default: density = 0;
+        }
         if (density === 0) continue;
 
         const roll = this.noise.hash2(wx, wz);
@@ -644,7 +850,7 @@ export class World {
         if (this.noise.hash2(wx + 1, wz) < density) continue;
         if (this.noise.hash2(wx, wz + 1) < density) continue;
 
-        this._spawnTree(wx, height + 1, wz, roll, biome);
+        this._spawnTree(wx, height + 1, wz, roll, type);
       }
     }
   }
@@ -654,26 +860,47 @@ export class World {
    * @param {number} wx @param {number} baseY @param {number} wz
    * @param {number} roll @param {string} biome
    */
-  _spawnTree(wx, baseY, wz, roll, biome) {
-    const jungle = biome === BIOME.JUNGLE;
-    const leaf = jungle ? 14 : 6;
-    const trunkHeight = jungle ? 7 + (Math.floor(roll * 90) % 4) : 4 + (Math.floor(roll * 75) % 3);
+  _spawnTree(wx, baseY, wz, roll, type = 'oak') {
+    const conf = {
+      oak:    { log: 5, leaf: 6, min: 4, span: 3 },
+      birch:  { log: 28, leaf: 29, min: 5, span: 3 },
+      spruce: { log: 30, leaf: 31, min: 6, span: 3, conifer: true },
+      jungle: { log: 5, leaf: 14, min: 7, span: 4 }
+    }[type] || { log: 5, leaf: 6, min: 4, span: 3 };
+
+    const trunkHeight = conf.min + (Math.floor(roll * 90) % conf.span);
     const topY = baseY + trunkHeight;
 
-    for (let dy = -2; dy <= 1; dy++) {
-      const y = topY + dy;
-      const radius = dy >= 1 ? 1 : 2;
-      for (let dx = -radius; dx <= radius; dx++) {
-        for (let dz = -radius; dz <= radius; dz++) {
-          if (radius === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
-          if (dx === 0 && dz === 0 && dy < 1) continue;
-          if (isAir(this.getBlock(wx + dx, y, wz + dz))) {
-            this.setBlock(wx + dx, y, wz + dz, leaf);
+    if (conf.conifer) {
+      // Layered conical canopy for spruce.
+      let r = 2;
+      for (let y = topY; y >= topY - 4; y--) {
+        for (let dx = -r; dx <= r; dx++) {
+          for (let dz = -r; dz <= r; dz++) {
+            if (Math.abs(dx) + Math.abs(dz) > r) continue;
+            if (dx === 0 && dz === 0 && y < topY) continue;
+            if (isAir(this.getBlock(wx + dx, y, wz + dz))) this.setBlock(wx + dx, y, wz + dz, conf.leaf);
+          }
+        }
+        r = r === 2 ? 1 : 2; // alternate radius => tiered look
+      }
+      this.setBlock(wx, topY + 1, wz, conf.leaf); // pointed tip
+    } else {
+      for (let dy = -2; dy <= 1; dy++) {
+        const y = topY + dy;
+        const radius = dy >= 1 ? 1 : 2;
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            if (radius === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
+            if (dx === 0 && dz === 0 && dy < 1) continue;
+            if (isAir(this.getBlock(wx + dx, y, wz + dz))) {
+              this.setBlock(wx + dx, y, wz + dz, conf.leaf);
+            }
           }
         }
       }
     }
-    for (let i = 0; i < trunkHeight; i++) this.setBlock(wx, baseY + i, wz, 5);
+    for (let i = 0; i < trunkHeight; i++) this.setBlock(wx, baseY + i, wz, conf.log);
   }
 
   /* ----------------------------- villages -------------------------------- */
