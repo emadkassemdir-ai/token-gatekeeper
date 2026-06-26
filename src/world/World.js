@@ -141,7 +141,15 @@ const TEX = {
   74: { all: 'metal' },
   75: { top: 'smithtop', side: 'chestside', bottom: 'planks' },
   76: { top: 'barreltop', side: 'chestside', bottom: 'planks' },
-  77: { top: 'chesttop', side: 'chestside', bottom: 'obsidian' }
+  77: { top: 'chesttop', side: 'chestside', bottom: 'obsidian' },
+  78: { all: 'redstone_dust' },
+  79: { all: 'redstone_block' },
+  80: { all: 'lamp_off' },
+  81: { all: 'lamp_on' },
+  82: { all: 'lever_off' },
+  83: { all: 'lever_on' },
+  84: { all: 'redstone_torch' },
+  85: { all: 'spawner' }
 };
 
 const TILE = 16; // texels per tile
@@ -440,6 +448,38 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = mul([0.34, 0.26, 0.16], 0.9 + n * 0.1);
           if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.2, 0.15, 0.1]; // lid hole
           break;
+        case 'redstone_dust':
+          c = mul([0.25, 0.06, 0.06], 0.9 + n * 0.2);
+          if (px === 7 || px === 8 || py === 7 || py === 8) c = [0.7, 0.1, 0.1]; // cross wire
+          break;
+        case 'redstone_block':
+          c = mul(base, 0.85 + n * 0.25);
+          if (n > 0.8) c = [0.95, 0.2, 0.2];
+          break;
+        case 'lamp_off':
+          c = mul([0.4, 0.32, 0.2], 0.9 + n * 0.1);
+          if ((px % 4 < 2) === (py % 4 < 2)) c = mul([0.5, 0.4, 0.25], 0.9);
+          break;
+        case 'lamp_on':
+          c = mul([1.0, 0.85, 0.45], 0.92 + n * 0.1);
+          if ((px % 4 < 2) === (py % 4 < 2)) c = [1.0, 0.95, 0.7];
+          break;
+        case 'lever_off':
+        case 'lever_on': {
+          c = mul([0.5, 0.5, 0.52], 0.9 + n * 0.12); // cobble base
+          const onTop = kind === 'lever_on';
+          if (px >= 6 && px <= 9) { // the handle
+            c = (py < 8) === onTop ? mul([0.55, 0.4, 0.24], 1.0) : mul([0.4, 0.3, 0.18], 0.8);
+          }
+          break;
+        }
+        case 'redstone_torch':
+          c = mul([0.4, 0.28, 0.16], 0.9 + n * 0.1); // stick
+          if (px >= 6 && px <= 9 && py <= 6) c = [0.95, 0.2, 0.15]; // glowing tip
+          break;
+        case 'spawner':
+          c = (px % 2 === 0 && py % 2 === 0) ? [0.1, 0.12, 0.14] : mul(base, 0.8 + n * 0.2); // cage bars
+          break;
         default:
           c = mul(base, 0.9 + n * 0.2);
       }
@@ -639,6 +679,9 @@ export class World {
 
     /** Active dimension: 'overworld' | 'nether'. */
     this.dimension = 'overworld';
+
+    /** Pending loot for generated chests: "x,y,z" -> [{type,count}]. */
+    this.loot = {};
   }
 
   /**
@@ -739,6 +782,7 @@ export class World {
     for (const chunk of fresh) {
       this._plantTrees(chunk);
       this._generateVillage(chunk);
+      this._generateStructures(chunk);
       chunk.decorated = true;
     }
 
@@ -1160,6 +1204,66 @@ export class World {
    * Keyed on chunk coordinates so a given chunk always decides the same way.
    * @param {Chunk} chunk
    */
+  /**
+   * Rarely place a generated structure (underground dungeon, desert pyramid),
+   * each with a loot chest. Keyed on chunk coords so it's stable.
+   * @param {Chunk} chunk
+   */
+  _generateStructures(chunk) {
+    if (this.dimension !== 'overworld') return;
+    const cx = chunk.cx, cz = chunk.cz;
+
+    // Underground dungeon: mossy room with a spawner + loot chest.
+    if (this.noise.hash2(cx * 313 + 5, cz * 313 + 11) < 0.04) {
+      const wx = cx * CHUNK_SIZE + 4 + Math.floor(this.noise.hash2(cx, cz) * 6);
+      const wz = cz * CHUNK_SIZE + 4 + Math.floor(this.noise.hash2(cz, cx) * 6);
+      const y = 10 + Math.floor(this.noise.hash2(cx + 1, cz + 1) * 10);
+      this._buildDungeon(wx, y, wz);
+    }
+
+    // Desert pyramid with a buried treasure chest.
+    const ccx = cx * CHUNK_SIZE + 8, ccz = cz * CHUNK_SIZE + 8;
+    if (this.sampleColumn(ccx, ccz).biome === BIOME.DESERT &&
+        this.noise.hash2(cx * 557 + 3, cz * 557 + 7) < 0.06) {
+      this._buildPyramid(ccx, ccz);
+    }
+  }
+
+  _buildDungeon(cx, y, cz) {
+    const R = 3;
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        for (let dy = 0; dy <= 4; dy++) {
+          const x = cx + dx, Y = y + dy, z = cz + dz;
+          const wall = dx === -R || dx === R || dz === -R || dz === R || dy === 0 || dy === 4;
+          this.setBlock(x, Y, z, wall ? (this.noise.hash3(x, Y, z) < 0.4 ? 23 : 19) : AIR);
+        }
+      }
+    }
+    this.setBlock(cx, y + 1, cz, 85); // monster spawner in the centre
+    const chx = cx + R - 1, chz = cz + R - 1;
+    this.setBlock(chx, y + 1, chz, 65); // loot chest
+    this.loot[`${chx},${y + 1},${chz}`] = [
+      { type: 'iron_ingot', count: 4 }, { type: 'gold_ingot', count: 2 },
+      { type: 'bread', count: 3 }, { type: 'redstone', count: 6 }, { type: 'emerald', count: 1 }
+    ];
+  }
+
+  _buildPyramid(cx, cz) {
+    const base = this.getSpawnHeight(cx, cz) - 1;
+    for (let layer = 0; layer < 6; layer++) {
+      const r = 5 - layer;
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dz = -r; dz <= r; dz++) this.setBlock(cx + dx, base + layer, cz + dz, 21); // sandstone
+      }
+    }
+    this.setBlock(cx, base - 1, cz, 65); // buried treasure chest
+    this.loot[`${cx},${base - 1},${cz}`] = [
+      { type: 'diamond', count: 2 }, { type: 'gold_ingot', count: 5 },
+      { type: 'emerald', count: 3 }, { type: 'tnt', count: 2 }
+    ];
+  }
+
   _generateVillage(chunk) {
     if (this.dimension !== 'overworld') return; // no villages in other dimensions
     if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.07) return;

@@ -232,7 +232,19 @@ export const BLOCKS = {
     solid: true, transparent: false, breakable: true, hardness: 1.2, liquid: false },
   77: { id: 77, name: 'Ender Chest', color: [0.1, 0.18, 0.18],
     faceColors: { top: [0.12, 0.22, 0.22], bottom: [0.08, 0.14, 0.14], side: [0.1, 0.18, 0.18] },
-    solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false }
+    solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+
+  // ---- Redstone ----
+  78: { id: 78, name: 'Redstone Dust', color: [0.5, 0.1, 0.1], solid: true, transparent: false, breakable: true, hardness: 0.2, liquid: false },
+  79: { id: 79, name: 'Block of Redstone', color: [0.78, 0.06, 0.06], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+  80: { id: 80, name: 'Redstone Lamp', color: [0.42, 0.32, 0.2], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+  81: { id: 81, name: 'Redstone Lamp (lit)', color: [1.0, 0.86, 0.5], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+  82: { id: 82, name: 'Lever', color: [0.5, 0.45, 0.42], solid: true, transparent: false, breakable: true, hardness: 0.3, liquid: false },
+  83: { id: 83, name: 'Lever (on)', color: [0.6, 0.52, 0.46], solid: true, transparent: false, breakable: true, hardness: 0.3, liquid: false },
+  84: { id: 84, name: 'Redstone Torch', color: [0.55, 0.12, 0.12], solid: true, transparent: false, breakable: true, hardness: 0.2, liquid: false },
+
+  // ---- Structures ----
+  85: { id: 85, name: 'Spawner', color: [0.18, 0.2, 0.24], solid: true, transparent: true, breakable: true, hardness: 3.0, liquid: false, opacity: 0.7 }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -245,7 +257,8 @@ export const PLACEABLE_BLOCKS = [
   60, 62,             // end blocks (portal not hand-placeable)
   63, 64, 65,         // utility blocks
   66, 67, 68, 69, 70, 71, 72, // brewing/copper/stone/light
-  73, 74, 75, 76, 77          // netherite + functional
+  73, 74, 75, 76, 77,         // netherite + functional
+  78, 79, 80, 82, 84          // redstone (lamp-lit/lever-on/spawner are state-only)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

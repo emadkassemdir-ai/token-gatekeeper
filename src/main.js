@@ -37,7 +37,9 @@ import { EnchantingMenu } from './ui/EnchantingMenu.js';
 import { ChestMenu, CHEST_SLOTS } from './ui/ChestMenu.js';
 import { BrewingMenu } from './ui/BrewingMenu.js';
 import { SmithingMenu } from './ui/SmithingMenu.js';
+import { TradeMenu } from './ui/TradeMenu.js';
 import { isPotion, drinkPotion } from './state/Potions.js';
+import { recomputeRedstone, isRedstone } from './world/Redstone.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
@@ -180,6 +182,7 @@ class Game {
       this.net?.sendEdit({ x, y, z, id }); // share local edits with peers
       this.viewModel?.swing();
       if (id === 0) Audio.mine(); else Audio.place();
+      this._redstoneTouch(x, y, z, id);
     };
     this.interaction.onMine = (dropType) => {
       this.inventory.add(dropType, 1);
@@ -237,6 +240,15 @@ class Game {
     this.interaction.onUse = (type, target) => this._useItem(type, target);
     // Right-clicking interactive blocks (bed/chest/tables) opens/uses them.
     this.interaction.onInteractBlock = (id, target) => this._interactBlock(id, target);
+    // Right-clicking a villager opens trading.
+    this.interaction.onInteractMob = () => {
+      this.camera.getWorldDirection(this._dir);
+      if (this.entities.pickMob(this.camera.position, this._dir, 4, 'villager')) {
+        this.tradeMenu.openMenu();
+        return true;
+      }
+      return false;
+    };
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
       if (!res.eaten) return false;
@@ -374,6 +386,10 @@ class Game {
 
     // Smithing table (netherite upgrades).
     this.smithing = new SmithingMenu(this.app, this.inventory, () => this._nearBlock(75),
+      { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
+
+    // Villager trading.
+    this.tradeMenu = new TradeMenu(this.app, this.inventory,
       { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
 
     // Multiplayer menu (M).
@@ -554,10 +570,29 @@ class Game {
       case 77: this._openEnderChest(); return true;              // ender chest (shared)
       case 67: this.brewing.openMenu(); return true;             // brewing stand
       case 75: this.smithing.openMenu(); return true;            // smithing table
+      case 82: case 83: {                                        // lever: toggle power
+        const next = id === 83 ? 82 : 83;
+        this.world.setBlock(target.x, target.y, target.z, next);
+        this._recordEdit(target.x, target.y, target.z, next);
+        recomputeRedstone(this.world, target.x, target.y, target.z);
+        Audio.click();
+        return true;
+      }
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
       case FURNACE_ID: this.smelting.openMenu(); return true;
       default: return false;
     }
+  }
+
+  /** Recompute redstone if the edited cell or a neighbour is part of a circuit. */
+  _redstoneTouch(x, y, z, id) {
+    let near = isRedstone(id);
+    if (!near) {
+      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+        if (isRedstone(this.world.getBlock(x + dx, y + dy, z + dz))) { near = true; break; }
+      }
+    }
+    if (near) recomputeRedstone(this.world, x, y, z);
   }
 
   /** Sleep in a bed: set spawn here and skip the night. */
@@ -575,7 +610,13 @@ class Game {
   _openChest(target) {
     const key = `${target.x},${target.y},${target.z}`;
     this.record.chests = this.record.chests || {};
-    if (!this.record.chests[key]) this.record.chests[key] = new Array(CHEST_SLOTS).fill(null);
+    if (!this.record.chests[key]) {
+      const slots = new Array(CHEST_SLOTS).fill(null);
+      // Seed generated-structure loot the first time this chest is opened.
+      const loot = this.world.loot && this.world.loot[key];
+      if (loot) { loot.forEach((it, i) => { slots[i] = { type: it.type, count: it.count }; }); delete this.world.loot[key]; }
+      this.record.chests[key] = slots;
+    }
     this._releasePointer();
     this.chestMenu.openWith(this.record.chests[key]);
   }

@@ -45,7 +45,9 @@ export const CATEGORY = {
   // More blocks:
   66: 'leaves', 67: 'stone', 68: 'stone', 69: 'stone', 70: 'stone', 71: 'stone', 72: 'glass',
   // Netherite + functional:
-  73: 'stone', 74: 'stone', 75: 'wood', 76: 'wood', 77: 'stone'
+  73: 'stone', 74: 'stone', 75: 'wood', 76: 'wood', 77: 'stone',
+  // Redstone + structures:
+  78: 'soft', 79: 'stone', 80: 'soft', 81: 'soft', 82: 'soft', 83: 'soft', 84: 'soft', 85: 'stone'
 };
 
 /**
@@ -100,7 +102,10 @@ export const BLOCK_DROPS = {
   66: 'nether_wart', 67: 'brewing_stand', 68: 'raw_copper', 69: 'copper_block',
   70: 'deepslate', 71: 'smooth_stone', 72: 'sea_lantern',
   // Netherite + functional:
-  73: 'ancient_debris', 74: 'netherite_block', 75: 'smithing_table', 76: 'barrel', 77: 'ender_chest'
+  73: 'ancient_debris', 74: 'netherite_block', 75: 'smithing_table', 76: 'barrel', 77: 'ender_chest',
+  // Redstone:
+  78: 'redstone', 79: 'redstone_block', 80: 'redstone_lamp', 81: 'redstone_lamp',
+  82: 'lever', 83: 'lever', 84: 'redstone_torch', 85: null
 };
 
 /**
@@ -192,6 +197,11 @@ export const ITEMS = {
   smithing_table:    { type: 'smithing_table', name: 'Smithing Table', maxStack: 64, place: 75 },
   barrel:            { type: 'barrel', name: 'Barrel', maxStack: 64, place: 76 },
   ender_chest:       { type: 'ender_chest', name: 'Ender Chest', maxStack: 64, place: 77 },
+  redstone_block:    { type: 'redstone_block', name: 'Block of Redstone', maxStack: 64, place: 79 },
+  redstone_lamp:     { type: 'redstone_lamp', name: 'Redstone Lamp', maxStack: 64, place: 80 },
+  lever:             { type: 'lever', name: 'Lever', maxStack: 64, place: 82 },
+  redstone_torch:    { type: 'redstone_torch', name: 'Redstone Torch', maxStack: 64, place: 84 },
+  spawner:           { type: 'spawner', name: 'Spawner', maxStack: 64, place: 85 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -201,7 +211,7 @@ export const ITEMS = {
   gold_ingot:     { type: 'gold_ingot', name: 'Gold Ingot', maxStack: 64, glyph: '▭' },
   // Expansion: materials.
   lapis:          { type: 'lapis', name: 'Lapis Lazuli', maxStack: 64, glyph: '🔷' },
-  redstone:       { type: 'redstone', name: 'Redstone Dust', maxStack: 64, glyph: '🔴' },
+  redstone:       { type: 'redstone', name: 'Redstone Dust', maxStack: 64, place: 78, glyph: '🔴' },
   emerald:        { type: 'emerald', name: 'Emerald', maxStack: 64, glyph: '💚' },
   flint:          { type: 'flint', name: 'Flint', maxStack: 64, glyph: '🔹' },
   clay_ball:      { type: 'clay_ball', name: 'Clay Ball', maxStack: 64, glyph: '●' },
@@ -358,7 +368,8 @@ export const CREATIVE_PALETTE = [
   'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt',
   'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf',
   'brewing_stand', 'copper_ore', 'copper_block', 'deepslate', 'smooth_stone', 'sea_lantern', 'nether_wart',
-  'ancient_debris', 'netherite_block', 'smithing_table', 'barrel', 'ender_chest'
+  'ancient_debris', 'netherite_block', 'smithing_table', 'barrel', 'ender_chest',
+  'redstone', 'redstone_block', 'redstone_lamp', 'lever', 'redstone_torch'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

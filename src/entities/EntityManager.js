@@ -357,6 +357,21 @@ export class EntityManager {
    * @param {string|null} heldType
    * @returns {boolean} whether a mob was hit
    */
+  /** Find the nearest mob of `kind` the player is looking at (for interaction). */
+  pickMob(origin, dir, reach = 4, kind = null) {
+    let best = null, bestDist = reach;
+    for (const m of this.mobs) {
+      if (kind && m.kind !== kind) continue;
+      const cx = m.position.x - origin.x, cy = m.position.y + 0.8 - origin.y, cz = m.position.z - origin.z;
+      const dist = Math.hypot(cx, cy, cz);
+      if (dist > bestDist) continue;
+      const dot = (cx * dir.x + cy * dir.y + cz * dir.z) / (dist || 1);
+      if (dot < 0.4) continue;
+      best = m; bestDist = dist;
+    }
+    return best;
+  }
+
   playerAttack(origin, dir, heldType, reach = PLAYER_REACH, bonus = 0) {
     if (!this.enabled) return false;
     let best = null, bestDist = reach;

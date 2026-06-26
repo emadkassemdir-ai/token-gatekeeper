@@ -49,6 +49,7 @@ export class InteractionEngine {
     this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
     this.onUse = null;    // (type, target) => boolean : special item use (flint&steel…)
     this.onInteractBlock = null; // (blockId, target) => boolean : right-click a block (bed/chest/table)
+    this.onInteractMob = null;   // () => boolean : right-click a mob (villager trade)
     this.mineSpeedMult = 1; // Efficiency enchant multiplier (set by the engine)
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
@@ -309,6 +310,10 @@ export class InteractionEngine {
    * @returns {boolean} true if a block was placed
    */
   _tryPlace() {
+    // Right-clicking a villager opens trading (takes priority over placing).
+    if (this.onInteractMob && this._placeCooldown <= 0 && this.onInteractMob()) {
+      this._placeCooldown = 0.3; return true;
+    }
     // Right-clicking an interactive block (bed/chest/table) takes priority over
     // placing — exactly like Minecraft's "use block" behaviour.
     if (this.target && this.onInteractBlock && this._placeCooldown <= 0) {
