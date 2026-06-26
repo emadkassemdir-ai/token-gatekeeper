@@ -26,6 +26,13 @@ export class PlayerStats {
 
     this.god = false; // cheat: invulnerability
     this.damageBlock = 0; // 0..1 shield damage reduction (set by the engine)
+
+    // Experience + enchantments.
+    this.levels = 0;       // XP levels (spent at the enchanting table)
+    this.xpProgress = 0;   // orbs toward the next level
+    /** Enchantment level per item type (efficiency / sharpness / protection). */
+    this.enchants = {};
+
     /** Called when about to die; return true if a totem saved the player. */
     this.onLethal = null;
 
@@ -59,11 +66,43 @@ export class PlayerStats {
    * @param {number} amount
    * @returns {boolean} whether damage was applied
    */
-  /** @returns {number} total equipped armor protection points. */
+  /** @returns {number} total equipped armor protection points (incl. Protection enchant). */
   armorTotal() {
     let n = 0;
-    for (const slot in this.armor) n += armorPoints(this.armor[slot]);
+    for (const slot in this.armor) {
+      n += armorPoints(this.armor[slot]);
+      if (this.armor[slot]) n += this.getEnchant(this.armor[slot]); // protection
+    }
     return n;
+  }
+
+  /* ------------------------------- XP / enchanting ----------------------- */
+
+  /** Orbs needed to reach the next level (grows with level). */
+  xpToNext() { return 5 + this.levels * 2; }
+
+  /** Gain experience orbs (mining ores, killing mobs). */
+  addXp(orbs) {
+    if (this.isCreative) return;
+    this.xpProgress += orbs;
+    let need = this.xpToNext();
+    while (this.xpProgress >= need) { this.xpProgress -= need; this.levels++; need = this.xpToNext(); }
+  }
+
+  /** Spend levels (enchanting). @returns {boolean} */
+  spendLevels(n) {
+    if (this.levels < n) return false;
+    this.levels -= n;
+    this.xpProgress = Math.min(this.xpProgress, this.xpToNext() - 0.001);
+    return true;
+  }
+
+  /** @param {string} type @returns {number} enchant level for an item type. */
+  getEnchant(type) { return this.enchants[type] || 0; }
+
+  /** Apply (or raise) an enchantment on an item type. */
+  enchant(type, level) {
+    this.enchants[type] = Math.max(this.enchants[type] || 0, level);
   }
 
   /**
@@ -202,7 +241,10 @@ export class PlayerStats {
   }
 
   toJSON() {
-    return { mode: this.mode, health: this.health, hunger: this.hunger, armor: this.armor };
+    return {
+      mode: this.mode, health: this.health, hunger: this.hunger, armor: this.armor,
+      levels: this.levels, xpProgress: this.xpProgress, enchants: this.enchants
+    };
   }
 
   load(data) {
@@ -210,6 +252,9 @@ export class PlayerStats {
     if (data.mode === 'survival' || data.mode === 'creative') this.mode = data.mode;
     if (typeof data.health === 'number') this.health = data.health;
     if (typeof data.hunger === 'number') this.hunger = data.hunger;
+    if (typeof data.levels === 'number') this.levels = data.levels;
+    if (typeof data.xpProgress === 'number') this.xpProgress = data.xpProgress;
+    if (data.enchants && typeof data.enchants === 'object') this.enchants = { ...data.enchants };
     if (data.armor && typeof data.armor === 'object') {
       for (const slot of ['head', 'chest', 'legs', 'feet']) {
         if (isArmor(data.armor[slot])) this.armor[slot] = data.armor[slot];

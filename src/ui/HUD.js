@@ -71,6 +71,7 @@ export class HUD {
         <div id="hud-hunger" class="hud-bar"></div>
       </div>
 
+      <div id="hud-xp" class="hud-xp"></div>
       <div id="hud-hotbar" class="hud-hotbar"></div>
     `;
     this.mount.appendChild(root);
@@ -89,6 +90,7 @@ export class HUD {
       armor: root.querySelector('#hud-armor'),
       health: root.querySelector('#hud-health'),
       hunger: root.querySelector('#hud-hunger'),
+      xp: root.querySelector('#hud-xp'),
       hotbar: root.querySelector('#hud-hotbar')
     };
 
@@ -247,6 +249,17 @@ export class HUD {
     this.el.vitals.style.display = survival ? 'flex' : 'none';
     if (survival) this._updateVitals();
 
+    // XP level bar (survival only).
+    if (this.el.xp) {
+      if (survival && this.stats) {
+        const frac = Math.max(0, Math.min(1, this.stats.xpProgress / this.stats.xpToNext()));
+        this.el.xp.style.display = 'flex';
+        this.el.xp.innerHTML = `<span class="hud-xp-lvl">${this.stats.levels}</span><span class="hud-xp-bar"><i style="width:${frac * 100}%"></i></span>`;
+      } else {
+        this.el.xp.style.display = 'none';
+      }
+    }
+
     this._updateOxygen(state, dt);
   }
 
@@ -359,6 +372,14 @@ export class HUD {
       .icon.shield.full { filter: none; }
       .icon.shield.half { opacity: 0.55; }
       .icon.shield.empty { filter: grayscale(1) brightness(0.5); opacity: 0.4; }
+
+      .hud-xp {
+        position: absolute; bottom: calc(92px + var(--safe-bottom, 0px));
+        left: 50%; transform: translateX(-50%);
+        display: flex; align-items: center; gap: 6px; }
+      .hud-xp-lvl { color: #6cf06c; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px #000, 0 0 4px #1a4a1a; }
+      .hud-xp-bar { width: 170px; height: 6px; background: rgba(0,0,0,0.55); border-radius: 3px; overflow: hidden; }
+      .hud-xp-bar i { display: block; height: 100%; background: linear-gradient(#7cff7c, #2fae2f); }
 
       .hud-hotbar {
         position: absolute; bottom: calc(28px + var(--safe-bottom, 0px));

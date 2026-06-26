@@ -39,7 +39,9 @@ export const CATEGORY = {
   // Nether:
   53: 'soft', 55: 'soft', 56: 'stone', 57: 'stone', 59: 'soft',
   // End:
-  60: 'stone', 62: 'stone'
+  60: 'stone', 62: 'stone',
+  // Utility:
+  63: 'stone', 64: 'soft', 65: 'wood'
 };
 
 /**
@@ -87,7 +89,9 @@ export const BLOCK_DROPS = {
   53: 'netherrack', 54: null, 55: 'soul_sand', 56: 'nether_quartz',
   57: 'nether_bricks', 58: null, 59: 'tnt', 36: 'glowstone',
   // End:
-  60: 'end_stone', 61: null, 62: 'dragon_egg'
+  60: 'end_stone', 61: null, 62: 'dragon_egg',
+  // Utility:
+  63: 'enchanting_table', 64: 'bed', 65: 'chest'
 };
 
 /**
@@ -164,6 +168,9 @@ export const ITEMS = {
   tnt:               { type: 'tnt', name: 'TNT', maxStack: 64, place: 59 },
   end_stone:         { type: 'end_stone', name: 'End Stone', maxStack: 64, place: 60 },
   dragon_egg:        { type: 'dragon_egg', name: 'Dragon Egg', maxStack: 64, place: 62 },
+  enchanting_table:  { type: 'enchanting_table', name: 'Enchanting Table', maxStack: 64, place: 63 },
+  bed:               { type: 'bed', name: 'Bed', maxStack: 64, place: 64 },
+  chest:             { type: 'chest', name: 'Chest', maxStack: 64, place: 65 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -287,7 +294,7 @@ export const CREATIVE_PALETTE = [
   'white_wool', 'red_wool', 'blue_wool', 'green_wool',
   'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block',
   'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt',
-  'end_stone', 'dragon_egg'
+  'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

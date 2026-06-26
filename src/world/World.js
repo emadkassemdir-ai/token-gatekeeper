@@ -126,7 +126,10 @@ const TEX = {
   59: { top: 'tnt_top', side: 'tnt_side', bottom: 'tnt_top' },
   60: { all: 'endstone' },
   61: { all: 'endportal' },
-  62: { all: 'dragonegg' }
+  62: { all: 'dragonegg' },
+  63: { top: 'enchtop', side: 'obsidian', bottom: 'obsidian' },
+  64: { top: 'bedtop', side: 'bedside', bottom: 'planks' },
+  65: { top: 'chesttop', side: 'chestside', bottom: 'planks' }
 };
 
 const TILE = 16; // texels per tile
@@ -375,6 +378,27 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'dragonegg':
           c = mul(base, 0.6 + n * 0.6);
           if (pnoise(px * 1.7, py * 1.7 + 2) > 0.8) c = [0.3, 0.1, 0.4]; // purple sheen
+          break;
+        case 'enchtop':
+          c = mul([0.16, 0.13, 0.2], 0.9 + n * 0.2);
+          if (px >= 4 && px <= 11 && py >= 4 && py <= 11) c = mul([0.7, 0.12, 0.16], 0.85 + n * 0.3); // red book
+          if (px >= 7 && px <= 8 && py >= 4 && py <= 11) c = [0.9, 0.85, 0.7]; // pages
+          break;
+        case 'bedtop':
+          c = mul(base, 0.9 + n * 0.12);
+          if (py < 4) c = [0.92, 0.9, 0.86]; // pillow
+          break;
+        case 'bedside':
+          c = py > 9 ? mul([0.5, 0.36, 0.2], 0.9) : mul(base, 0.9 + n * 0.1); // wood frame below, cloth above
+          break;
+        case 'chesttop':
+          c = mul(base, 0.9 + n * 0.1);
+          if (px === 0 || py === 0 || px === 15 || py === 15) c = mul(base, 0.6); // border
+          break;
+        case 'chestside':
+          c = mul(base, 0.88 + n * 0.12);
+          if (px === 0 || py === 0 || px === 15 || py === 15) c = mul(base, 0.6);
+          if (py >= 6 && py <= 8 && px >= 6 && px <= 9) c = [0.25, 0.2, 0.1]; // latch
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);

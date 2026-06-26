@@ -352,7 +352,7 @@ export class EntityManager {
    * @param {string|null} heldType
    * @returns {boolean} whether a mob was hit
    */
-  playerAttack(origin, dir, heldType, reach = PLAYER_REACH) {
+  playerAttack(origin, dir, heldType, reach = PLAYER_REACH, bonus = 0) {
     if (!this.enabled) return false;
     let best = null, bestDist = reach;
     for (const m of this.mobs) {
@@ -368,7 +368,7 @@ export class EntityManager {
     if (!best) return false;
     const knock = new THREE.Vector3(dir.x, 0, dir.z);
     if (knock.lengthSq() > 0) knock.normalize();
-    best.takeDamage(getAttackDamage(heldType), knock);
+    best.takeDamage(getAttackDamage(heldType) + bonus, knock);
     return true;
   }
 }

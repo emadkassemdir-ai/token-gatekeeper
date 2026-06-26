@@ -197,7 +197,18 @@ export const BLOCKS = {
   60: { id: 60, name: 'End Stone', color: [0.87, 0.86, 0.62], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
   61: { id: 61, name: 'End Portal', color: [0.04, 0.05, 0.12],
     solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false, animated: true, opacity: 0.85 },
-  62: { id: 62, name: 'Dragon Egg', color: [0.08, 0.05, 0.12], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false }
+  62: { id: 62, name: 'Dragon Egg', color: [0.08, 0.05, 0.12], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+
+  // ---- Utility blocks ----
+  63: { id: 63, name: 'Enchanting Table', color: [0.16, 0.13, 0.2],
+    faceColors: { top: [0.6, 0.12, 0.16], bottom: [0.14, 0.11, 0.18], side: [0.16, 0.13, 0.2] },
+    solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  64: { id: 64, name: 'Bed', color: [0.82, 0.2, 0.2],
+    faceColors: { top: [0.85, 0.22, 0.22], bottom: [0.45, 0.32, 0.2], side: [0.7, 0.2, 0.2] },
+    solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+  65: { id: 65, name: 'Chest', color: [0.6, 0.45, 0.24],
+    faceColors: { top: [0.66, 0.5, 0.28], bottom: [0.5, 0.38, 0.2], side: [0.6, 0.45, 0.24] },
+    solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -207,7 +218,8 @@ export const PLACEABLE_BLOCKS = [
   19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
   53, 55, 56, 57, 59, // nether blocks (lava/portal not hand-placeable)
-  60, 62              // end blocks (portal not hand-placeable)
+  60, 62,             // end blocks (portal not hand-placeable)
+  63, 64, 65          // utility blocks
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

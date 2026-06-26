@@ -33,12 +33,20 @@ import { CraftingMenu } from './ui/CraftingMenu.js';
 import { AvatarEditor } from './ui/AvatarEditor.js';
 import { InventoryScreen } from './ui/InventoryScreen.js';
 import { SmeltingMenu } from './ui/SmeltingMenu.js';
+import { EnchantingMenu } from './ui/EnchantingMenu.js';
+import { ChestMenu, CHEST_SLOTS } from './ui/ChestMenu.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
 import { RemotePlayers } from './net/RemotePlayers.js';
 import { packState } from './net/Protocol.js';
 import { MultiplayerMenu } from './ui/MultiplayerMenu.js';
+
+/** Experience granted when a given ore drop is mined. */
+const XP_FOR_DROP = {
+  coal: 1, iron_ore: 1, gold_ore: 1, diamond: 5, emerald: 5,
+  lapis: 2, redstone: 2, nether_quartz: 2
+};
 
 const RENDER_RADIUS = 4; // chunks each direction from spawn (9x9 region)
 const AUTOSAVE_INTERVAL = 15; // seconds
@@ -170,7 +178,11 @@ class Game {
       this.viewModel?.swing();
       if (id === 0) Audio.mine(); else Audio.place();
     };
-    this.interaction.onMine = (dropType) => this.inventory.add(dropType, 1);
+    this.interaction.onMine = (dropType) => {
+      this.inventory.add(dropType, 1);
+      const xp = XP_FOR_DROP[dropType];
+      if (xp) this.stats.addXp(xp); // ores grant experience
+    };
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
       this.camera.getWorldDirection(this._dir);
@@ -190,19 +202,20 @@ class Game {
         if (tid) { this.net.sendAttack(tid, 4); this.remotePlayers.flashHit(tid); return true; }
         return this.entities.playerAttack(this.camera.position, this._dir, held, 40);
       }
+      // Sharpness enchant adds attack damage.
+      const bonus = this.stats.getEnchant(held) * 0.5;
       // PvP: if a remote (survival) player is in our sights, hit them instead.
       // Creative players neither deal nor take combat damage.
       if (this.net?.connected && !this.stats.isCreative) {
         const targetId = this.remotePlayers.pickTarget(this.camera.position, this._dir);
         if (targetId) {
-          const dmg = getAttackDamage(held);
-          this.net.sendAttack(targetId, dmg);
+          this.net.sendAttack(targetId, getAttackDamage(held) + bonus);
           this.remotePlayers.flashHit(targetId);
           Audio.hit();
           return true;
         }
       }
-      const hit = this.entities.playerAttack(this.camera.position, this._dir, held);
+      const hit = this.entities.playerAttack(this.camera.position, this._dir, held, undefined, bonus);
       if (hit) Audio.hit();
       return hit;
     };
@@ -219,6 +232,8 @@ class Game {
     };
     // Special right-click item uses (flint & steel, ender pearl, bone meal).
     this.interaction.onUse = (type, target) => this._useItem(type, target);
+    // Right-clicking interactive blocks (bed/chest/tables) opens/uses them.
+    this.interaction.onInteractBlock = (id, target) => this._interactBlock(id, target);
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
       if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
@@ -248,7 +263,8 @@ class Game {
     };
     this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
     this.entities.onMobKilled = (kind) => {
-      if (kind === 'ender_dragon') this.chat?.system('🏆 You have slain the Ender Dragon!');
+      this.stats.addXp(kind === 'ender_dragon' ? 500 : 5); // killing mobs grants XP
+      if (kind === 'ender_dragon') this.chat?.system('🏆 You have slain the Ender Dragon! (+500 XP)');
     };
   }
 
@@ -330,6 +346,16 @@ class Game {
       onOpen: () => this._releasePointer(),
       log: (msg) => { this.chat?.system(msg); Audio.craft(); }
     });
+
+    // Enchanting table (N): spend XP levels + lapis, bookshelves boost power.
+    this.enchanting = new EnchantingMenu(
+      this.app, this.inventory, this.stats,
+      () => this._nearBlock(63), () => this._bookshelfPower(),
+      { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } }
+    );
+
+    // Chest storage (per-position).
+    this.chestMenu = new ChestMenu(this.app, this.inventory, { onOpen: () => this._releasePointer() });
 
     // Multiplayer menu (M).
     this.mpMenu = new MultiplayerMenu(this.app, this.net, { onOpen: () => this._releasePointer() });
@@ -486,6 +512,50 @@ class Game {
 
   _nearCraftingTable() { return this._nearBlock(CRAFTING_TABLE_ID); }
   _nearFurnace() { return this._nearBlock(FURNACE_ID); }
+
+  /** Count bookshelves near the player (the enchanting table's power source). */
+  _bookshelfPower() {
+    const p = this.physics.position;
+    const cx = Math.floor(p.x), cy = Math.floor(p.y), cz = Math.floor(p.z);
+    let n = 0;
+    for (let dy = -1; dy <= 2; dy++)
+      for (let dz = -3; dz <= 3; dz++)
+        for (let dx = -3; dx <= 3; dx++)
+          if (this.world.getBlock(cx + dx, cy + dy, cz + dz) === 37) n++;
+    return Math.min(15, n);
+  }
+
+  /** Right-click a block: open its UI or use it. @returns {boolean} handled */
+  _interactBlock(id, target) {
+    switch (id) {
+      case 63: this.enchanting.openMenu(); return true;           // enchanting table
+      case 64: return this._sleep();                              // bed
+      case 65: this._openChest(target); return true;             // chest
+      case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
+      case FURNACE_ID: this.smelting.openMenu(); return true;
+      default: return false;
+    }
+  }
+
+  /** Sleep in a bed: set spawn here and skip the night. */
+  _sleep() {
+    if (this.dim !== 'overworld') { this.chat?.error("You can't sleep here."); return true; }
+    const p = this.physics.position;
+    this._spawn = { x: Math.floor(p.x), z: Math.floor(p.z) };
+    this.record.spawn = this._spawn;
+    if (this._isNight()) { this._time = 0.04; this.chat?.system('😴 You slept through the night. Spawn set.'); }
+    else this.chat?.system('⛺ You can only sleep at night — spawn point set.');
+    return true;
+  }
+
+  /** Open the chest at a world position (per-position persistent storage). */
+  _openChest(target) {
+    const key = `${target.x},${target.y},${target.z}`;
+    this.record.chests = this.record.chests || {};
+    if (!this.record.chests[key]) this.record.chests[key] = new Array(CHEST_SLOTS).fill(null);
+    this._releasePointer();
+    this.chestMenu.openWith(this.record.chests[key]);
+  }
 
   /* ----------------------- item uses + the Nether ------------------------ */
 
@@ -877,6 +947,8 @@ class Game {
     // Shield: holding a shield reduces damage (more while actively blocking).
     const held = this.inventory.getSelectedType();
     this.stats.damageBlock = isShield(held) ? (this.interaction.placing ? 0.85 : 0.5) : 0;
+    // Efficiency enchant speeds up mining with the held tool.
+    this.interaction.mineSpeedMult = 1 + this.stats.getEnchant(held) * 0.25;
 
     // First-person held item: keep in sync, swing while mining, animate.
     this.viewModel.setHeld(held);

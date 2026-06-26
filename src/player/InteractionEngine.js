@@ -48,6 +48,8 @@ export class InteractionEngine {
     this.onEat = null;    // (foodType) => boolean : eat; true if consumed
     this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
     this.onUse = null;    // (type, target) => boolean : special item use (flint&steel…)
+    this.onInteractBlock = null; // (blockId, target) => boolean : right-click a block (bed/chest/table)
+    this.mineSpeedMult = 1; // Efficiency enchant multiplier (set by the engine)
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
     this.reach = REACH; // mutable for the /reach cheat
@@ -280,8 +282,9 @@ export class InteractionEngine {
     }
 
     this._breakProgress += dt;
-    // Break time depends on the block category and the held tool (class + tier).
-    const breakTime = getBreakTime(id, this.inventory.getSelectedType());
+    // Break time depends on the block category, the held tool, and any Efficiency
+    // enchantment (mineSpeedMult, set by the engine).
+    const breakTime = getBreakTime(id, this.inventory.getSelectedType()) / (this.mineSpeedMult || 1);
 
     // Visualise mining progress on the crack overlay.
     this.crack.visible = true;
@@ -306,6 +309,13 @@ export class InteractionEngine {
    * @returns {boolean} true if a block was placed
    */
   _tryPlace() {
+    // Right-clicking an interactive block (bed/chest/table) takes priority over
+    // placing — exactly like Minecraft's "use block" behaviour.
+    if (this.target && this.onInteractBlock && this._placeCooldown <= 0) {
+      const tb = this.world.getBlock(this.target.x, this.target.y, this.target.z);
+      if (tb && this.onInteractBlock(tb, this.target)) { this._placeCooldown = 0.3; return true; }
+    }
+
     // Holding armor? The place action equips it instead of placing.
     const heldType = this.inventory.getSelectedType();
     if (isArmor(heldType)) {
