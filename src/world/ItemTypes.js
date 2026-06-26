@@ -37,7 +37,9 @@ export const CATEGORY = {
   43: 'soft', 44: 'soft', 45: 'soft', 46: 'soft', 47: 'stone', 48: 'stone',
   49: 'stone', 50: 'stone', 51: 'stone', 52: 'stone',
   // Nether:
-  53: 'soft', 55: 'soft', 56: 'stone', 57: 'stone', 59: 'soft'
+  53: 'soft', 55: 'soft', 56: 'stone', 57: 'stone', 59: 'soft',
+  // End:
+  60: 'stone', 62: 'stone'
 };
 
 /**
@@ -83,7 +85,9 @@ export const BLOCK_DROPS = {
   50: 'lapis_block', 51: 'emerald_block', 52: 'coal_block',
   // Nether:
   53: 'netherrack', 54: null, 55: 'soul_sand', 56: 'nether_quartz',
-  57: 'nether_bricks', 58: null, 59: 'tnt', 36: 'glowstone'
+  57: 'nether_bricks', 58: null, 59: 'tnt', 36: 'glowstone',
+  // End:
+  60: 'end_stone', 61: null, 62: 'dragon_egg'
 };
 
 /**
@@ -158,6 +162,8 @@ export const ITEMS = {
   nether_quartz_ore: { type: 'nether_quartz_ore', name: 'Nether Quartz Ore', maxStack: 64, place: 56 },
   nether_bricks:     { type: 'nether_bricks', name: 'Nether Bricks', maxStack: 64, place: 57 },
   tnt:               { type: 'tnt', name: 'TNT', maxStack: 64, place: 59 },
+  end_stone:         { type: 'end_stone', name: 'End Stone', maxStack: 64, place: 60 },
+  dragon_egg:        { type: 'dragon_egg', name: 'Dragon Egg', maxStack: 64, place: 62 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -194,6 +200,16 @@ export const ITEMS = {
   leather_chestplate: { type: 'leather_chestplate', name: 'Leather Tunic', maxStack: 1, armor: 3, slot: 'chest', glyph: '🦺' },
   leather_leggings:   { type: 'leather_leggings', name: 'Leather Pants', maxStack: 1, armor: 2, slot: 'legs', glyph: '👖' },
   leather_boots:      { type: 'leather_boots', name: 'Leather Boots', maxStack: 1, armor: 1, slot: 'feet', glyph: '🥾' },
+
+  // ---- Mob-sourced materials + The End ----
+  blaze_rod:      { type: 'blaze_rod', name: 'Blaze Rod', maxStack: 64, glyph: '𝍡' },
+  blaze_powder:   { type: 'blaze_powder', name: 'Blaze Powder', maxStack: 64, glyph: '✸' },
+  eye_of_ender:   { type: 'eye_of_ender', name: 'Eye of Ender', maxStack: 64, endeye: true, glyph: '👁' },
+  ghast_tear:     { type: 'ghast_tear', name: 'Ghast Tear', maxStack: 64, glyph: '💧' },
+  spider_eye:     { type: 'spider_eye', name: 'Spider Eye', maxStack: 64, glyph: '👁', food: { hunger: 1, raw: true } },
+  rotten_flesh:   { type: 'rotten_flesh', name: 'Rotten Flesh', maxStack: 64, glyph: '🍖', food: { hunger: 1, raw: true } },
+  raw_chicken:    { type: 'raw_chicken', name: 'Raw Chicken', maxStack: 64, glyph: '🍗', food: { hunger: 1.5, raw: true } },
+  cooked_chicken: { type: 'cooked_chicken', name: 'Cooked Chicken', maxStack: 64, glyph: '🍗', food: { hunger: 3 } },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -252,6 +268,8 @@ export function isShield(type) { return !!ITEMS[type]?.shield; }
 export function isIgnite(type) { return !!ITEMS[type]?.ignite; }
 /** @param {string|null} type @returns {boolean} ranged bow weapon. */
 export function isBow(type) { return !!ITEMS[type]?.bow; }
+/** @param {string|null} type @returns {boolean} Eye of Ender (opens the End). */
+export function isEndEye(type) { return !!ITEMS[type]?.endeye; }
 /** @param {string|null} type @returns {boolean} */
 export function isTotem(type) { return !!ITEMS[type]?.totem; }
 
@@ -268,7 +286,8 @@ export const CREATIVE_PALETTE = [
   'iron_ore', 'gold_ore', 'lapis_ore', 'redstone_ore', 'emerald_ore',
   'white_wool', 'red_wool', 'blue_wool', 'green_wool',
   'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block',
-  'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt'
+  'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt',
+  'end_stone', 'dragon_egg'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

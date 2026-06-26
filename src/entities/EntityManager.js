@@ -142,8 +142,9 @@ export class EntityManager {
       } else {
         this.scene.remove(m.mesh);
         m.dispose();
-        if (!m.detonate && m.cfg.drop) {
-          this.onDrop?.(m.cfg.drop, m.cfg.dropCount || 1);
+        if (!m.detonate) {
+          const drops = m.cfg.drops || (m.cfg.drop ? [[m.cfg.drop, m.cfg.dropCount || 1]] : []);
+          for (const [type, count] of drops) this.onDrop?.(type, count);
         }
         this.onMobKilled?.(m.kind);
       }
@@ -152,6 +153,15 @@ export class EntityManager {
   }
 
   _trySpawn(playerPos, time) {
+    // The End: endermen roam (the dragon is spawned on arrival, not here).
+    if (this.world.dimension === 'end') {
+      if (this._countWhere((m) => m.kind === 'enderman') < 6) {
+        const s = this._findSurfaceSpot(playerPos);
+        if (s && this.world.isSolidAt(s.x, s.y - 1, s.z)) this._spawn('enderman', s);
+      }
+      return;
+    }
+
     // The Nether has its own inhabitants (no day/night, no overworld animals).
     if (this.world.dimension === 'nether') {
       if (this.peaceful) return;
@@ -179,22 +189,25 @@ export class EntityManager {
       if (this._countWhere((m) => m.hostile) < cap) {
         if (time.isNight && Math.random() < 1 / 1.5) return; // ~1.5x less at night
         const spot = this._findCaveSpot(playerPos);
-        if (spot) this._spawn(Math.random() < 0.5 ? 'zombie' : 'creeper', spot);
+        if (spot) this._spawn(this._pickHostile(), spot);
       }
       return;
     }
 
     // Surface.
     if (time.isNight && !this.peaceful) {
-      if (this._countWhere((m) => m.hostile) < HOSTILE_CAP_SURFACE) {
+      if (this._countWhere((m) => m.hostile || m.kind === 'enderman') < HOSTILE_CAP_SURFACE) {
         const spot = this._findSurfaceSpot(playerPos);
-        if (spot) this._spawn(Math.random() < 0.55 ? 'zombie' : 'creeper', spot);
+        // Endermen wander at night too (neutral until provoked).
+        if (spot) this._spawn(Math.random() < 0.12 ? 'enderman' : this._pickHostile(), spot);
       }
     } else {
-      // Daytime passive animals on grassy ground.
+      // Daytime passive animals on grassy ground (cow/sheep/pig/chicken).
       if (this._countWhere((m) => m.passive && !m.aquatic) < PASSIVE_CAP) {
         const spot = this._findSurfaceSpot(playerPos);
-        if (spot && this._isGrassy(spot)) this._spawn(Math.random() < 0.5 ? 'cow' : 'sheep', spot);
+        if (spot && this._isGrassy(spot)) {
+          this._spawn(['cow', 'sheep', 'pig', 'chicken'][Math.floor(Math.random() * 4)], spot);
+        }
       }
     }
 
@@ -207,7 +220,13 @@ export class EntityManager {
 
   _isGrassy(pos) {
     const b = this.world.sampleColumn(pos.x, pos.z).biome;
-    return b === BIOME.PLAINS || b === BIOME.JUNGLE;
+    return b === BIOME.PLAINS || b === BIOME.JUNGLE ||
+      b === BIOME.FOREST || b === BIOME.SAVANNA || b === BIOME.TAIGA;
+  }
+
+  /** Pick an overworld hostile (zombie/creeper/skeleton/spider). */
+  _pickHostile() {
+    return ['zombie', 'creeper', 'skeleton', 'spider'][Math.floor(Math.random() * 4)];
   }
 
   _findSurfaceSpot(playerPos) {

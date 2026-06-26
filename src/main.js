@@ -18,7 +18,7 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood, isShield, getAttackDamage, isIgnite, isBow } from './world/ItemTypes.js';
+import { getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
@@ -247,6 +247,9 @@ class Game {
       this.net?.sendEdit({ x, y, z, id });
     };
     this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
+    this.entities.onMobKilled = (kind) => {
+      if (kind === 'ender_dragon') this.chat?.system('🏆 You have slain the Ender Dragon!');
+    };
   }
 
   _initNet() {
@@ -501,9 +504,28 @@ class Game {
       this.chat?.error('Light the inside of a 4×5 obsidian frame to open a portal.');
       return false;
     }
+    if (isEndEye(type)) return this._openEndPortal(target);
     if (type === 'bonemeal') return this._useBonemeal(target);
     if (type === 'ender_pearl') return this._throwEnderPearl();
     return false;
+  }
+
+  /** Use an Eye of Ender on flat ground to open a horizontal End portal. */
+  _openEndPortal(target) {
+    if (!target) return false;
+    const bx = target.x, by = target.y + 1, bz = target.z;
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      if (!this.world.isSolidAt(bx + dx, by - 1, bz + dz)) { this.chat?.system('Eyes of Ender need flat ground.'); return false; }
+      if (this.world.getBlock(bx + dx, by, bz + dz) !== 0) return false;
+    }
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      this.world.setBlock(bx + dx, by, bz + dz, 61);
+      this._recordEdit(bx + dx, by, bz + dz, 61);
+    }
+    if (!this.inventory.isCreative) this.inventory.remove('eye_of_ender', 1);
+    Audio.craft();
+    this.chat?.system('👁 An End portal opens — step in!');
+    return true;
   }
 
   /** Detonate a TNT block. */
@@ -598,12 +620,13 @@ class Game {
     return true;
   }
 
-  /** Toggle between the Overworld and the Nether. */
-  _enterPortal() {
-    this._switchDimension(this.dim === 'nether' ? 'overworld' : 'nether');
+  /** Travel through a portal block: 58 = Nether, 61 = End. */
+  _travelPortal(portalId) {
+    if (portalId === 61) this._switchDimension(this.dim === 'end' ? 'overworld' : 'end');
+    else this._switchDimension(this.dim === 'nether' ? 'overworld' : 'nether');
   }
 
-  /** @param {'overworld'|'nether'} target */
+  /** @param {'overworld'|'nether'|'end'} target */
   _switchDimension(target) {
     const p = this.physics.position;
     this.record.dimData = this.record.dimData || {};
@@ -621,6 +644,8 @@ class Game {
     let pos;
     if (saved) {
       pos = { ...saved };
+    } else if (target === 'end') {
+      pos = { x: 0.5, y: 0, z: 0.5 };             // centre of the End island
     } else {
       const scale = target === 'nether' ? 1 / 8 : 8; // classic 8:1 coordinate ratio
       pos = { x: Math.round(p.x * scale) + 0.5, y: 0, z: Math.round(p.z * scale) + 0.5 };
@@ -630,20 +655,43 @@ class Game {
     this._lastChunk = { cx: ccx, cz: ccz };
     this.world.streamAround(ccx, ccz, this._loadRadius, this.record.editedBlocks);
 
+    // Clear the previous dimension's mobs BEFORE spawning anything new here.
+    this.entities.clear();
+
     if (!saved) {
-      pos.y = (target === 'nether'
-        ? this.world.getNetherSpawnY(Math.floor(pos.x), Math.floor(pos.z))
-        : this.world.getSpawnHeight(Math.floor(pos.x), Math.floor(pos.z))) + 0.2;
-      this._buildReturnPortal(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z));
+      const fx = Math.floor(pos.x), fz = Math.floor(pos.z);
+      pos.y = (target === 'nether' ? this.world.getNetherSpawnY(fx, fz) : this.world.getSpawnHeight(fx, fz)) + 0.2;
+      if (target === 'nether') this._buildReturnPortal(fx, Math.floor(pos.y), fz);
+      else if (target === 'end') { this._buildEndReturn(fx, fz); this._spawnDragon(pos); }
     }
 
     this.physics.position.set(pos.x, pos.y, pos.z);
     this.physics.velocity.set(0, 0, 0);
     this._portalTimer = -3; // grace so we don't bounce straight back
-    this.entities.clear();
     this._applyDimAmbiance(target);
     Audio.craft();
-    this.chat?.system(target === 'nether' ? '🔥 You step into the Nether!' : '🌿 Back to the Overworld.');
+    this.chat?.system(
+      target === 'nether' ? '🔥 You step into the Nether!'
+      : target === 'end' ? '🌌 You arrive in The End…'
+      : '🌿 Back to the Overworld.'
+    );
+  }
+
+  /** Lay a small horizontal End portal near the island spawn so the player can leave. */
+  _buildEndReturn(cx, cz) {
+    const x = cx + 4, z = cz;
+    const y = this.world.getSpawnHeight(x, z);
+    const setB = (X, Y, Z, id) => { this.world.setBlock(X, Y, Z, id); this._recordEdit(X, Y, Z, id); };
+    for (let dx = 0; dx <= 1; dx++) for (let dz = 0; dz <= 1; dz++) {
+      if (!this.world.isSolidAt(x + dx, y - 1, z + dz)) setB(x + dx, y - 1, z + dz, 60);
+      setB(x + dx, y, z + dz, 61);
+    }
+  }
+
+  /** Spawn the Ender Dragon boss above the End island. */
+  _spawnDragon(pos) {
+    this.entities.spawnKind('ender_dragon', new THREE.Vector3(pos.x, pos.y + 14, pos.z));
+    this.chat?.error('🐉 The Ender Dragon roars!');
   }
 
   /** Build an obsidian frame + lit portal at a destination so the player can return. */
@@ -659,16 +707,23 @@ class Game {
     }
   }
 
-  /** Apply per-dimension sky/fog/lighting. @param {'overworld'|'nether'} target */
+  /** Apply per-dimension sky/fog/lighting. @param {'overworld'|'nether'|'end'} target */
   _applyDimAmbiance(target) {
     this._nether = target === 'nether';
-    if (this._nether) {
+    if (target === 'nether') {
       if (!this._yassin) {
         this.scene.background = new THREE.Color(0x2a0a0a);
         if (this.scene.fog) { this.scene.fog.color.set(0x2a0a0a); this.scene.fog.near = 8; this.scene.fog.far = 64; }
       }
       this.sun.intensity = 0.5; this.hemi.intensity = 0.7; this.ambient.intensity = 0.4;
       this.hemi.color.set(0xff8a66); this.hemi.groundColor.set(0x331111);
+    } else if (target === 'end') {
+      if (!this._yassin) {
+        this.scene.background = new THREE.Color(0x0a0a16);
+        if (this.scene.fog) { this.scene.fog.color.set(0x0a0a16); this.scene.fog.near = 24; this.scene.fog.far = 140; }
+      }
+      this.sun.intensity = 0.55; this.hemi.intensity = 0.7; this.ambient.intensity = 0.45;
+      this.hemi.color.set(0xc8b8e8); this.hemi.groundColor.set(0x201828);
     } else {
       if (this.scene.fog) { this.scene.fog.near = (RENDER_RADIUS - 1) * CHUNK_SIZE; this.scene.fog.far = (RENDER_RADIUS + 1.5) * CHUNK_SIZE; }
       this.hemi.color.set(0xcfe6ff); this.hemi.groundColor.set(0x55703a);
@@ -754,11 +809,13 @@ class Game {
     const fx = Math.floor(this.physics.position.x);
     const fy = Math.floor(this.physics.position.y + 0.2);
     const fz = Math.floor(this.physics.position.z);
-    const inPortal = this.world.getBlock(fx, fy, fz) === 58 || this.world.getBlock(fx, fy + 1, fz) === 58;
-    if (inPortal) {
+    const pAt = (yy) => this.world.getBlock(fx, yy, fz);
+    const portalId = (pAt(fy) === 58 || pAt(fy + 1) === 58) ? 58
+      : (pAt(fy) === 61 || pAt(fy + 1) === 61) ? 61 : 0;
+    if (portalId) {
       this._portalTimer += dt;
       const need = this.inventory.isCreative ? 0.25 : 3.0;
-      if (this._portalTimer >= need) this._enterPortal();
+      if (this._portalTimer >= need) this._travelPortal(portalId);
     } else if (this._portalTimer > 0) {
       this._portalTimer = Math.max(0, this._portalTimer - dt * 2);
     } else if (this._portalTimer < 0) {
@@ -849,8 +906,8 @@ class Game {
     // Smooth 0..1 where ~1 = day (noon), ~0 = night (midnight).
     const d = Math.max(0.05, Math.sin(this._time * Math.PI * 2) * 0.5 + 0.5);
 
-    // The Nether has its own fixed ambiance — no day/night there.
-    if (this._nether) return;
+    // Other dimensions have their own fixed ambiance — no day/night there.
+    if (this.dim !== 'overworld') return;
 
     this._skyColor.copy(this._skyNight).lerp(this._skyDay, d);
     // In Yassin mode the background is the photo texture — don't overwrite it.

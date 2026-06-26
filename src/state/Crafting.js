@@ -108,6 +108,10 @@ export const RECIPES = [
   { id: 'leather_leggings', output: 'leather_leggings', outputCount: 1, inputs: [{ type: 'leather', count: 7 }], requiresTable: true },
   { id: 'leather_boots', output: 'leather_boots', outputCount: 1, inputs: [{ type: 'leather', count: 4 }], requiresTable: true },
 
+  // ---- The End ----
+  { id: 'blaze_powder', output: 'blaze_powder', outputCount: 2, inputs: [{ type: 'blaze_rod', count: 1 }], requiresTable: false },
+  { id: 'eye_of_ender', output: 'eye_of_ender', outputCount: 1, inputs: [{ type: 'ender_pearl', count: 1 }, { type: 'blaze_powder', count: 1 }], requiresTable: false },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

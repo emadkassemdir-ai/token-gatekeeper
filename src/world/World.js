@@ -123,7 +123,10 @@ const TEX = {
   56: { all: 'ore', base: [0.5, 0.28, 0.27], accent: [0.95, 0.95, 0.92] }, // quartz ore
   57: { all: 'netherbricks' },
   58: { all: 'portal' },
-  59: { top: 'tnt_top', side: 'tnt_side', bottom: 'tnt_top' }
+  59: { top: 'tnt_top', side: 'tnt_side', bottom: 'tnt_top' },
+  60: { all: 'endstone' },
+  61: { all: 'endportal' },
+  62: { all: 'dragonegg' }
 };
 
 const TILE = 16; // texels per tile
@@ -358,6 +361,21 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = mul([0.8, 0.74, 0.3], 0.85 + n * 0.2);
           if (px % 4 === 0 || py % 4 === 0) c = mul([0.6, 0.5, 0.2], 0.9);
           break;
+        case 'endstone':
+          c = mul(base, 0.88 + n * 0.18);
+          if (pnoise(px * 1.5 + 4, py * 1.5) > 0.82) c = mul([0.7, 0.68, 0.45], 0.95); // dark flecks
+          break;
+        case 'endportal': {
+          // Starfield on near-black.
+          c = mul(base, 0.6 + n * 0.5);
+          if (pnoise(px * 2.3 + 7, py * 2.3) > 0.9) c = [0.7, 0.85, 0.8]; // stars
+          if (pnoise(px * 1.1, py * 1.1 + 3) > 0.93) c = [0.5, 0.4, 0.8];
+          break;
+        }
+        case 'dragonegg':
+          c = mul(base, 0.6 + n * 0.6);
+          if (pnoise(px * 1.7, py * 1.7 + 2) > 0.8) c = [0.3, 0.1, 0.4]; // purple sheen
+          break;
         default:
           c = mul(base, 0.9 + n * 0.2);
       }
@@ -571,8 +589,9 @@ export class World {
       chunk.teardown();
     }
     this.chunks.clear();
-    // Distinct noise per dimension so the Nether looks nothing like the surface.
-    this.noise = new NoiseGenerator(dimension === 'nether' ? (this.seed ^ 0x9e3779b9) >>> 0 : this.seed);
+    // Distinct noise per dimension so each looks nothing like the surface.
+    const off = dimension === 'nether' ? 0x9e3779b9 : dimension === 'end' ? 0x517cc1b7 : 0;
+    this.noise = new NoiseGenerator((this.seed ^ off) >>> 0);
   }
 
   /* ----------------------------- voxel access ---------------------------- */
@@ -752,6 +771,7 @@ export class World {
    */
   _fillChunkTerrain(chunk) {
     if (this.dimension === 'nether') { this._fillNetherTerrain(chunk); return; }
+    if (this.dimension === 'end') { this._fillEndTerrain(chunk); return; }
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseZ = chunk.cz * CHUNK_SIZE;
 
@@ -853,6 +873,39 @@ export class World {
     }
   }
 
+  /**
+   * Fill a chunk with End terrain: a floating end-stone island around the world
+   * origin, surrounded by void, ringed by 10 obsidian pillars near the centre.
+   * @param {Chunk} chunk
+   */
+  _fillEndTerrain(chunk) {
+    const baseX = chunk.cx * CHUNK_SIZE;
+    const baseZ = chunk.cz * CHUNK_SIZE;
+    const CY = 32;        // island surface level
+    const R = 46;         // base island radius
+
+    for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        const wx = baseX + lx, wz = baseZ + lz;
+        const dist = Math.hypot(wx, wz);
+        const edge = R + this.noise.fbm2(wx * 0.05, wz * 0.05, { octaves: 3 }) * 12;
+        if (dist >= edge) continue; // the void
+        const thick = 3 + Math.floor((1 - dist / edge) * 7); // domed underside
+        for (let y = CY - thick; y <= CY; y++) chunk.setLocal(lx, y, lz, 60);
+      }
+    }
+
+    // Ten obsidian pillars in a ring around the centre.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const px = Math.round(Math.cos(a) * 20);
+      const pz = Math.round(Math.sin(a) * 20);
+      if (px < baseX || px >= baseX + CHUNK_SIZE || pz < baseZ || pz >= baseZ + CHUNK_SIZE) continue;
+      const h = 9 + (i % 4) * 3;
+      for (let y = CY + 1; y <= CY + h; y++) this.setBlock(px, y, pz, 35); // obsidian
+    }
+  }
+
   /** Find a safe standing Y in the Nether (solid floor with 2 air above). */
   getNetherSpawnY(wx, wz) {
     for (let y = WORLD_HEIGHT - 6; y > 10; y--) {
@@ -920,7 +973,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _plantTrees(chunk) {
-    if (this.dimension === 'nether') return; // no trees in the Nether
+    if (this.dimension !== 'overworld') return; // no trees in other dimensions
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseZ = chunk.cz * CHUNK_SIZE;
 
@@ -1034,7 +1087,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _generateVillage(chunk) {
-    if (this.dimension === 'nether') return; // no villages in the Nether
+    if (this.dimension !== 'overworld') return; // no villages in other dimensions
     if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.07) return;
 
     const cxw = chunk.cx * CHUNK_SIZE + 8;

@@ -165,7 +165,9 @@ const MAT_COLORS = {
   feather: [0.95, 0.96, 0.98], leather: [0.6, 0.4, 0.25], gunpowder: [0.3, 0.3, 0.32],
   paper: [0.95, 0.95, 0.9], book: [0.65, 0.25, 0.2], ender_pearl: [0.1, 0.55, 0.5],
   wheat: [0.85, 0.74, 0.32], nether_quartz: [0.92, 0.9, 0.86], nether_brick: [0.35, 0.18, 0.2],
-  bonemeal: [0.95, 0.95, 0.88], green_dye: [0.25, 0.6, 0.2]
+  bonemeal: [0.95, 0.95, 0.88], green_dye: [0.25, 0.6, 0.2],
+  blaze_rod: [0.95, 0.7, 0.1], blaze_powder: [0.95, 0.6, 0.05], eye_of_ender: [0.2, 0.7, 0.6],
+  ghast_tear: [0.85, 0.95, 0.9], spider_eye: [0.6, 0.1, 0.12]
 };
 
 function drawShield(ctx) {
@@ -206,7 +208,7 @@ function drawFood(ctx, type) {
     for (let y = 4; y <= 13; y++) { const w = (y - 4); for (let x = 7 - w / 2; x <= 8 + w / 2; x++) px(ctx, x | 0, y, y > 11 ? [0.25, 0.5, 0.2] : mul([0.9, 0.25, 0.3], 0.85 + pnoise(x | 0, y) * 0.3)); }
     return;
   }
-  const meat = { raw_beef: [0.85, 0.3, 0.3], raw_mutton: [0.88, 0.4, 0.4], steak: [0.5, 0.3, 0.15], cooked_mutton: [0.55, 0.34, 0.18], raw_porkchop: [0.9, 0.55, 0.55], cooked_porkchop: [0.6, 0.38, 0.2] }[type];
+  const meat = { raw_beef: [0.85, 0.3, 0.3], raw_mutton: [0.88, 0.4, 0.4], steak: [0.5, 0.3, 0.15], cooked_mutton: [0.55, 0.34, 0.18], raw_porkchop: [0.9, 0.55, 0.55], cooked_porkchop: [0.6, 0.38, 0.2], raw_chicken: [0.92, 0.7, 0.6], cooked_chicken: [0.7, 0.5, 0.3], rotten_flesh: [0.45, 0.32, 0.22], spider_eye: [0.6, 0.1, 0.12] }[type];
   const fish = { raw_salmon: [0.92, 0.5, 0.5], cooked_salmon: [0.85, 0.5, 0.25] }[type];
   if (meat) {
     for (let y = 4; y <= 12; y++) for (let x = 3; x <= 12; x++) { const dx = x - 7.5, dy = y - 8; if (dx * dx + dy * dy < 22) px(ctx, x, y, mul(meat, 0.85 + pnoise(x, y) * 0.3)); }

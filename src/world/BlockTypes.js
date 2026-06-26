@@ -191,7 +191,13 @@ export const BLOCKS = {
     solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false, animated: true, opacity: 0.7 },
   59: { id: 59, name: 'TNT', color: [0.78, 0.2, 0.16],
     faceColors: { top: [0.85, 0.78, 0.3], bottom: [0.5, 0.35, 0.2], side: [0.78, 0.2, 0.16] },
-    solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false }
+    solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+
+  // ---- The End ----
+  60: { id: 60, name: 'End Stone', color: [0.87, 0.86, 0.62], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+  61: { id: 61, name: 'End Portal', color: [0.04, 0.05, 0.12],
+    solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false, animated: true, opacity: 0.85 },
+  62: { id: 62, name: 'Dragon Egg', color: [0.08, 0.05, 0.12], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -200,7 +206,8 @@ export const PLACEABLE_BLOCKS = [
   // Expansion blocks:
   19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
-  53, 55, 56, 57, 59  // nether blocks (lava/portal not hand-placeable)
+  53, 55, 56, 57, 59, // nether blocks (lava/portal not hand-placeable)
+  60, 62              // end blocks (portal not hand-placeable)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

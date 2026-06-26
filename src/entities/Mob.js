@@ -19,21 +19,35 @@ import * as THREE from 'three';
 
 /** Per-kind configuration. */
 export const MOB_TYPES = {
-  zombie: { hostile: true, melee: true, hp: 8, speed: 2.6, aggro: 18, drop: null,
+  zombie: { hostile: true, melee: true, hp: 8, speed: 2.6, aggro: 18, drop: 'rotten_flesh',
     body: 0x3a7d35, head: 0x4a8f44, w: 0.6, h: 1.8 },
-  creeper: { hostile: true, hp: 6, speed: 3.0, aggro: 20, drop: null,
+  creeper: { hostile: true, hp: 6, speed: 3.0, aggro: 20, drop: 'gunpowder',
     body: 0x4f9d3a, head: 0x4f9d3a, w: 0.6, h: 1.7 },
+  skeleton: { hostile: true, ranged: true, hp: 8, speed: 2.4, aggro: 18,
+    drops: [['bone', 1], ['arrow', 1]], body: 0xd8d8d2, head: 0xe2e2dc, w: 0.5, h: 1.8 },
+  spider: { hostile: true, melee: true, hp: 8, speed: 3.2, aggro: 16,
+    drops: [['string', 1], ['spider_eye', 1]], body: 0x2a2420, head: 0x2a2420, w: 1.0, h: 0.7 },
+  enderman: { passive: true, hp: 16, speed: 2.4, drop: 'ender_pearl', dropCount: 1,
+    body: 0x14141c, head: 0x14141c, w: 0.5, h: 2.6 },
   // ---- Nether mobs ----
   pigman: { hostile: true, melee: true, nether: true, hp: 10, speed: 2.4, aggro: 16,
     drop: 'cooked_porkchop', dropCount: 1, body: 0x9c7a6a, head: 0xd8a0a0, w: 0.6, h: 1.8 },
   blaze: { hostile: true, ranged: true, flying: true, nether: true, hp: 8, speed: 2.2, aggro: 18,
-    drop: 'gunpowder', dropCount: 1, body: 0xf0b000, head: 0xffd33a, w: 0.5, h: 1.6 },
+    drop: 'blaze_rod', dropCount: 1, body: 0xf0b000, head: 0xffd33a, w: 0.5, h: 1.6 },
   ghast: { hostile: true, ranged: true, flying: true, nether: true, hp: 6, speed: 1.5, aggro: 30,
-    drop: 'gunpowder', dropCount: 2, body: 0xeae6e0, head: 0xeae6e0, w: 1.4, h: 1.4 },
-  cow: { passive: true, hp: 5, speed: 1.4, drop: 'raw_beef', dropCount: 2,
+    drops: [['gunpowder', 1], ['ghast_tear', 1]], body: 0xeae6e0, head: 0xeae6e0, w: 1.4, h: 1.4 },
+  // ---- The End ----
+  ender_dragon: { hostile: true, ranged: true, melee: true, flying: true, end: true, boss: true,
+    hp: 50, speed: 3.2, aggro: 80, drop: 'dragon_egg', dropCount: 1,
+    body: 0x1a1a22, head: 0x1a1a22, w: 3.0, h: 2.0 },
+  cow: { passive: true, hp: 5, speed: 1.4, drops: [['raw_beef', 1], ['leather', 1]],
     body: 0x4a3526, head: 0xd8d2c8, w: 0.8, h: 1.3 },
   sheep: { passive: true, hp: 5, speed: 1.3, drop: 'raw_mutton', dropCount: 1,
     body: 0xe8e6e0, head: 0xd8c8b8, w: 0.8, h: 1.3 },
+  pig: { passive: true, hp: 5, speed: 1.4, drop: 'raw_porkchop', dropCount: 1,
+    body: 0xe6a0a0, head: 0xe6a0a0, w: 0.8, h: 1.2 },
+  chicken: { passive: true, hp: 4, speed: 1.5, drops: [['raw_chicken', 1], ['feather', 1]],
+    body: 0xeeeeee, head: 0xeeeeee, w: 0.45, h: 0.7 },
   fish: { passive: true, aquatic: true, hp: 2, speed: 2.0, drop: 'raw_salmon', dropCount: 1,
     body: 0xc8624a, head: 0xc8624a, w: 0.3, h: 0.3 },
   squid: { passive: true, aquatic: true, hp: 3, speed: 1.4, drop: null,
@@ -75,7 +89,9 @@ export class Mob {
     const build = {
       cow: buildCow, sheep: buildSheep, zombie: buildZombie,
       creeper: buildCreeper, fish: buildFish, squid: buildSquid,
-      pigman: buildPigman, blaze: buildBlaze, ghast: buildGhast
+      pigman: buildPigman, blaze: buildBlaze, ghast: buildGhast,
+      pig: buildPig, chicken: buildChicken, skeleton: buildSkeleton,
+      spider: buildSpider, enderman: buildEnderman, ender_dragon: buildDragon
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -375,6 +391,77 @@ function buildGhast(group) {
   for (const sx of [-0.4, 0, 0.4]) for (const sz of [-0.4, 0.4]) {
     add(group, box(0.16, 0.7, 0.16, tent), sx, 0.3, sz);
   }
+}
+
+function buildPig(group) {
+  const pink = 0xe6a0a0;
+  add(group, box(0.8, 0.6, 1.2, pink), 0, 0.75, 0);            // body
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#e6a0a0'); rect(ctx, 3, 5, 3, 3, '#222'); rect(ctx, 10, 5, 3, 3, '#222'); rect(ctx, 5, 10, 6, 4, '#d07a7a'); rect(ctx, 6, 11, 2, 2, '#5a3030'); rect(ctx, 9, 11, 2, 2, '#5a3030'); });
+  add(group, headWithFace(0.5, 0.5, 0.45, pink, face), 0, 0.85, 0.8); // snout head
+  quadLegs(group, 0xc88080, 0.28, 0.42, 0.42, 0);
+}
+
+function buildChicken(group) {
+  const white = 0xeeeeee, beak = 0xe0a000;
+  add(group, box(0.4, 0.45, 0.5, white), 0, 0.5, 0);          // body
+  add(group, box(0.3, 0.3, 0.3, white), 0, 0.78, 0.18);       // head
+  add(group, box(0.08, 0.08, 0.14, beak), 0, 0.78, 0.36);     // beak
+  add(group, box(0.12, 0.06, 0.12, 0xd03030), 0, 0.95, 0.12); // comb
+  add(group, box(0.06, 0.2, 0.06, beak), -0.1, 0.15, 0);      // legs
+  add(group, box(0.06, 0.2, 0.06, beak), 0.1, 0.15, 0);
+  add(group, box(0.1, 0.3, 0.3, 0xdedede), -0.24, 0.5, 0);    // wings
+  add(group, box(0.1, 0.3, 0.3, 0xdedede), 0.24, 0.5, 0);
+}
+
+function buildSkeleton(group) {
+  const bone = 0xe2e2dc;
+  add(group, box(0.32, 0.9, 0.2, bone), 0, 1.0, 0);           // ribcage
+  add(group, box(0.08, 0.9, 0.08, bone), 0, 1.0, 0);          // spine
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#e2e2dc'); rect(ctx, 3, 6, 3, 3, '#111'); rect(ctx, 10, 6, 3, 3, '#111'); rect(ctx, 5, 11, 6, 1, '#555'); });
+  add(group, headWithFace(0.45, 0.45, 0.45, bone, face), 0, 1.7, 0);
+  const aL = add(group, box(0.1, 0.8, 0.1, bone), -0.28, 1.05, 0.2); aL.rotation.x = -1.2; // aiming arms
+  const aR = add(group, box(0.1, 0.8, 0.1, bone), 0.28, 1.05, 0.2); aR.rotation.x = -1.2;
+  add(group, box(0.1, 0.85, 0.1, bone), -0.1, 0.42, 0);       // legs
+  add(group, box(0.1, 0.85, 0.1, bone), 0.1, 0.42, 0);
+}
+
+function buildSpider(group) {
+  const dark = 0x2a2420;
+  add(group, box(0.7, 0.45, 0.7, dark), 0, 0.4, -0.2);        // abdomen
+  add(group, box(0.5, 0.4, 0.5, dark), 0, 0.4, 0.45);         // head/thorax
+  add(group, box(0.08, 0.08, 0.08, 0xc02020), 0.12, 0.5, 0.7); // red eyes
+  add(group, box(0.08, 0.08, 0.08, 0xc02020), -0.12, 0.5, 0.7);
+  for (const sx of [-1, 1]) for (const sz of [-0.3, 0, 0.3]) {
+    const leg = box(0.6, 0.08, 0.08, 0x1a1410); add(group, leg, sx * 0.5, 0.4, sz);
+    leg.rotation.z = sx * 0.5;
+  }
+}
+
+function buildEnderman(group) {
+  const black = 0x14141c;
+  add(group, box(0.4, 1.3, 0.3, black), 0, 1.5, 0);           // tall torso
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#14141c'); rect(ctx, 2, 7, 5, 2, '#c39bf0'); rect(ctx, 9, 7, 5, 2, '#c39bf0'); });
+  add(group, headWithFace(0.4, 0.45, 0.4, black, face), 0, 2.4, 0);
+  add(group, box(0.1, 1.3, 0.1, black), -0.25, 1.45, 0);      // long arms
+  add(group, box(0.1, 1.3, 0.1, black), 0.25, 1.45, 0);
+  add(group, box(0.12, 1.4, 0.12, black), -0.12, 0.7, 0);     // long legs
+  add(group, box(0.12, 1.4, 0.12, black), 0.12, 0.7, 0);
+}
+
+function buildDragon(group) {
+  const skin = 0x1a1a22, mem = 0x2a2030;
+  add(group, box(1.4, 1.0, 2.6, skin), 0, 1.4, 0);            // body
+  add(group, box(0.8, 0.8, 1.0, skin), 0, 1.5, 1.7);          // neck base
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#1a1a22'); rect(ctx, 3, 4, 3, 3, '#b060ff'); rect(ctx, 10, 4, 3, 3, '#b060ff'); rect(ctx, 4, 11, 8, 2, '#3a3030'); });
+  add(group, headWithFace(0.9, 0.8, 1.1, skin, face), 0, 1.7, 2.6); // head
+  // Wings.
+  const wL = add(group, box(2.4, 0.1, 1.4, mem), -1.6, 1.8, -0.2); wL.rotation.z = 0.25;
+  const wR = add(group, box(2.4, 0.1, 1.4, mem), 1.6, 1.8, -0.2); wR.rotation.z = -0.25;
+  // Tail.
+  add(group, box(0.6, 0.6, 1.6, skin), 0, 1.4, -1.8);
+  add(group, box(0.35, 0.35, 1.2, skin), 0, 1.4, -3.0);
+  // Stubby legs.
+  quadLegs(group, skin, 0.5, 0.7, 0.7, 0);
 }
 
 function buildGeneric(group, cfg) {
