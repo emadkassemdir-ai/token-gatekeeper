@@ -47,6 +47,7 @@ export class InteractionEngine {
     this.onAttack = null; // () => boolean : try to hit a mob; true if it hit
     this.onEat = null;    // (foodType) => boolean : eat; true if consumed
     this.onEquip = null;  // (armorType) => boolean : equip; true if equipped
+    this.onUse = null;    // (type, target) => boolean : special item use (flint&steel…)
     this._placeRequested = false; // one-shot place (touch tap)
     this._attackCooldown = 0;
     this.reach = REACH; // mutable for the /reach cheat
@@ -292,6 +293,16 @@ export class InteractionEngine {
       if (this.onEat && this.onEat(heldType)) {
         this.inventory.consumeSelected();
         this._placeCooldown = 0.4;
+        return true;
+      }
+      return false;
+    }
+
+    // Special non-placeable items (flint & steel, ender pearl, bone meal…).
+    if (!placeBlockId(heldType) && this.onUse) {
+      if (this._placeCooldown > 0) return false;
+      if (this.onUse(heldType, this.target)) {
+        this._placeCooldown = 0.35;
         return true;
       }
       return false;

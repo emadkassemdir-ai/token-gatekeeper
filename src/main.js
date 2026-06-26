@@ -18,7 +18,7 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood, isShield, getAttackDamage } from './world/ItemTypes.js';
+import { getFood, isShield, getAttackDamage, isIgnite, isBow } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
@@ -64,6 +64,13 @@ class Game {
     // Easter egg: naming yourself "yassin" turns the whole game into The Photo.
     this._yassin = isYassin(record.username);
     if (this._yassin) applyYassinUI();
+
+    // Dimension state ('overworld' | 'nether'); per-dimension edits are kept in
+    // record.dimData so builds persist, but a fresh load always starts topside.
+    this.dim = 'overworld';
+    this._nether = false;
+    this._portalTimer = 0;
+    this._lavaTimer = 0;
 
     // Day/night: t in [0,1). 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight.
     this._time = record.time ?? 0.2;
@@ -169,6 +176,20 @@ class Game {
       this.camera.getWorldDirection(this._dir);
       const held = this.inventory.getSelectedType();
       this.viewModel?.swing();
+
+      // Bow: ranged shot. Consumes an arrow (free in creative); long reach.
+      if (isBow(held)) {
+        if (!this.inventory.isCreative && this.inventory.count('arrow') < 1) {
+          this.chat?.system('Out of arrows!');
+          return false;
+        }
+        if (!this.inventory.isCreative) this.inventory.remove('arrow', 1);
+        Audio.hit();
+        const tid = this.net?.connected && !this.stats.isCreative
+          ? this.remotePlayers.pickTarget(this.camera.position, this._dir, 40) : null;
+        if (tid) { this.net.sendAttack(tid, 4); this.remotePlayers.flashHit(tid); return true; }
+        return this.entities.playerAttack(this.camera.position, this._dir, held, 40);
+      }
       // PvP: if a remote (survival) player is in our sights, hit them instead.
       // Creative players neither deal nor take combat damage.
       if (this.net?.connected && !this.stats.isCreative) {
@@ -196,6 +217,8 @@ class Game {
       }
       return false;
     };
+    // Special right-click item uses (flint & steel, ender pearl, bone meal).
+    this.interaction.onUse = (type, target) => this._useItem(type, target);
     this.interaction.onEat = (type) => {
       const res = this.stats.eat(getFood(type));
       if (res.eaten && res.poisoned) this.chat?.error('Yuck — that raw food made you sick!');
@@ -461,6 +484,197 @@ class Game {
   _nearCraftingTable() { return this._nearBlock(CRAFTING_TABLE_ID); }
   _nearFurnace() { return this._nearBlock(FURNACE_ID); }
 
+  /* ----------------------- item uses + the Nether ------------------------ */
+
+  /** Dispatch a special right-click item use. @returns {boolean} consumed */
+  _useItem(type, target) {
+    if (isIgnite(type)) { // flint & steel
+      if (target && this.world.getBlock(target.x, target.y, target.z) === 59) {
+        this._igniteTnt(target.x, target.y, target.z);
+        return true;
+      }
+      if (this._tryLightPortal(target)) {
+        Audio.place();
+        this.chat?.system('🔥 The Nether portal flickers to life…');
+        return true;
+      }
+      this.chat?.error('Light the inside of a 4×5 obsidian frame to open a portal.');
+      return false;
+    }
+    if (type === 'bonemeal') return this._useBonemeal(target);
+    if (type === 'ender_pearl') return this._throwEnderPearl();
+    return false;
+  }
+
+  /** Detonate a TNT block. */
+  _igniteTnt(x, y, z) {
+    this.world.setBlock(x, y, z, 0);
+    this._recordEdit(x, y, z, 0);
+    this.entities.explode({ x: x + 0.5, y: y + 0.5, z: z + 0.5 }, 4, this.physics.position);
+    Audio.hurt();
+    this.chat?.error('💥 Boom!');
+  }
+
+  /** Use bone meal on the targeted grass block to instantly grow a tree. */
+  _useBonemeal(target) {
+    if (!target) return false;
+    if (this.world.getBlock(target.x, target.y, target.z) !== 1) {
+      this.chat?.system('Bone meal grows trees on grass.');
+      return false;
+    }
+    if (this.world.getBlock(target.x, target.y + 1, target.z) !== 0) return false;
+    this.world._spawnTree(target.x, target.y + 1, target.z, Math.random(), 'oak');
+    if (!this.inventory.isCreative) this.inventory.remove('bonemeal', 1);
+    Audio.pickup();
+    return true;
+  }
+
+  /** Throw an ender pearl: teleport to where you're looking (costs ½ heart). */
+  _throwEnderPearl() {
+    this.camera.getWorldDirection(this._dir);
+    const o = this.camera.position;
+    let dest = null;
+    for (let d = 1; d <= 24; d += 0.5) {
+      const x = o.x + this._dir.x * d, y = o.y + this._dir.y * d, z = o.z + this._dir.z * d;
+      if (this.world.isSolidAt(Math.floor(x), Math.floor(y), Math.floor(z))) break;
+      dest = { x, y, z };
+    }
+    if (!dest) return false;
+    const fy = this.world.getSpawnHeight(Math.floor(dest.x), Math.floor(dest.z));
+    this.physics.position.set(dest.x, Math.max(dest.y - 1.5, fy) + 0.1, dest.z);
+    this.physics.velocity.set(0, 0, 0);
+    if (!this.inventory.isCreative) {
+      this.inventory.remove('ender_pearl', 1);
+      this.stats._damageCooldown = 0;
+      this.stats.damage(0.5);
+    }
+    Audio.pickup();
+    return true;
+  }
+
+  /** Try to light a Nether portal from the air cell adjacent to a clicked face. */
+  _tryLightPortal(target) {
+    if (!target) return false;
+    const ix = target.x + target.nx, iy = target.y + target.ny, iz = target.z + target.nz;
+    return this._fillPortalIfFramed(ix, iy, iz, 'x') || this._fillPortalIfFramed(ix, iy, iz, 'z');
+  }
+
+  /**
+   * Validate a 2×3 obsidian frame around an interior cell and fill it with portal
+   * blocks. `axis` is the in-plane horizontal direction.
+   */
+  _fillPortalIfFramed(cx, cy, cz, axis) {
+    const ax = axis === 'x' ? 1 : 0, az = axis === 'x' ? 0 : 1;
+    const g = (x, y, z) => this.world.getBlock(x, y, z);
+    const obs = (x, y, z) => g(x, y, z) === 35;               // obsidian
+    const air = (x, y, z) => { const b = g(x, y, z); return b === 0 || b === 58; };
+    if (!air(cx, cy, cz)) return false;
+
+    let y = cy;
+    while (air(cx, y - 1, cz) && cy - y < 6) y--;             // descend to floor
+    if (!obs(cx, y - 1, cz)) return false;
+
+    let lx = cx, lz = cz, steps = 0;
+    while (air(lx - ax, y, lz - az) && steps < 6) { lx -= ax; lz -= az; steps++; }
+    if (!obs(lx - ax, y, lz - az)) return false;              // left wall
+
+    let w = 0;
+    while (air(lx + ax * w, y, lz + az * w) && w < 6) w++;
+    if (w !== 2 || !obs(lx + ax * w, y, lz + az * w)) return false; // 2-wide + right wall
+
+    for (let h = 0; h < 3; h++) {
+      for (let i = 0; i < w; i++) if (!air(lx + ax * i, y + h, lz + az * i)) return false;
+      if (!obs(lx - ax, y + h, lz - az) || !obs(lx + ax * w, y + h, lz + az * w)) return false;
+    }
+    for (let i = 0; i < w; i++) if (!obs(lx + ax * i, y + 3, lz + az * i)) return false; // top
+
+    for (let h = 0; h < 3; h++) {
+      for (let i = 0; i < w; i++) {
+        const x = lx + ax * i, Y = y + h, z = lz + az * i;
+        this.world.setBlock(x, Y, z, 58);
+        this._recordEdit(x, Y, z, 58);
+      }
+    }
+    return true;
+  }
+
+  /** Toggle between the Overworld and the Nether. */
+  _enterPortal() {
+    this._switchDimension(this.dim === 'nether' ? 'overworld' : 'nether');
+  }
+
+  /** @param {'overworld'|'nether'} target */
+  _switchDimension(target) {
+    const p = this.physics.position;
+    this.record.dimData = this.record.dimData || {};
+    this.record.dimData[this.dim] = {
+      edits: this.record.editedBlocks || {},
+      pos: { x: p.x, y: p.y, z: p.z }
+    };
+
+    this.dim = target;
+    this.record.dim = target;
+    this.world.setDimension(target);
+    this.record.editedBlocks = (this.record.dimData[target] && this.record.dimData[target].edits) || {};
+
+    const saved = this.record.dimData[target] && this.record.dimData[target].pos;
+    let pos;
+    if (saved) {
+      pos = { ...saved };
+    } else {
+      const scale = target === 'nether' ? 1 / 8 : 8; // classic 8:1 coordinate ratio
+      pos = { x: Math.round(p.x * scale) + 0.5, y: 0, z: Math.round(p.z * scale) + 0.5 };
+    }
+
+    const ccx = Math.floor(pos.x / CHUNK_SIZE), ccz = Math.floor(pos.z / CHUNK_SIZE);
+    this._lastChunk = { cx: ccx, cz: ccz };
+    this.world.streamAround(ccx, ccz, this._loadRadius, this.record.editedBlocks);
+
+    if (!saved) {
+      pos.y = (target === 'nether'
+        ? this.world.getNetherSpawnY(Math.floor(pos.x), Math.floor(pos.z))
+        : this.world.getSpawnHeight(Math.floor(pos.x), Math.floor(pos.z))) + 0.2;
+      this._buildReturnPortal(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z));
+    }
+
+    this.physics.position.set(pos.x, pos.y, pos.z);
+    this.physics.velocity.set(0, 0, 0);
+    this._portalTimer = -3; // grace so we don't bounce straight back
+    this.entities.clear();
+    this._applyDimAmbiance(target);
+    Audio.craft();
+    this.chat?.system(target === 'nether' ? '🔥 You step into the Nether!' : '🌿 Back to the Overworld.');
+  }
+
+  /** Build an obsidian frame + lit portal at a destination so the player can return. */
+  _buildReturnPortal(x, y, z) {
+    const setB = (X, Y, Z, id) => { this.world.setBlock(X, Y, Z, id); this._recordEdit(X, Y, Z, id); };
+    for (let dz = -1; dz <= 2; dz++) for (let dy = -1; dy <= 4; dy++) setB(x, y + dy, z + dz, 0);
+    for (let dz = -1; dz <= 2; dz++) { setB(x, y - 1, z + dz, 35); setB(x, y + 3, z + dz, 35); }
+    for (let dy = 0; dy <= 2; dy++) { setB(x, y + dy, z - 1, 35); setB(x, y + dy, z + 2, 35); }
+    for (let dy = 0; dy <= 2; dy++) for (let dz = 0; dz <= 1; dz++) setB(x, y + dy, z + dz, 58);
+    // Solid footing so you don't spawn into a void / lava.
+    for (let dz = 0; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      if (!this.world.isSolidAt(x + dx, y - 1, z + dz)) setB(x + dx, y - 1, z + dz, 35);
+    }
+  }
+
+  /** Apply per-dimension sky/fog/lighting. @param {'overworld'|'nether'} target */
+  _applyDimAmbiance(target) {
+    this._nether = target === 'nether';
+    if (this._nether) {
+      if (!this._yassin) {
+        this.scene.background = new THREE.Color(0x2a0a0a);
+        if (this.scene.fog) { this.scene.fog.color.set(0x2a0a0a); this.scene.fog.near = 8; this.scene.fog.far = 64; }
+      }
+      this.sun.intensity = 0.5; this.hemi.intensity = 0.7; this.ambient.intensity = 0.4;
+      this.hemi.color.set(0xff8a66); this.hemi.groundColor.set(0x331111);
+    } else {
+      if (this.scene.fog) { this.scene.fog.near = (RENDER_RADIUS - 1) * CHUNK_SIZE; this.scene.fog.far = (RENDER_RADIUS + 1.5) * CHUNK_SIZE; }
+      this.hemi.color.set(0xcfe6ff); this.hemi.groundColor.set(0x55703a);
+    }
+  }
+
   /**
    * Throw an item stack into the world a little in front of the player. Other
    * players can see and collect it (multiplayer-synced by id).
@@ -535,6 +749,28 @@ class Game {
     this.world.update(dt);
     this.entities.update(dt, this.physics.position, { isNight: this._isNight() });
     this.stats.update(dt);
+
+    // Nether portal travel + lava hazard.
+    const fx = Math.floor(this.physics.position.x);
+    const fy = Math.floor(this.physics.position.y + 0.2);
+    const fz = Math.floor(this.physics.position.z);
+    const inPortal = this.world.getBlock(fx, fy, fz) === 58 || this.world.getBlock(fx, fy + 1, fz) === 58;
+    if (inPortal) {
+      this._portalTimer += dt;
+      const need = this.inventory.isCreative ? 0.25 : 3.0;
+      if (this._portalTimer >= need) this._enterPortal();
+    } else if (this._portalTimer > 0) {
+      this._portalTimer = Math.max(0, this._portalTimer - dt * 2);
+    } else if (this._portalTimer < 0) {
+      this._portalTimer = Math.min(0, this._portalTimer + dt); // burn off post-travel grace
+    }
+    const inLava = this.world.getBlock(fx, fy, fz) === 54 || this.world.getBlock(fx, fy + 1, fz) === 54;
+    if (inLava) {
+      this._lavaTimer += dt;
+      if (this._lavaTimer >= 0.5) { this._lavaTimer = 0; this.stats._damageCooldown = 0; this.stats.damage(2); }
+    } else {
+      this._lavaTimer = 0;
+    }
 
     // Multiplayer: interpolate remote players and broadcast our state at ~10 Hz.
     this.remotePlayers.update(dt);
@@ -612,6 +848,9 @@ class Game {
     this._time = (this._time + dt / this._dayLength) % 1;
     // Smooth 0..1 where ~1 = day (noon), ~0 = night (midnight).
     const d = Math.max(0.05, Math.sin(this._time * Math.PI * 2) * 0.5 + 0.5);
+
+    // The Nether has its own fixed ambiance — no day/night there.
+    if (this._nether) return;
 
     this._skyColor.copy(this._skyNight).lerp(this._skyDay, d);
     // In Yassin mode the background is the photo texture — don't overwrite it.

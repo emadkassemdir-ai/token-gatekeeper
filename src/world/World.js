@@ -115,7 +115,15 @@ const TEX = {
   49: { all: 'gem' },
   50: { all: 'metal' },
   51: { all: 'gem' },
-  52: { all: 'metal' }
+  52: { all: 'metal' },
+  // Nether:
+  53: { all: 'netherrack' },
+  54: { all: 'lava' },
+  55: { all: 'soulsand' },
+  56: { all: 'ore', base: [0.5, 0.28, 0.27], accent: [0.95, 0.95, 0.92] }, // quartz ore
+  57: { all: 'netherbricks' },
+  58: { all: 'portal' },
+  59: { top: 'tnt_top', side: 'tnt_side', bottom: 'tnt_top' }
 };
 
 const TILE = 16; // texels per tile
@@ -316,6 +324,40 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = (Math.abs(dx) + Math.abs(dy) < 8) ? mul(base, 0.85 + ((px + py) % 2) * 0.3) : mul(base, 0.7);
           break;
         }
+        case 'netherrack':
+          c = mul(base, 0.7 + n * 0.5);
+          if (pnoise(px * 1.6, py * 1.6 + 2) > 0.78) c = mul([0.6, 0.18, 0.18], 0.9); // veins
+          break;
+        case 'lava': {
+          const wave = Math.sin((py + px * 0.5) * 0.7) * 0.12;
+          c = mul(base, 0.9 + wave + n * 0.1);
+          if (pnoise(px * 1.4 + 3, py * 1.4) > 0.8) c = [1.0, 0.85, 0.3]; // bright blobs
+          break;
+        }
+        case 'soulsand':
+          c = mul(base, 0.85 + n * 0.25);
+          if (pnoise(px * 1.5 + 1, py * 1.5) > 0.7) c = mul(base, 0.6); // sunken faces
+          break;
+        case 'netherbricks': {
+          const row = Math.floor(py / 4);
+          const off = row % 2 ? 4 : 0;
+          const mortar = (py % 4 === 0) || ((px + off) % 8 === 0);
+          c = mortar ? mul(base, 0.5) : mul(base, 0.9 + n * 0.2);
+          break;
+        }
+        case 'portal': {
+          const sw = Math.sin((px + py) * 0.9 + n * 3) * 0.2;
+          c = mul(base, 0.8 + sw + n * 0.2);
+          break;
+        }
+        case 'tnt_side':
+          if (py >= 6 && py <= 9) { c = [0.95, 0.95, 0.95]; if ((px + py) % 2 === 0) c = [0.1, 0.1, 0.1]; } // "TNT" label band
+          else c = mul([0.78, 0.2, 0.16], 0.85 + n * 0.2);
+          break;
+        case 'tnt_top':
+          c = mul([0.8, 0.74, 0.3], 0.85 + n * 0.2);
+          if (px % 4 === 0 || py % 4 === 0) c = mul([0.6, 0.5, 0.2], 0.9);
+          break;
         default:
           c = mul(base, 0.9 + n * 0.2);
       }
@@ -512,6 +554,25 @@ export class World {
     this._waterTime = 0;
     /** Reused matrix to avoid per-instance allocation. */
     this._tmpMatrix = new THREE.Matrix4();
+
+    /** Active dimension: 'overworld' | 'nether'. */
+    this.dimension = 'overworld';
+  }
+
+  /**
+   * Switch dimension: unload every chunk (so the next streamAround regenerates
+   * the new dimension's terrain) and re-seed the noise per-dimension.
+   * @param {'overworld'|'nether'} dimension
+   */
+  setDimension(dimension) {
+    this.dimension = dimension;
+    for (const chunk of this.chunks.values()) {
+      this.scene.remove(chunk.group);
+      chunk.teardown();
+    }
+    this.chunks.clear();
+    // Distinct noise per dimension so the Nether looks nothing like the surface.
+    this.noise = new NoiseGenerator(dimension === 'nether' ? (this.seed ^ 0x9e3779b9) >>> 0 : this.seed);
   }
 
   /* ----------------------------- voxel access ---------------------------- */
@@ -690,6 +751,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _fillChunkTerrain(chunk) {
+    if (this.dimension === 'nether') { this._fillNetherTerrain(chunk); return; }
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseZ = chunk.cz * CHUNK_SIZE;
 
@@ -739,6 +801,66 @@ export class World {
         }
       }
     }
+  }
+
+  /**
+   * Fill a chunk with Nether terrain: a netherrack floor + ceiling enclosing an
+   * open cavern, a bedrock cap top and bottom, a lava sea in the depths, soul
+   * sand, quartz ore and glowstone clusters.
+   * @param {Chunk} chunk
+   */
+  _fillNetherTerrain(chunk) {
+    const roof = WORLD_HEIGHT - 2; // bedrock ceiling
+    const LAVA = 8;
+    const baseX = chunk.cx * CHUNK_SIZE;
+    const baseZ = chunk.cz * CHUNK_SIZE;
+
+    for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        const wx = baseX + lx;
+        const wz = baseZ + lz;
+        const floorH = 14 + Math.floor(this.noise.fbm2(wx * 0.04, wz * 0.04, { octaves: 3 }) * 8);
+        const ceilH = roof - 5 - Math.floor(this.noise.fbm2((wx + 500) * 0.04, (wz - 500) * 0.04, { octaves: 3 }) * 8);
+
+        for (let y = 0; y <= roof; y++) {
+          let id = AIR;
+          if (y === 0 || y === roof) id = 4;          // bedrock cap
+          else if (y <= floorH || y >= ceilH) id = 53; // netherrack masses
+
+          // Carve blobby caverns through the netherrack.
+          if (id === 53 && y > 1 && y < roof) {
+            if (Math.abs(this.noise.perlin3(wx * 0.07, y * 0.10, wz * 0.07)) > 0.62) id = AIR;
+          }
+          // Ore / soul sand inside the ground mass.
+          if (id === 53) {
+            const v = this.noise.hash3(wx, y, wz);
+            if (y <= floorH && v < 0.03) id = 55;        // soul sand near the floor
+            else if (v >= 0.03 && v < 0.05) id = 56;     // nether quartz ore
+          }
+          if (id !== AIR) chunk.setLocal(lx, y, lz, id);
+        }
+
+        // Lava sea in the depths.
+        for (let y = 1; y <= LAVA; y++) if (chunk.getLocal(lx, y, lz) === AIR) chunk.setLocal(lx, y, lz, 54);
+
+        // Occasional glowstone cluster hanging under the ceiling.
+        if (this.noise.hash2(wx * 1.3 + 7, wz * 1.3) < 0.012) {
+          for (let y = ceilH; y > LAVA; y--) {
+            if (chunk.getLocal(lx, y, lz) === AIR) { chunk.setLocal(lx, y, lz, 36); break; }
+          }
+        }
+      }
+    }
+  }
+
+  /** Find a safe standing Y in the Nether (solid floor with 2 air above). */
+  getNetherSpawnY(wx, wz) {
+    for (let y = WORLD_HEIGHT - 6; y > 10; y--) {
+      if (isSolid(this.getBlock(wx, y, wz)) && isAir(this.getBlock(wx, y + 1, wz)) && isAir(this.getBlock(wx, y + 2, wz))) {
+        return y + 1;
+      }
+    }
+    return 16;
   }
 
   /** Surface block for a biome column. */
@@ -798,6 +920,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _plantTrees(chunk) {
+    if (this.dimension === 'nether') return; // no trees in the Nether
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseZ = chunk.cz * CHUNK_SIZE;
 
@@ -911,6 +1034,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _generateVillage(chunk) {
+    if (this.dimension === 'nether') return; // no villages in the Nether
     if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.07) return;
 
     const cxw = chunk.cx * CHUNK_SIZE + 8;

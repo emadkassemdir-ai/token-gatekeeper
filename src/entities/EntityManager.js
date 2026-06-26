@@ -256,15 +256,49 @@ export class EntityManager {
   }
 
   /**
+   * Generic explosion (used by TNT): crater blocks and hurt a nearby player.
+   * @param {THREE.Vector3|{x,y,z}} center @param {number} radius @param {THREE.Vector3} [playerPos]
+   */
+  explode(center, radius = 3, playerPos = null) {
+    const cx = Math.floor(center.x), cy = Math.floor(center.y), cz = Math.floor(center.z);
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dz = -radius; dz <= radius; dz++) {
+          if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
+          const x = cx + dx, y = cy + dy, z = cz + dz;
+          const id = this.world.getBlock(x, y, z);
+          if (id && id !== 4) { // never bedrock
+            this.world.setBlock(x, y, z, 0);
+            this.onEdit?.(x, y, z, 0);
+          }
+        }
+      }
+    }
+    if (playerPos) {
+      const d = Math.hypot(playerPos.x - center.x, playerPos.y - center.y, playerPos.z - center.z);
+      if (d <= radius + 1) {
+        this.stats._damageCooldown = 0;
+        const dmg = Math.max(1, (radius + 1 - d) * 2);
+        if (this.stats.damage(dmg)) this.onPlayerHit?.(dmg);
+      }
+    }
+    // Hurt nearby mobs too.
+    for (const m of this.mobs) {
+      if (m.position.distanceTo(center) <= radius + 1) m.takeDamage(10);
+    }
+    this.onExplosion?.();
+  }
+
+  /**
    * Player swings the held item at the nearest mob in front.
    * @param {THREE.Vector3} origin eye position
    * @param {THREE.Vector3} dir normalized look direction
    * @param {string|null} heldType
    * @returns {boolean} whether a mob was hit
    */
-  playerAttack(origin, dir, heldType) {
+  playerAttack(origin, dir, heldType, reach = PLAYER_REACH) {
     if (!this.enabled) return false;
-    let best = null, bestDist = PLAYER_REACH;
+    let best = null, bestDist = reach;
     for (const m of this.mobs) {
       const cx = m.position.x - origin.x;
       const cy = m.position.y + 0.8 - origin.y;

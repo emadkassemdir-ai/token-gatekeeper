@@ -177,7 +177,21 @@ export const BLOCKS = {
   49: { id: 49, name: 'Block of Diamond', color: [0.4, 0.85, 0.9], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
   50: { id: 50, name: 'Lapis Block', color: [0.15, 0.3, 0.7], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
   51: { id: 51, name: 'Emerald Block', color: [0.15, 0.8, 0.4], solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
-  52: { id: 52, name: 'Block of Coal', color: [0.12, 0.12, 0.14], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false }
+  52: { id: 52, name: 'Block of Coal', color: [0.12, 0.12, 0.14], solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+
+  // ---- Nether ----
+  53: { id: 53, name: 'Netherrack', color: [0.45, 0.16, 0.16], solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false },
+  54: { id: 54, name: 'Lava', color: [0.95, 0.45, 0.12],
+    faceColors: { top: [1.0, 0.55, 0.15], bottom: [0.7, 0.3, 0.08], side: [0.9, 0.4, 0.1] },
+    solid: false, transparent: true, breakable: false, hardness: Infinity, liquid: true, animated: true, opacity: 0.95 },
+  55: { id: 55, name: 'Soul Sand', color: [0.36, 0.27, 0.21], solid: true, transparent: false, breakable: true, hardness: 0.6, liquid: false },
+  56: { id: 56, name: 'Nether Quartz Ore', color: [0.5, 0.28, 0.27], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+  57: { id: 57, name: 'Nether Bricks', color: [0.28, 0.14, 0.16], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  58: { id: 58, name: 'Nether Portal', color: [0.6, 0.25, 0.85],
+    solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false, animated: true, opacity: 0.7 },
+  59: { id: 59, name: 'TNT', color: [0.78, 0.2, 0.16],
+    faceColors: { top: [0.85, 0.78, 0.3], bottom: [0.5, 0.35, 0.2], side: [0.78, 0.2, 0.16] },
+    solid: true, transparent: false, breakable: true, hardness: 0.4, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -185,7 +199,8 @@ export const PLACEABLE_BLOCKS = [
   1, 2, 3, 5, 11, 12, 18, 6, 7, 9, 10, 13, 15, 16, 17, 4,
   // Expansion blocks:
   19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
+  53, 55, 56, 57, 59  // nether blocks (lava/portal not hand-placeable)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

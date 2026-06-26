@@ -93,6 +93,21 @@ export const RECIPES = [
   { id: 'bookshelf', output: 'bookshelf', outputCount: 1, inputs: [{ type: 'oak_planks', count: 6 }, { type: 'book', count: 3 }], requiresTable: true },
   { id: 'bread', output: 'bread', outputCount: 1, inputs: [{ type: 'wheat', count: 3 }], requiresTable: true },
 
+  // ---- Uses for new items + Nether ----
+  { id: 'flint_and_steel', output: 'flint_and_steel', outputCount: 1, inputs: [{ type: 'flint', count: 1 }, { type: 'iron_ingot', count: 1 }], requiresTable: true },
+  { id: 'bow', output: 'bow', outputCount: 1, inputs: [{ type: 'stick', count: 3 }, { type: 'string', count: 3 }], requiresTable: true },
+  { id: 'arrow', output: 'arrow', outputCount: 4, inputs: [{ type: 'flint', count: 1 }, { type: 'stick', count: 1 }, { type: 'feather', count: 1 }], requiresTable: true },
+  { id: 'tnt', output: 'tnt', outputCount: 1, inputs: [{ type: 'gunpowder', count: 5 }, { type: 'sand', count: 4 }], requiresTable: true },
+  { id: 'bonemeal', output: 'bonemeal', outputCount: 3, inputs: [{ type: 'bone', count: 1 }], requiresTable: false },
+  { id: 'blue_wool', output: 'blue_wool', outputCount: 1, inputs: [{ type: 'white_wool', count: 1 }, { type: 'lapis', count: 1 }], requiresTable: true },
+  { id: 'green_wool', output: 'green_wool', outputCount: 1, inputs: [{ type: 'white_wool', count: 1 }, { type: 'green_dye', count: 1 }], requiresTable: true },
+  { id: 'red_wool', output: 'red_wool', outputCount: 1, inputs: [{ type: 'white_wool', count: 1 }, { type: 'redstone', count: 1 }], requiresTable: true },
+  { id: 'nether_bricks', output: 'nether_bricks', outputCount: 1, inputs: [{ type: 'nether_brick', count: 4 }], requiresTable: true },
+  { id: 'leather_helmet', output: 'leather_helmet', outputCount: 1, inputs: [{ type: 'leather', count: 5 }], requiresTable: true },
+  { id: 'leather_chestplate', output: 'leather_chestplate', outputCount: 1, inputs: [{ type: 'leather', count: 8 }], requiresTable: true },
+  { id: 'leather_leggings', output: 'leather_leggings', outputCount: 1, inputs: [{ type: 'leather', count: 7 }], requiresTable: true },
+  { id: 'leather_boots', output: 'leather_boots', outputCount: 1, inputs: [{ type: 'leather', count: 4 }], requiresTable: true },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

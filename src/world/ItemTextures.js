@@ -37,7 +37,8 @@ function tierColor(tier) {
   return {
     wood: [0.55, 0.42, 0.22], wooden: [0.55, 0.42, 0.22],
     stone: [0.5, 0.5, 0.52], iron: [0.82, 0.82, 0.85],
-    gold: [0.95, 0.8, 0.2], diamond: [0.4, 0.85, 0.9]
+    gold: [0.95, 0.8, 0.2], diamond: [0.4, 0.85, 0.9],
+    leather: [0.62, 0.42, 0.26]
   }[tier] || [0.7, 0.7, 0.72];
 }
 
@@ -135,6 +136,20 @@ function drawMaterial(ctx, type) {
     const col = MAT_COLORS[type] || [0.5, 0.36, 0.2];
     for (let y = 2; y <= 13; y++) px(ctx, 7, y, col), px(ctx, 8, y, mul(col, 0.85));
     if (type === 'bone') { for (const yy of [2, 13]) { px(ctx, 6, yy, col); px(ctx, 9, yy, col); } }
+  } else if (type === 'flint_and_steel') {
+    const steel = [0.78, 0.78, 0.82], flint = [0.25, 0.25, 0.28];
+    for (let y = 4; y <= 10; y++) { px(ctx, 4, y, steel); px(ctx, 5, y, mul(steel, 0.8)); }   // steel
+    for (let y = 8; y <= 11; y++) px(ctx, y, 11, steel);
+    for (let y = 6; y <= 11; y++) for (let x = 9; x <= 13; x++) { const dx = x - 11, dy = y - 9; if (dx * dx + dy * dy < 7) px(ctx, x, y, flint); } // flint
+    px(ctx, 10, 5, [1, 0.8, 0.2]); px(ctx, 11, 4, [1, 0.6, 0.1]); // sparks
+  } else if (type === 'bow') {
+    const wood = [0.5, 0.36, 0.2];
+    for (let y = 2; y <= 13; y++) { const x = 11 - Math.round(Math.sin((y - 2) / 11 * Math.PI) * 4); px(ctx, x, y, wood); px(ctx, x - 1, y, mul(wood, 0.8)); }
+    for (let y = 2; y <= 13; y++) px(ctx, 11, y, [0.85, 0.85, 0.85]); // string
+  } else if (type === 'arrow') {
+    for (let i = 0; i < 12; i++) px(ctx, 3 + i, 12 - i, [0.5, 0.36, 0.2]); // shaft
+    px(ctx, 13, 1, [0.85, 0.85, 0.88]); px(ctx, 12, 2, [0.85, 0.85, 0.88]); px(ctx, 14, 2, [0.85, 0.85, 0.88]); // head
+    px(ctx, 3, 13, [0.95, 0.95, 0.95]); px(ctx, 2, 12, [0.95, 0.95, 0.95]); // fletching
   } else if (MAT_COLORS[type]) {
     // Generic material/ingredient: a rounded nugget in its colour.
     const col = MAT_COLORS[type];
@@ -149,7 +164,8 @@ const MAT_COLORS = {
   charcoal: [0.18, 0.18, 0.2], string: [0.9, 0.9, 0.9], bone: [0.95, 0.95, 0.88],
   feather: [0.95, 0.96, 0.98], leather: [0.6, 0.4, 0.25], gunpowder: [0.3, 0.3, 0.32],
   paper: [0.95, 0.95, 0.9], book: [0.65, 0.25, 0.2], ender_pearl: [0.1, 0.55, 0.5],
-  wheat: [0.85, 0.74, 0.32]
+  wheat: [0.85, 0.74, 0.32], nether_quartz: [0.92, 0.9, 0.86], nether_brick: [0.35, 0.18, 0.2],
+  bonemeal: [0.95, 0.95, 0.88], green_dye: [0.25, 0.6, 0.2]
 };
 
 function drawShield(ctx) {

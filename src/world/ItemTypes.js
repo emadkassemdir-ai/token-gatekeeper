@@ -35,7 +35,9 @@ export const CATEGORY = {
   31: 'leaves', 32: 'soft', 33: 'soft', 34: 'soft', 35: 'stone', 36: 'glass',
   37: 'wood', 38: 'glass', 39: 'soft', 40: 'stone', 41: 'stone', 42: 'stone',
   43: 'soft', 44: 'soft', 45: 'soft', 46: 'soft', 47: 'stone', 48: 'stone',
-  49: 'stone', 50: 'stone', 51: 'stone', 52: 'stone'
+  49: 'stone', 50: 'stone', 51: 'stone', 52: 'stone',
+  // Nether:
+  53: 'soft', 55: 'soft', 56: 'stone', 57: 'stone', 59: 'soft'
 };
 
 /**
@@ -78,7 +80,10 @@ export const BLOCK_DROPS = {
   37: 'bookshelf', 38: null, 39: 'clay_ball', 40: 'lapis', 41: 'redstone',
   42: 'emerald', 43: 'white_wool', 44: 'red_wool', 45: 'blue_wool',
   46: 'green_wool', 47: 'iron_block', 48: 'gold_block', 49: 'diamond_block',
-  50: 'lapis_block', 51: 'emerald_block', 52: 'coal_block'
+  50: 'lapis_block', 51: 'emerald_block', 52: 'coal_block',
+  // Nether:
+  53: 'netherrack', 54: null, 55: 'soul_sand', 56: 'nether_quartz',
+  57: 'nether_bricks', 58: null, 59: 'tnt', 36: 'glowstone'
 };
 
 /**
@@ -147,6 +152,13 @@ export const ITEMS = {
   emerald_block:     { type: 'emerald_block', name: 'Emerald Block', maxStack: 64, place: 51 },
   coal_block:        { type: 'coal_block', name: 'Block of Coal', maxStack: 64, place: 52 },
 
+  // Nether blocks.
+  netherrack:        { type: 'netherrack', name: 'Netherrack', maxStack: 64, place: 53 },
+  soul_sand:         { type: 'soul_sand', name: 'Soul Sand', maxStack: 64, place: 55 },
+  nether_quartz_ore: { type: 'nether_quartz_ore', name: 'Nether Quartz Ore', maxStack: 64, place: 56 },
+  nether_bricks:     { type: 'nether_bricks', name: 'Nether Bricks', maxStack: 64, place: 57 },
+  tnt:               { type: 'tnt', name: 'TNT', maxStack: 64, place: 59 },
+
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
   coal:           { type: 'coal', name: 'Coal', maxStack: 64, glyph: '⬛' },
@@ -169,6 +181,19 @@ export const ITEMS = {
   paper:          { type: 'paper', name: 'Paper', maxStack: 64, glyph: '📄' },
   book:           { type: 'book', name: 'Book', maxStack: 64, glyph: '📕' },
   ender_pearl:    { type: 'ender_pearl', name: 'Ender Pearl', maxStack: 16, glyph: '🟢' },
+  // Nether materials + tools/uses.
+  nether_quartz:  { type: 'nether_quartz', name: 'Nether Quartz', maxStack: 64, glyph: '◇' },
+  nether_brick:   { type: 'nether_brick', name: 'Nether Brick', maxStack: 64, glyph: '▪' },
+  bonemeal:       { type: 'bonemeal', name: 'Bone Meal', maxStack: 64, glyph: '✦' },
+  green_dye:      { type: 'green_dye', name: 'Green Dye', maxStack: 64, glyph: '●' },
+  flint_and_steel:{ type: 'flint_and_steel', name: 'Flint and Steel', maxStack: 1, ignite: true, glyph: '🔥' },
+  bow:            { type: 'bow', name: 'Bow', maxStack: 1, bow: true, damage: 0.5, glyph: '🏹' },
+  arrow:          { type: 'arrow', name: 'Arrow', maxStack: 64, glyph: '➶' },
+  // Leather armor (early-game protection from cow/zombie leather).
+  leather_helmet:     { type: 'leather_helmet', name: 'Leather Cap', maxStack: 1, armor: 1, slot: 'head', glyph: '⛑' },
+  leather_chestplate: { type: 'leather_chestplate', name: 'Leather Tunic', maxStack: 1, armor: 3, slot: 'chest', glyph: '🦺' },
+  leather_leggings:   { type: 'leather_leggings', name: 'Leather Pants', maxStack: 1, armor: 2, slot: 'legs', glyph: '👖' },
+  leather_boots:      { type: 'leather_boots', name: 'Leather Boots', maxStack: 1, armor: 1, slot: 'feet', glyph: '🥾' },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -223,6 +248,10 @@ export const ITEMS = {
 
 /** @param {string|null} type @returns {boolean} */
 export function isShield(type) { return !!ITEMS[type]?.shield; }
+/** @param {string|null} type @returns {boolean} igniter (flint & steel). */
+export function isIgnite(type) { return !!ITEMS[type]?.ignite; }
+/** @param {string|null} type @returns {boolean} ranged bow weapon. */
+export function isBow(type) { return !!ITEMS[type]?.bow; }
 /** @param {string|null} type @returns {boolean} */
 export function isTotem(type) { return !!ITEMS[type]?.totem; }
 
@@ -238,7 +267,8 @@ export const CREATIVE_PALETTE = [
   'cactus', 'pumpkin', 'melon', 'obsidian', 'glowstone', 'bookshelf', 'ice', 'clay',
   'iron_ore', 'gold_ore', 'lapis_ore', 'redstone_ore', 'emerald_ore',
   'white_wool', 'red_wool', 'blue_wool', 'green_wool',
-  'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block'
+  'iron_block', 'gold_block', 'diamond_block', 'lapis_block', 'emerald_block', 'coal_block',
+  'netherrack', 'soul_sand', 'nether_quartz_ore', 'nether_bricks', 'tnt'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */
