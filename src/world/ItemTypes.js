@@ -54,7 +54,11 @@ export const CATEGORY = {
   // Farming:
   97: 'soft', 98: 'leaves', 99: 'leaves', 100: 'leaves', 101: 'leaves', 102: 'leaves', 103: 'leaves',
   // Pistons / doors / ladders:
-  104: 'wood', 105: 'wood', 106: 'wood', 107: 'wood', 108: 'wood', 109: 'wood'
+  104: 'wood', 105: 'wood', 106: 'wood', 107: 'wood', 108: 'wood', 109: 'wood',
+  // Redstone logic + transport:
+  110: 'stone', 111: 'stone', 112: 'stone', 113: 'stone', 114: 'stone', 115: 'stone',
+  // Slabs + stairs (parent material):
+  116: 'wood', 117: 'stone', 118: 'stone', 119: 'wood', 120: 'stone', 121: 'stone'
 };
 
 /**
@@ -120,7 +124,12 @@ export const BLOCK_DROPS = {
   // Farming (young crops drop their seed/item; ripe drop the harvest):
   97: 'dirt', 98: 'wheat_seeds', 99: 'wheat', 100: 'carrot', 101: 'carrot', 102: 'potato', 103: 'potato',
   // Pistons / doors / ladders (head & open-door drop the base item):
-  104: 'piston', 105: 'piston', 106: 'sticky_piston', 107: 'ladder', 108: 'door', 109: 'door'
+  104: 'piston', 105: 'piston', 106: 'sticky_piston', 107: 'ladder', 108: 'door', 109: 'door',
+  // Redstone logic + transport:
+  110: 'repeater', 111: 'repeater', 112: 'observer', 113: 'hopper', 114: 'dispenser', 115: 'dropper',
+  // Slabs + stairs:
+  116: 'oak_slab', 117: 'stone_slab', 118: 'cobblestone_slab',
+  119: 'oak_stairs', 120: 'stone_stairs', 121: 'cobblestone_stairs'
 };
 
 /**
@@ -232,6 +241,17 @@ export const ITEMS = {
   sticky_piston:     { type: 'sticky_piston', name: 'Sticky Piston', maxStack: 64, place: 106 },
   ladder:            { type: 'ladder', name: 'Ladder', maxStack: 64, place: 107 },
   door:              { type: 'door', name: 'Oak Door', maxStack: 64, place: 108 },
+  repeater:          { type: 'repeater', name: 'Redstone Repeater', maxStack: 64, place: 110 },
+  observer:          { type: 'observer', name: 'Observer', maxStack: 64, place: 112 },
+  hopper:            { type: 'hopper', name: 'Hopper', maxStack: 64, place: 113 },
+  dispenser:         { type: 'dispenser', name: 'Dispenser', maxStack: 64, place: 114 },
+  dropper:           { type: 'dropper', name: 'Dropper', maxStack: 64, place: 115 },
+  oak_slab:          { type: 'oak_slab', name: 'Oak Slab', maxStack: 64, place: 116 },
+  stone_slab:        { type: 'stone_slab', name: 'Stone Slab', maxStack: 64, place: 117 },
+  cobblestone_slab:  { type: 'cobblestone_slab', name: 'Cobblestone Slab', maxStack: 64, place: 118 },
+  oak_stairs:        { type: 'oak_stairs', name: 'Oak Stairs', maxStack: 64, place: 119 },
+  stone_stairs:      { type: 'stone_stairs', name: 'Stone Stairs', maxStack: 64, place: 120 },
+  cobblestone_stairs:{ type: 'cobblestone_stairs', name: 'Cobblestone Stairs', maxStack: 64, place: 121 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -425,7 +445,9 @@ export const CREATIVE_PALETTE = [
   'redstone', 'redstone_block', 'redstone_lamp', 'lever', 'redstone_torch',
   'blast_furnace', 'smoker', 'grindstone', 'acacia_log', 'acacia_leaves', 'acacia_planks',
   'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon',
-  'piston', 'sticky_piston', 'ladder', 'door'
+  'piston', 'sticky_piston', 'ladder', 'door',
+  'repeater', 'observer', 'hopper', 'dispenser', 'dropper',
+  'oak_slab', 'stone_slab', 'cobblestone_slab', 'oak_stairs', 'stone_stairs', 'cobblestone_stairs'
 ];
 
 /** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */

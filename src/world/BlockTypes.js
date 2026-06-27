@@ -292,7 +292,31 @@ export const BLOCKS = {
     solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
   107: { id: 107, name: 'Ladder', color: [0.5, 0.36, 0.2], solid: false, transparent: true, breakable: true, hardness: 0.4, liquid: false },
   108: { id: 108, name: 'Door', color: [0.55, 0.4, 0.24], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.98 },
-  109: { id: 109, name: 'Door (open)', color: [0.55, 0.4, 0.24], solid: false, transparent: true, breakable: true, hardness: 1.0, liquid: false }
+  109: { id: 109, name: 'Door (open)', color: [0.55, 0.4, 0.24], solid: false, transparent: true, breakable: true, hardness: 1.0, liquid: false },
+
+  // ---- Redstone logic (repeaters / observers) ----
+  110: { id: 110, name: 'Redstone Repeater', color: [0.6, 0.6, 0.62], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.95 },
+  111: { id: 111, name: 'Redstone Repeater (on)', color: [0.72, 0.5, 0.5], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.95 },
+  112: { id: 112, name: 'Observer', color: [0.32, 0.32, 0.34],
+    faceColors: { top: [0.28, 0.28, 0.3], bottom: [0.36, 0.36, 0.38], side: [0.34, 0.34, 0.36] },
+    solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false },
+
+  // ---- Item transport (hoppers / dispensers / droppers) ----
+  113: { id: 113, name: 'Hopper', color: [0.32, 0.33, 0.36], solid: true, transparent: true, breakable: true, hardness: 3.0, liquid: false, opacity: 0.92 },
+  114: { id: 114, name: 'Dispenser', color: [0.4, 0.4, 0.42],
+    faceColors: { top: [0.42, 0.42, 0.44], bottom: [0.42, 0.42, 0.44], side: [0.38, 0.38, 0.4] },
+    solid: true, transparent: false, breakable: true, hardness: 3.5, liquid: false },
+  115: { id: 115, name: 'Dropper', color: [0.42, 0.42, 0.44],
+    faceColors: { top: [0.44, 0.44, 0.46], bottom: [0.44, 0.44, 0.46], side: [0.4, 0.4, 0.42] },
+    solid: true, transparent: false, breakable: true, hardness: 3.5, liquid: false },
+
+  // ---- Stairs & slabs (partial-height geometry) ----
+  116: { id: 116, name: 'Oak Slab', color: [0.62, 0.47, 0.28], shape: 'slab', solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false },
+  117: { id: 117, name: 'Stone Slab', color: [0.55, 0.55, 0.57], shape: 'slab', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
+  118: { id: 118, name: 'Cobblestone Slab', color: [0.5, 0.5, 0.52], shape: 'slab', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
+  119: { id: 119, name: 'Oak Stairs', color: [0.62, 0.47, 0.28], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false },
+  120: { id: 120, name: 'Stone Stairs', color: [0.55, 0.55, 0.57], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
+  121: { id: 121, name: 'Cobblestone Stairs', color: [0.5, 0.5, 0.52], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -309,7 +333,10 @@ export const PLACEABLE_BLOCKS = [
   78, 79, 80, 82, 84,         // redstone (lamp-lit/lever-on/spawner are state-only)
   86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, // functional/wood/wither
   97,                                         // farmland (crops are placed via planting)
-  104, 106, 107, 108                          // piston, sticky piston, ladder, door (head/open are state-only)
+  104, 106, 107, 108,                         // piston, sticky piston, ladder, door (head/open are state-only)
+  110, 112,                                   // repeater, observer (repeater-on is state-only)
+  113, 114, 115,                              // hopper, dispenser, dropper
+  116, 117, 118, 119, 120, 121                // slabs + stairs
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

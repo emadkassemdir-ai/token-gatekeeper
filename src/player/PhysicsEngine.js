@@ -194,10 +194,13 @@ export class PhysicsEngine {
   /* ------------------------------ collision ------------------------------ */
 
   /**
-   * @returns {boolean} true if the player AABB at `pos` overlaps a solid voxel.
+   * Gather world-space solid AABBs overlapping the player AABB at `pos`. Honours
+   * partial-height blocks (slabs) via World.collisionBoxes.
+   * @returns {number[][]} list of [x0,y0,z0,x1,y1,z1]
    */
-  _collides(pos) {
-    if (this.noclip) return false; // cheat: pass through blocks
+  _overlapBoxes(pos) {
+    const out = [];
+    if (this.noclip) return out;
     const minX = Math.floor(pos.x - HALF_WIDTH);
     const maxX = Math.floor(pos.x + HALF_WIDTH);
     const minY = Math.floor(pos.y);
@@ -208,11 +211,26 @@ export class PhysicsEngine {
     for (let y = minY; y <= maxY; y++) {
       for (let z = minZ; z <= maxZ; z++) {
         for (let x = minX; x <= maxX; x++) {
-          if (this.world.isSolidAt(x, y, z)) return true;
+          const boxes = this.world.collisionBoxes(x, y, z);
+          if (!boxes) continue;
+          for (const b of boxes) {
+            const x0 = x + b[0], y0 = y + b[1], z0 = z + b[2];
+            const x1 = x + b[3], y1 = y + b[4], z1 = z + b[5];
+            if (pos.x + HALF_WIDTH > x0 && pos.x - HALF_WIDTH < x1 &&
+                pos.y + HEIGHT > y0 && pos.y < y1 &&
+                pos.z + HALF_WIDTH > z0 && pos.z - HALF_WIDTH < z1) {
+              out.push([x0, y0, z0, x1, y1, z1]);
+            }
+          }
         }
       }
     }
-    return false;
+    return out;
+  }
+
+  /** @returns {boolean} true if the player AABB at `pos` overlaps a solid box. */
+  _collides(pos) {
+    return this._overlapBoxes(pos).length > 0;
   }
 
   /** @returns {boolean} whether the player's body overlaps a ladder voxel. */
@@ -252,23 +270,34 @@ export class PhysicsEngine {
     if (amount === 0) return;
     const p = this.position;
     p[axis] += amount;
-    if (!this._collides(p)) return;
+    const boxes = this._overlapBoxes(p);
+    if (!boxes.length) return;
 
-    // Penetrated — snap flush against the offending voxel boundary.
+    // Penetrated — snap flush against the nearest box boundary on this axis.
     if (axis === 'y') {
       if (amount > 0) {
-        p.y = Math.floor(p.y + HEIGHT) - HEIGHT - EPSILON;
+        let lim = Infinity;
+        for (const b of boxes) lim = Math.min(lim, b[1]); // box bottoms
+        p.y = lim - HEIGHT - EPSILON;
       } else {
-        p.y = Math.floor(p.y) + 1 + EPSILON;
+        let lim = -Infinity;
+        for (const b of boxes) lim = Math.max(lim, b[4]); // box tops
+        p.y = lim + EPSILON;
         this.onGround = true;
       }
       this.velocity.y = 0;
     } else {
       const half = HALF_WIDTH;
+      const lo = axis === 'x' ? 0 : 2;  // index of min corner on this axis
+      const hi = lo + 3;                // index of max corner on this axis
       if (amount > 0) {
-        p[axis] = Math.floor(p[axis] + half) - half - EPSILON;
+        let lim = Infinity;
+        for (const b of boxes) lim = Math.min(lim, b[lo]);
+        p[axis] = lim - half - EPSILON;
       } else {
-        p[axis] = Math.floor(p[axis] - half) + 1 + half + EPSILON;
+        let lim = -Infinity;
+        for (const b of boxes) lim = Math.max(lim, b[hi]);
+        p[axis] = lim + half + EPSILON;
       }
       this.velocity[axis] = 0;
     }

@@ -170,7 +170,18 @@ const TEX = {
   105: { all: 'piston_head' },
   106: { top: 'piston_sticky', side: 'piston_side', bottom: 'piston_back' },
   107: { all: 'ladder' },
-  108: { all: 'door' }, 109: { all: 'door' }
+  108: { all: 'door' }, 109: { all: 'door' },
+  // Redstone logic
+  110: { top: 'repeater', side: 'stone', bottom: 'stone' },
+  111: { top: 'repeater_on', side: 'stone', bottom: 'stone' },
+  112: { top: 'observer', side: 'observer', bottom: 'observer_face' },
+  // Item transport
+  113: { top: 'hopper_top', side: 'hopper', bottom: 'metal' },
+  114: { top: 'dispenser', side: 'dispenser_front', bottom: 'cobble' },
+  115: { top: 'dispenser', side: 'dropper_front', bottom: 'cobble' },
+  // Slabs reuse the parent block's texture
+  116: { all: 'planks' }, 117: { all: 'stone' }, 118: { all: 'cobble' },
+  119: { all: 'planks' }, 120: { all: 'stone' }, 121: { all: 'cobble' }
 };
 
 const TILE = 16; // texels per tile
@@ -554,6 +565,45 @@ function paintTile(ctx, ox, kind, base, accent) {
           if (px >= 9 && px <= 13 && py >= 2 && py <= 5) c = mul([0.7, 0.52, 0.3], 0.95);
           if (px === 12 && py >= 9 && py <= 11) c = [0.75, 0.72, 0.3]; // brass handle
           break;
+        case 'repeater':
+        case 'repeater_on': {
+          c = mul([0.62, 0.62, 0.64], 0.9 + n * 0.15); // smooth stone base
+          const lit = kind === 'repeater_on';
+          // two redstone torches running down the centre
+          if (px >= 7 && px <= 8 && (py === 4 || py === 11)) c = lit ? [1.0, 0.2, 0.15] : [0.4, 0.08, 0.06];
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = lit ? [0.85, 0.15, 0.1] : [0.35, 0.07, 0.05]; // line
+          break;
+        }
+        case 'observer':
+          c = mul([0.33, 0.33, 0.35], 0.85 + n * 0.2); // dark stone body
+          if (py === 0 || py === 15 || px === 0 || px === 15) c = mul(c, 0.7);
+          if ((px + py) % 6 === 0) c = mul(c, 1.15); // speckle
+          break;
+        case 'observer_face':
+          c = mul([0.3, 0.3, 0.32], 0.85 + n * 0.2);
+          if (px >= 3 && px <= 12 && py >= 3 && py <= 12) c = [0.7, 0.15, 0.12]; // red sensor face
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [1.0, 0.25, 0.2];
+          break;
+        case 'hopper':
+          c = mul([0.34, 0.35, 0.38], 0.85 + n * 0.2); // dark metal
+          if (py >= 10 && (px <= 4 || px >= 11)) c = mul(c, 0.7); // tapering funnel sides
+          break;
+        case 'hopper_top':
+          c = mul([0.3, 0.31, 0.34], 0.85 + n * 0.2);
+          if (px >= 2 && px <= 13 && py >= 2 && py <= 13) c = [0.12, 0.12, 0.14]; // open trough
+          break;
+        case 'dispenser':
+          c = mul([0.42, 0.42, 0.44], 0.85 + n * 0.2); // cobble-like
+          if (pnoise(px * 1.6 + 2, py * 1.6 + 4) > 0.8) c = mul(c, 0.7);
+          break;
+        case 'dispenser_front':
+          c = mul([0.42, 0.42, 0.44], 0.85 + n * 0.2);
+          if (px >= 5 && px <= 10 && py >= 4 && py <= 11) c = [0.1, 0.1, 0.11]; // firing nozzle
+          break;
+        case 'dropper_front':
+          c = mul([0.42, 0.42, 0.44], 0.85 + n * 0.2);
+          if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.12, 0.12, 0.13]; // square port
+          break;
         default:
           c = mul(base, 0.9 + n * 0.2);
       }
@@ -600,15 +650,48 @@ function buildBlockTexture(blockId) {
  * colour (× AO) so the block is still tinted without a texture.
  * @param {number} blockId @param {boolean} textured
  */
+/** Concatenate several indexed BoxGeometries into one (position/normal/uv). */
+function mergeBoxes(geos) {
+  const posArr = [], normArr = [], uvArr = [], idxArr = [];
+  let offset = 0;
+  for (const g of geos) {
+    const p = g.attributes.position.array, n = g.attributes.normal.array, u = g.attributes.uv.array;
+    const idx = g.index.array;
+    for (let i = 0; i < p.length; i++) posArr.push(p[i]);
+    for (let i = 0; i < n.length; i++) normArr.push(n[i]);
+    for (let i = 0; i < u.length; i++) uvArr.push(u[i]);
+    for (let i = 0; i < idx.length; i++) idxArr.push(idx[i] + offset);
+    offset += p.length / 3;
+  }
+  const m = new THREE.BufferGeometry();
+  m.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+  m.setAttribute('normal', new THREE.Float32BufferAttribute(normArr, 3));
+  m.setAttribute('uv', new THREE.Float32BufferAttribute(uvArr, 2));
+  m.setIndex(idxArr);
+  return m;
+}
+
 function buildBlockGeometry(blockId, textured) {
-  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const shape = BLOCKS[blockId]?.shape;
+  let geo;
+  if (shape === 'slab') {
+    geo = new THREE.BoxGeometry(1, 0.5, 1);   // bottom half of the cell
+    geo.translate(0, -0.25, 0);
+  } else if (shape === 'stairs') {
+    const base = new THREE.BoxGeometry(1, 0.5, 1); base.translate(0, -0.25, 0);     // bottom slab
+    const step = new THREE.BoxGeometry(1, 0.5, 0.5); step.translate(0, 0.25, -0.25); // back top step
+    geo = mergeBoxes([base, step]);
+  } else {
+    geo = new THREE.BoxGeometry(1, 1, 1);
+  }
   const pos = geo.attributes.position;
   const uv = geo.attributes.uv;
   const colors = new Float32Array(pos.count * 3);
 
-  // BoxGeometry face order: +X, -X, +Y(top), -Y(bottom), +Z, -Z (4 verts each).
+  // Box face order: +X, -X, +Y(top), -Y(bottom), +Z, -Z (4 verts each). For
+  // merged multi-box shapes the role repeats every 6 faces (24 verts).
   for (let i = 0; i < pos.count; i++) {
-    const faceIndex = Math.floor(i / 4);
+    const faceIndex = Math.floor(i / 4) % 6;
     const face = faceIndex === 2 ? 'top' : faceIndex === 3 ? 'bottom' : 'side';
     const ao = AO[face];
 
@@ -1566,6 +1649,21 @@ export class World {
   /** @param {number} wx @param {number} wy @param {number} wz */
   isSolidAt(wx, wy, wz) {
     return isSolid(this.getBlock(Math.floor(wx), Math.floor(wy), Math.floor(wz)));
+  }
+
+  /**
+   * Local solid sub-boxes for the block at this cell, each as
+   * [x0,y0,z0,x1,y1,z1] in 0..1 cell-local coordinates, or null if non-solid.
+   * Full blocks fill the cell; slabs occupy the bottom half; stairs collide as
+   * a full cube (a pragmatic simplification of the stepped shape).
+   * @param {number} wx @param {number} wy @param {number} wz
+   */
+  collisionBoxes(wx, wy, wz) {
+    const id = this.getBlock(Math.floor(wx), Math.floor(wy), Math.floor(wz));
+    if (!isSolid(id)) return null;
+    const shape = BLOCKS[id]?.shape;
+    if (shape === 'slab') return [[0, 0, 0, 1, 0.5, 1]];
+    return [[0, 0, 0, 1, 1, 1]];
   }
 
   /** @param {number} wx @param {number} wy @param {number} wz */

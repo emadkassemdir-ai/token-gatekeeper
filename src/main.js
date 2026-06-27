@@ -18,7 +18,7 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye, isHoe, plantCrop } from './world/ItemTypes.js';
+import { ITEMS, getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye, isHoe, plantCrop } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
@@ -83,8 +83,10 @@ class Game {
     // record.dimData so builds persist, but a fresh load always starts topside.
     this.dim = 'overworld';
     this._nether = false;
-    // Piston facing per dimension: dimName -> Map("x,y,z" -> [dx,dy,dz]).
+    // Piston/device facing per dimension: dimName -> Map("x,y,z" -> [dx,dy,dz]).
     this._pistonDirs = {};
+    // Rising-edge tracking for dispensers/droppers: dimName -> Set("x,y,z").
+    this._poweredDevices = {};
     this._portalTimer = 0;
     this._lavaTimer = 0;
 
@@ -185,7 +187,11 @@ class Game {
       this.net?.sendEdit({ x, y, z, id }); // share local edits with peers
       this.viewModel?.swing();
       if (id === 0) Audio.mine(); else Audio.place();
-      if (id === PISTON || id === STICKY_PISTON) this._recordPistonFacing(x, y, z); // capture facing
+      // Capture device facing at placement (pistons, observers, dispensers free;
+      // repeaters lie flat; hoppers default to pointing down).
+      if (id === PISTON || id === STICKY_PISTON || id === 112 || id === 114 || id === 115) this._recordFacing(x, y, z, 'free');
+      else if (id === 110) this._recordFacing(x, y, z, 'horizontal'); // repeater
+      else if (id === 113) this._recordFacing(x, y, z, 'down');       // hopper
       this._redstoneTouch(x, y, z, id);
       if (id === 95) this._checkWither(x, y, z); // wither skeleton skull placed
     };
@@ -622,6 +628,8 @@ class Game {
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
       case FURNACE_ID: case 86: case 87: this.smelting.openMenu(); return true; // furnace/blast/smoker
       case 88: return this._grindstone();                        // grindstone
+      case 113: case 114: case 115:                              // hopper/dispenser/dropper storage
+        this._openChest(target); return true;
       case 108: case 109: {                                      // door: toggle open/closed
         const next = id === 108 ? 109 : 108;
         this.world.setBlock(target.x, target.y, target.z, next);
@@ -684,28 +692,50 @@ class Game {
 
   /** Recompute redstone (lamps + pistons) if the edit touches a circuit or piston. */
   _redstoneTouch(x, y, z, id) {
-    let near = isRedstone(id) || id === PISTON || id === STICKY_PISTON;
+    const isDevice = (n) => isRedstone(n) || n === PISTON || n === STICKY_PISTON ||
+      n === 113 || n === 114 || n === 115; // hopper/dispenser/dropper
+    let near = isDevice(id);
     if (!near) {
       for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
-        const n = this.world.getBlock(x + dx, y + dy, z + dz);
-        if (isRedstone(n) || n === PISTON || n === STICKY_PISTON) { near = true; break; }
+        if (isDevice(this.world.getBlock(x + dx, y + dy, z + dz))) { near = true; break; }
       }
     }
     if (near) this._runRedstone(x, y, z);
   }
 
-  /** Recompute lamps then actuate pistons in a local box, persisting changes. */
+  /** Recompute lamps/repeaters, actuate pistons, and fire dispensers/droppers. */
   _runRedstone(x, y, z) {
-    recomputeRedstone(this.world, x, y, z);
     const R = 8;
-    const powered = computePowered(this.world, x, y, z, R);
     const dirs = this._pistonMap();
+    recomputeRedstone(this.world, x, y, z, R, dirs);
+    const powered = computePowered(this.world, x, y, z, R, dirs);
     const changes = actuatePistons(this.world, x, y, z, R, powered, dirs);
     for (const [cx, cy, cz, cid] of changes) {
       this._recordEdit(cx, cy, cz, cid);
       this.net?.sendEdit({ x: cx, y: cy, z: cz, id: cid });
     }
     if (changes.length) Audio.click();
+    this._fireDispensers(x, y, z, R, powered);
+  }
+
+  /** Fire each dispenser/dropper on the rising edge of its redstone power. */
+  _fireDispensers(ox, oy, oz, R, powered) {
+    const onSet = (this._poweredDevices[this.dim] ||= new Set());
+    for (let y = oy - R; y <= oy + R; y++) {
+      for (let z = oz - R; z <= oz + R; z++) {
+        for (let x = ox - R; x <= ox + R; x++) {
+          const id = this.world.getBlock(x, y, z);
+          if (id !== 114 && id !== 115) continue; // dispenser / dropper
+          const k = `${x},${y},${z}`;
+          let on = false;
+          for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+            if (powered(x + dx, y + dy, z + dz)) { on = true; break; }
+          }
+          if (on && !onSet.has(k)) { onSet.add(k); this._dispense(x, y, z, id === 114); }
+          else if (!on) onSet.delete(k);
+        }
+      }
+    }
   }
 
   /** Facing map for the current dimension (created lazily). */
@@ -713,12 +743,17 @@ class Game {
     return (this._pistonDirs[this.dim] ||= new Map());
   }
 
-  /** Store a freshly-placed piston's facing from the player's view direction. */
-  _recordPistonFacing(x, y, z) {
+  /**
+   * Store a freshly-placed device's facing from the player's view direction.
+   * mode: 'free' (any axis), 'horizontal' (repeaters), 'down' (hoppers).
+   */
+  _recordFacing(x, y, z, mode) {
     this.camera.getWorldDirection(this._dir);
     const d = this._dir, ax = Math.abs(d.x), ay = Math.abs(d.y), az = Math.abs(d.z);
     let dir;
-    if (ay >= ax && ay >= az) dir = [0, d.y >= 0 ? 1 : -1, 0];
+    if (mode === 'down') dir = [0, -1, 0];
+    else if (mode === 'horizontal') dir = ax >= az ? [d.x >= 0 ? 1 : -1, 0, 0] : [0, 0, d.z >= 0 ? 1 : -1];
+    else if (ay >= ax && ay >= az) dir = [0, d.y >= 0 ? 1 : -1, 0];
     else if (ax >= az) dir = [d.x >= 0 ? 1 : -1, 0, 0];
     else dir = [0, 0, d.z >= 0 ? 1 : -1];
     this._pistonMap().set(`${x},${y},${z}`, dir);
@@ -748,19 +783,124 @@ class Game {
     return true;
   }
 
-  /** Open the chest at a world position (per-position persistent storage). */
-  _openChest(target) {
-    const key = `${target.x},${target.y},${target.z}`;
+  /**
+   * Persistent slot array for the container at (x,y,z), or null if that block
+   * isn't a container. Covers chests, barrels, hoppers, dispensers and droppers.
+   */
+  _containerSlots(x, y, z) {
+    const id = this.world.getBlock(x, y, z);
+    if (id !== 65 && id !== 76 && id !== 113 && id !== 114 && id !== 115) return null;
+    const key = `${x},${y},${z}`;
     this.record.chests = this.record.chests || {};
     if (!this.record.chests[key]) {
       const slots = new Array(CHEST_SLOTS).fill(null);
-      // Seed generated-structure loot the first time this chest is opened.
       const loot = this.world.loot && this.world.loot[key];
       if (loot) { loot.forEach((it, i) => { slots[i] = { type: it.type, count: it.count }; }); delete this.world.loot[key]; }
       this.record.chests[key] = slots;
     }
+    return this.record.chests[key];
+  }
+
+  /** Add `count` of `type` across a slot array; returns the leftover not placed. */
+  _addToSlots(slots, type, count) {
+    const max = ITEMS[type]?.maxStack || 64;
+    for (const s of slots) {
+      if (s && s.type === type && s.count < max) {
+        const add = Math.min(count, max - s.count); s.count += add; count -= add;
+        if (count <= 0) return 0;
+      }
+    }
+    for (let i = 0; i < slots.length; i++) {
+      if (!slots[i]) {
+        const add = Math.min(count, max); slots[i] = { type, count: add }; count -= add;
+        if (count <= 0) return 0;
+      }
+    }
+    return count;
+  }
+
+  /** Index of the first non-empty slot, or -1. */
+  _firstItem(slots) {
+    for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].count > 0) return i;
+    return -1;
+  }
+
+  /** Open the chest/barrel/hopper/etc. at a world position. */
+  _openChest(target) {
+    const slots = this._containerSlots(target.x, target.y, target.z);
+    if (!slots) return;
     this._releasePointer();
-    this.chestMenu.openWith(this.record.chests[key]);
+    this.chestMenu.openWith(slots);
+  }
+
+  /** Periodic item transport: each hopper pulls from above and pushes ahead. */
+  _tickHoppers(dt) {
+    this._hopperTimer = (this._hopperTimer || 0) + dt;
+    if (this._hopperTimer < 0.4) return;
+    this._hopperTimer = 0;
+    const p = this.physics.position;
+    const ox = Math.floor(p.x), oy = Math.floor(p.y), oz = Math.floor(p.z), R = 12;
+    const dirs = this._pistonMap();
+    for (let y = oy - 6; y <= oy + 6; y++) {
+      for (let z = oz - R; z <= oz + R; z++) {
+        for (let x = ox - R; x <= ox + R; x++) {
+          if (this.world.getBlock(x, y, z) !== 113) continue; // hopper
+          const slots = this._containerSlots(x, y, z);
+          if (!slots) continue;
+          // Pull one item from the container directly above.
+          const above = this._containerSlots(x, y + 1, z);
+          if (above) {
+            const i = this._firstItem(above);
+            if (i >= 0 && this._addToSlots(slots, above[i].type, 1) === 0) {
+              above[i].count -= 1; if (above[i].count <= 0) above[i] = null;
+            }
+          }
+          // Push one item into the container it points at (default down).
+          const d = dirs.get(`${x},${y},${z}`) || [0, -1, 0];
+          const tgt = this._containerSlots(x + d[0], y + d[1], z + d[2]);
+          if (tgt) {
+            const i = this._firstItem(slots);
+            if (i >= 0 && this._addToSlots(tgt, slots[i].type, 1) === 0) {
+              slots[i].count -= 1; if (slots[i].count <= 0) slots[i] = null;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Eject one item from a dispenser (places blocks) or dropper (drops/transfers). */
+  _dispense(x, y, z, isDispenser) {
+    const slots = this._containerSlots(x, y, z);
+    if (!slots) return;
+    const i = this._firstItem(slots);
+    if (i < 0) return;
+    const type = slots[i].type;
+    const d = this._pistonMap().get(`${x},${y},${z}`) || [0, -1, 0];
+    const fx = x + d[0], fy = y + d[1], fz = z + d[2];
+    const frontId = this.world.getBlock(fx, fy, fz);
+    const placeId = ITEMS[type]?.place;
+    const tgt = this._containerSlots(fx, fy, fz);
+    let ok = false;
+    if (tgt) {
+      ok = this._addToSlots(tgt, type, 1) === 0;            // feed into a container
+    } else if (isDispenser && placeId && frontId === 0) {
+      this.world.setBlock(fx, fy, fz, placeId);             // dispenser places blocks
+      this._recordEdit(fx, fy, fz, placeId);
+      this.net?.sendEdit({ x: fx, y: fy, z: fz, id: placeId });
+      ok = true;
+    } else if (frontId === 0) {
+      this._spawnPickup(type, 1, { x: fx + 0.5, y: fy + 0.3, z: fz + 0.5 }); // drop into the world
+      ok = true;
+    }
+    if (ok) { slots[i].count -= 1; if (slots[i].count <= 0) slots[i] = null; Audio.click(); }
+  }
+
+  /** Spawn a dropped-item entity (shared with peers in multiplayer). */
+  _spawnPickup(type, count, pos) {
+    const id = dropId();
+    this.drops.spawn(id, type, count, pos);
+    this.net?.sendDrop({ id, type, count, x: pos.x, y: pos.y, z: pos.z });
   }
 
   /** Open the Ender Chest — one shared storage accessible from any ender chest. */
@@ -1219,6 +1359,7 @@ class Game {
     }
 
     this._growCrops(dt);
+    this._tickHoppers(dt);
     this._updateRaid();
 
     // Mobile: reveal the SMELT button only when near a placed furnace.

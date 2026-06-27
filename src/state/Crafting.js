@@ -156,6 +156,23 @@ export const RECIPES = [
   { id: 'ladder', output: 'ladder', outputCount: 3, inputs: [{ type: 'stick', count: 7 }], requiresTable: true },
   { id: 'door', output: 'door', outputCount: 3, inputs: [{ type: 'oak_planks', count: 6 }], requiresTable: true },
 
+  // ---- Redstone logic ----
+  { id: 'repeater', output: 'repeater', outputCount: 1, inputs: [{ type: 'stone', count: 3 }, { type: 'redstone_torch', count: 2 }, { type: 'redstone', count: 1 }], requiresTable: true },
+  { id: 'observer', output: 'observer', outputCount: 1, inputs: [{ type: 'cobblestone', count: 6 }, { type: 'redstone', count: 2 }, { type: 'nether_quartz', count: 1 }], requiresTable: true },
+
+  // ---- Item transport ----
+  { id: 'hopper', output: 'hopper', outputCount: 1, inputs: [{ type: 'iron_ingot', count: 5 }, { type: 'chest', count: 1 }], requiresTable: true },
+  { id: 'dispenser', output: 'dispenser', outputCount: 1, inputs: [{ type: 'cobblestone', count: 7 }, { type: 'bow', count: 1 }, { type: 'redstone', count: 1 }], requiresTable: true },
+  { id: 'dropper', output: 'dropper', outputCount: 1, inputs: [{ type: 'cobblestone', count: 7 }, { type: 'redstone', count: 1 }], requiresTable: true },
+
+  // ---- Slabs & stairs ----
+  { id: 'oak_slab', output: 'oak_slab', outputCount: 6, inputs: [{ type: 'oak_planks', count: 3 }], requiresTable: true },
+  { id: 'stone_slab', output: 'stone_slab', outputCount: 6, inputs: [{ type: 'stone', count: 3 }], requiresTable: true },
+  { id: 'cobblestone_slab', output: 'cobblestone_slab', outputCount: 6, inputs: [{ type: 'cobblestone', count: 3 }], requiresTable: true },
+  { id: 'oak_stairs', output: 'oak_stairs', outputCount: 4, inputs: [{ type: 'oak_planks', count: 6 }], requiresTable: true },
+  { id: 'stone_stairs', output: 'stone_stairs', outputCount: 4, inputs: [{ type: 'stone', count: 6 }], requiresTable: true },
+  { id: 'cobblestone_stairs', output: 'cobblestone_stairs', outputCount: 4, inputs: [{ type: 'cobblestone', count: 6 }], requiresTable: true },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.
