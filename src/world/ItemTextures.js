@@ -100,6 +100,9 @@ function drawTool(ctx, toolClass, tier) {
     for (let x = 3; x <= 12; x++) { const y = 4 + Math.abs(x - 7) * 0.5 | 0; px(ctx, x, y, col); px(ctx, x, y + 1, mul(col, 0.8)); }
   } else if (toolClass === 'axe') {
     for (let y = 2; y <= 7; y++) for (let x = 9; x <= 13; x++) if (x - 9 <= 7 - y + 3) px(ctx, x, y, mul(col, y % 2 ? 1 : 0.85));
+  } else if (toolClass === 'hoe') {
+    for (let x = 8; x <= 12; x++) px(ctx, x, 3, col);   // horizontal head
+    for (let y = 3; y <= 5; y++) px(ctx, 12, y, col);   // down hook
   } else { // sword
     for (let y = 2; y <= 10; y++) { px(ctx, 9, y, col); px(ctx, 10, y, mul(col, 0.85)); }
     for (let x = 7; x <= 12; x++) px(ctx, x, 11, [0.45, 0.32, 0.2]); // guard
@@ -172,7 +175,10 @@ const MAT_COLORS = {
   slimeball: [0.5, 0.8, 0.4], magma_cream: [0.85, 0.45, 0.15], rabbit_foot: [0.8, 0.7, 0.55],
   fermented_spider_eye: [0.4, 0.3, 0.5], glass_bottle: [0.7, 0.85, 0.9],
   netherite_scrap: [0.5, 0.38, 0.3], netherite_ingot: [0.3, 0.26, 0.28],
-  nether_star: [0.95, 0.98, 0.9], phantom_membrane: [0.55, 0.6, 0.5]
+  nether_star: [0.95, 0.98, 0.9], phantom_membrane: [0.55, 0.6, 0.5],
+  wheat_seeds: [0.5, 0.7, 0.3], wheat: [0.85, 0.72, 0.3],
+  bucket: [0.72, 0.74, 0.78], water_bucket: [0.25, 0.45, 0.9],
+  lava_bucket: [0.95, 0.5, 0.12], milk_bucket: [0.96, 0.96, 0.92]
 };
 
 /** Potion liquid colours for the bottle icon. */
@@ -228,8 +234,15 @@ function drawFood(ctx, type) {
     px(ctx, 8, 3, [0.4, 0.3, 0.1]); px(ctx, 9, 2, [0.4, 0.7, 0.3]);
     return;
   }
-  if (type === 'golden_carrot') {
-    for (let y = 3; y <= 13; y++) { const w = (13 - y); for (let x = 7 - w / 3; x <= 8 + w / 3; x++) px(ctx, x | 0, y, mul([0.95, 0.78, 0.2], 0.85 + pnoise(x | 0, y) * 0.3)); }
+  if (type === 'golden_carrot' || type === 'carrot') {
+    const col = type === 'golden_carrot' ? [0.95, 0.78, 0.2] : [0.9, 0.5, 0.15];
+    for (let y = 3; y <= 13; y++) { const w = (13 - y); for (let x = 7 - w / 3; x <= 8 + w / 3; x++) px(ctx, x | 0, y, mul(col, 0.85 + pnoise(x | 0, y) * 0.3)); }
+    px(ctx, 7, 2, [0.3, 0.6, 0.2]); px(ctx, 8, 2, [0.3, 0.6, 0.2]); // leafy top
+    return;
+  }
+  if (type === 'potato' || type === 'baked_potato' || type === 'poisonous_potato') {
+    const col = type === 'baked_potato' ? [0.75, 0.55, 0.3] : type === 'poisonous_potato' ? [0.5, 0.65, 0.3] : [0.78, 0.62, 0.4];
+    for (let y = 5; y <= 12; y++) for (let x = 4; x <= 12; x++) { const dx = x - 8, dy = y - 8.5; if (dx * dx + dy * dy < 16) px(ctx, x, y, mul(col, 0.85 + pnoise(x, y) * 0.3)); }
     return;
   }
   if (type === 'apple') {

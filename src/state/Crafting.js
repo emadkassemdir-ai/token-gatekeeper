@@ -99,6 +99,13 @@ export const RECIPES = [
   { id: 'bookshelf', output: 'bookshelf', outputCount: 1, inputs: [{ type: 'oak_planks', count: 6 }, { type: 'book', count: 3 }], requiresTable: true },
   { id: 'bread', output: 'bread', outputCount: 1, inputs: [{ type: 'wheat', count: 3 }], requiresTable: true },
 
+  // ---- Farming + buckets ----
+  { id: 'bucket', output: 'bucket', outputCount: 1, inputs: [{ type: 'iron_ingot', count: 3 }], requiresTable: true },
+  { id: 'wooden_hoe', output: 'wooden_hoe', outputCount: 1, inputs: [{ type: 'oak_planks', count: 2 }, { type: 'stick', count: 2 }], requiresTable: true },
+  { id: 'stone_hoe', output: 'stone_hoe', outputCount: 1, inputs: [{ type: 'stone', count: 2 }, { type: 'stick', count: 2 }], requiresTable: true },
+  { id: 'iron_hoe', output: 'iron_hoe', outputCount: 1, inputs: [{ type: 'iron_ingot', count: 2 }, { type: 'stick', count: 2 }], requiresTable: true },
+  { id: 'diamond_hoe', output: 'diamond_hoe', outputCount: 1, inputs: [{ type: 'diamond', count: 2 }, { type: 'stick', count: 2 }], requiresTable: true },
+
   // ---- Uses for new items + Nether ----
   { id: 'flint_and_steel', output: 'flint_and_steel', outputCount: 1, inputs: [{ type: 'flint', count: 1 }, { type: 'iron_ingot', count: 1 }], requiresTable: true },
   { id: 'bow', output: 'bow', outputCount: 1, inputs: [{ type: 'stick', count: 3 }, { type: 'string', count: 3 }], requiresTable: true },

@@ -269,7 +269,18 @@ export const BLOCKS = {
 
   // ---- The Wither + Beacon ----
   95: { id: 95, name: 'Wither Skeleton Skull', color: [0.16, 0.16, 0.18], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.9 },
-  96: { id: 96, name: 'Beacon', color: [0.3, 0.85, 0.85], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.6 }
+  96: { id: 96, name: 'Beacon', color: [0.3, 0.85, 0.85], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.6 },
+
+  // ---- Farming ----
+  97: { id: 97, name: 'Farmland', color: [0.4, 0.28, 0.16],
+    faceColors: { top: [0.34, 0.22, 0.12], bottom: [0.45, 0.32, 0.2], side: [0.45, 0.32, 0.2] },
+    solid: true, transparent: false, breakable: true, hardness: 0.5, liquid: false },
+  98: { id: 98, name: 'Wheat Crop', color: [0.42, 0.55, 0.26], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+  99: { id: 99, name: 'Wheat Crop (ripe)', color: [0.82, 0.72, 0.32], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+  100: { id: 100, name: 'Carrot Crop', color: [0.3, 0.5, 0.2], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+  101: { id: 101, name: 'Carrot Crop (ripe)', color: [0.55, 0.6, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+  102: { id: 102, name: 'Potato Crop', color: [0.3, 0.5, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+  103: { id: 103, name: 'Potato Crop (ripe)', color: [0.45, 0.55, 0.28], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -284,7 +295,8 @@ export const PLACEABLE_BLOCKS = [
   66, 67, 68, 69, 70, 71, 72, // brewing/copper/stone/light
   73, 74, 75, 76, 77,         // netherite + functional
   78, 79, 80, 82, 84,         // redstone (lamp-lit/lever-on/spawner are state-only)
-  86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96 // functional/wood/wither
+  86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, // functional/wood/wither
+  97                                          // farmland (crops are placed via planting)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

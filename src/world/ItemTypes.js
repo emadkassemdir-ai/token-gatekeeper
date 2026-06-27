@@ -50,7 +50,9 @@ export const CATEGORY = {
   78: 'soft', 79: 'stone', 80: 'soft', 81: 'soft', 82: 'soft', 83: 'soft', 84: 'soft', 85: 'stone',
   // Functional / wood / wither:
   86: 'stone', 87: 'stone', 88: 'stone', 89: 'wood', 90: 'leaves', 91: 'wood',
-  92: 'wood', 93: 'leaves', 94: 'wood', 95: 'stone', 96: 'glass'
+  92: 'wood', 93: 'leaves', 94: 'wood', 95: 'stone', 96: 'glass',
+  // Farming:
+  97: 'soft', 98: 'leaves', 99: 'leaves', 100: 'leaves', 101: 'leaves', 102: 'leaves', 103: 'leaves'
 };
 
 /**
@@ -112,7 +114,9 @@ export const BLOCK_DROPS = {
   // Functional / wood / wither:
   86: 'blast_furnace', 87: 'smoker', 88: 'grindstone', 89: 'acacia_log', 90: null,
   91: 'acacia_planks', 92: 'cherry_log', 93: null, 94: 'cherry_planks',
-  95: 'wither_skeleton_skull', 96: 'beacon'
+  95: 'wither_skeleton_skull', 96: 'beacon',
+  // Farming (young crops drop their seed/item; ripe drop the harvest):
+  97: 'dirt', 98: 'wheat_seeds', 99: 'wheat', 100: 'carrot', 101: 'carrot', 102: 'potato', 103: 'potato'
 };
 
 /**
@@ -302,6 +306,17 @@ export const ITEMS = {
   netherite_ingot: { type: 'netherite_ingot', name: 'Netherite Ingot', maxStack: 64, glyph: '▬' },
   nether_star:     { type: 'nether_star', name: 'Nether Star', maxStack: 64, glyph: '✦' },
   phantom_membrane: { type: 'phantom_membrane', name: 'Phantom Membrane', maxStack: 64, glyph: '◇' },
+
+  // ---- Farming + buckets ----
+  wheat_seeds:    { type: 'wheat_seeds', name: 'Wheat Seeds', maxStack: 64, plant: 98, glyph: '🌱' },
+  carrot:         { type: 'carrot', name: 'Carrot', maxStack: 64, plant: 100, food: { hunger: 1.5 }, glyph: '🥕' },
+  potato:         { type: 'potato', name: 'Potato', maxStack: 64, plant: 102, food: { hunger: 1 }, glyph: '🥔' },
+  baked_potato:   { type: 'baked_potato', name: 'Baked Potato', maxStack: 64, food: { hunger: 2.5 }, glyph: '🥔' },
+  poisonous_potato: { type: 'poisonous_potato', name: 'Poisonous Potato', maxStack: 64, food: { hunger: 1, raw: true }, glyph: '🥔' },
+  bucket:         { type: 'bucket', name: 'Bucket', maxStack: 16, glyph: '🪣' },
+  water_bucket:   { type: 'water_bucket', name: 'Water Bucket', maxStack: 1, glyph: '🪣' },
+  lava_bucket:    { type: 'lava_bucket', name: 'Lava Bucket', maxStack: 1, glyph: '🪣' },
+  milk_bucket:    { type: 'milk_bucket', name: 'Milk Bucket', maxStack: 1, glyph: '🥛' },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -334,6 +349,10 @@ export const ITEMS = {
   diamond_pickaxe: { type: 'diamond_pickaxe', name: 'Diamond Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'diamond', damage: 2.0, glyph: '⛏' },
   diamond_axe:     { type: 'diamond_axe', name: 'Diamond Axe', maxStack: 1, tool: 'axe', tier: 'diamond', damage: 2.5, glyph: '🪓' },
   diamond_sword:   { type: 'diamond_sword', name: 'Diamond Sword', maxStack: 1, tool: 'sword', tier: 'diamond', damage: 3.5, glyph: '🗡' },
+  wooden_hoe:      { type: 'wooden_hoe', name: 'Wooden Hoe', maxStack: 1, tool: 'hoe', tier: 'wood', damage: 0.5, glyph: '⌐' },
+  stone_hoe:       { type: 'stone_hoe', name: 'Stone Hoe', maxStack: 1, tool: 'hoe', tier: 'stone', damage: 0.5, glyph: '⌐' },
+  iron_hoe:        { type: 'iron_hoe', name: 'Iron Hoe', maxStack: 1, tool: 'hoe', tier: 'iron', damage: 0.5, glyph: '⌐' },
+  diamond_hoe:     { type: 'diamond_hoe', name: 'Diamond Hoe', maxStack: 1, tool: 'hoe', tier: 'diamond', damage: 0.5, glyph: '⌐' },
   netherite_pickaxe: { type: 'netherite_pickaxe', name: 'Netherite Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'netherite', damage: 2.5, glyph: '⛏' },
   netherite_axe:     { type: 'netherite_axe', name: 'Netherite Axe', maxStack: 1, tool: 'axe', tier: 'netherite', damage: 3.0, glyph: '🪓' },
   netherite_sword:   { type: 'netherite_sword', name: 'Netherite Sword', maxStack: 1, tool: 'sword', tier: 'netherite', damage: 4.0, glyph: '🗡' },
@@ -369,6 +388,10 @@ export function isIgnite(type) { return !!ITEMS[type]?.ignite; }
 export function isBow(type) { return !!ITEMS[type]?.bow; }
 /** @param {string|null} type @returns {boolean} Eye of Ender (opens the End). */
 export function isEndEye(type) { return !!ITEMS[type]?.endeye; }
+/** @param {string|null} type @returns {boolean} a hoe (tills farmland). */
+export function isHoe(type) { return ITEMS[type]?.tool === 'hoe'; }
+/** @param {string|null} type @returns {number} crop block id this item plants, or 0. */
+export function plantCrop(type) { return ITEMS[type]?.plant ?? 0; }
 /** @param {string|null} type @returns {boolean} */
 export function isTotem(type) { return !!ITEMS[type]?.totem; }
 
@@ -393,6 +416,11 @@ export const CREATIVE_PALETTE = [
   'blast_furnace', 'smoker', 'grindstone', 'acacia_log', 'acacia_leaves', 'acacia_planks',
   'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon'
 ];
+
+/** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */
+for (const cat of Object.keys(BREAK_TIMES)) {
+  if (BREAK_TIMES[cat].hoe === undefined) BREAK_TIMES[cat].hoe = BREAK_TIMES[cat].hand;
+}
 
 /** Items a fresh survival player starts with (none — pure survival). */
 export const SURVIVAL_START = [];

@@ -160,7 +160,11 @@ const TEX = {
   93: { all: 'leaves' },
   94: { all: 'planks' },
   95: { all: 'skull' },
-  96: { all: 'beacon' }
+  96: { all: 'beacon' },
+  97: { top: 'farmland', side: 'dirt', bottom: 'dirt' },
+  98: { all: 'crop' }, 99: { all: 'crop' },
+  100: { all: 'crop' }, 101: { all: 'crop' },
+  102: { all: 'crop' }, 103: { all: 'crop' }
 };
 
 const TILE = 16; // texels per tile
@@ -500,6 +504,14 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = mul([0.1, 0.4, 0.45], 0.8 + n * 0.3);
           if (px >= 4 && px <= 11 && py >= 4 && py <= 11) c = [0.5, 0.95, 0.95]; // bright core
           if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [0.85, 1.0, 1.0];
+          break;
+        case 'farmland':
+          c = mul(base, 0.9 + n * 0.12);
+          if (px === 4 || px === 11) c = mul(base, 0.7); // tilled furrows
+          break;
+        case 'crop':
+          c = [0.34, 0.22, 0.12]; // soil backing
+          if (px % 4 === 1 || px % 4 === 2) c = mul(base, 0.8 + n * 0.4); // vertical stalks in base colour
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);
@@ -1268,7 +1280,8 @@ export class World {
     this.setBlock(chx, y + 1, chz, 65); // loot chest
     this.loot[`${chx},${y + 1},${chz}`] = [
       { type: 'iron_ingot', count: 4 }, { type: 'gold_ingot', count: 2 },
-      { type: 'bread', count: 3 }, { type: 'redstone', count: 6 }, { type: 'emerald', count: 1 }
+      { type: 'bread', count: 3 }, { type: 'redstone', count: 6 }, { type: 'emerald', count: 1 },
+      { type: 'carrot', count: 3 }, { type: 'potato', count: 3 }
     ];
   }
 

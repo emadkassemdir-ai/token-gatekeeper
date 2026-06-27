@@ -18,7 +18,7 @@ import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
 import { World, CHUNK_SIZE } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
-import { getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye } from './world/ItemTypes.js';
+import { getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye, isHoe, plantCrop } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
 import { InteractionEngine } from './player/InteractionEngine.js';
 import { ViewModel } from './player/ViewModel.js';
@@ -189,6 +189,8 @@ class Game {
       this.inventory.add(dropType, 1);
       const xp = XP_FOR_DROP[dropType];
       if (xp) this.stats.addXp(xp); // ores grant experience
+      if (dropType === 'grass' && Math.random() < 0.3) this.inventory.add('wheat_seeds', 1); // seeds from grass
+      if (dropType === 'wheat') this.inventory.add('wheat_seeds', 1 + (Math.random() < 0.5 ? 1 : 0)); // harvest returns seeds
     };
     this.interaction.onExhaust = (amount) => this.stats.addExhaustion(amount);
     this.interaction.onAttack = () => {
@@ -615,6 +617,27 @@ class Game {
     }
   }
 
+  /** Slowly ripen planted crops near the player (young -> ripe). */
+  _growCrops(dt) {
+    this._cropTimer = (this._cropTimer || 0) + dt;
+    if (this._cropTimer < 4) return;
+    this._cropTimer = 0;
+    const RIPEN = { 98: 99, 100: 101, 102: 103 };
+    const p = this.physics.position;
+    const ox = Math.floor(p.x), oy = Math.floor(p.y), oz = Math.floor(p.z), R = 24;
+    for (let y = oy - 6; y <= oy + 6; y++) {
+      for (let z = oz - R; z <= oz + R; z++) {
+        for (let x = ox - R; x <= ox + R; x++) {
+          const ripe = RIPEN[this.world.getBlock(x, y, z)];
+          if (ripe && Math.random() < 0.25) {
+            this.world.setBlock(x, y, z, ripe);
+            this._recordEdit(x, y, z, ripe);
+          }
+        }
+      }
+    }
+  }
+
   /** Recompute redstone if the edited cell or a neighbour is part of a circuit. */
   _redstoneTouch(x, y, z, id) {
     let near = isRedstone(id);
@@ -693,7 +716,74 @@ class Game {
     if (type === 'bonemeal') return this._useBonemeal(target);
     if (type === 'ender_pearl') return this._throwEnderPearl();
     if (isPotion(type)) return this._drinkPotion(type);
+    if (isHoe(type)) return this._till(target);
+    const crop = plantCrop(type);
+    if (crop) return this._plant(type, crop, target);
+    if (type === 'bucket') return this._fillBucket(target);
+    if (type === 'water_bucket') return this._placeLiquid('water_bucket', 8, target);
+    if (type === 'lava_bucket') return this._placeLiquid('lava_bucket', 54, target);
+    if (type === 'milk_bucket') {
+      this.stats.effects = {}; this.stats.absorptionHp = 0;
+      if (!this.inventory.isCreative) { this.inventory.remove('milk_bucket', 1); this.inventory.add('bucket', 1); }
+      this.chat?.system('🥛 The milk clears all status effects.');
+      return true;
+    }
     return false;
+  }
+
+  /** Till grass/dirt into farmland with a hoe. */
+  _till(target) {
+    if (!target) return false;
+    const id = this.world.getBlock(target.x, target.y, target.z);
+    if ((id === 1 || id === 2) && this.world.getBlock(target.x, target.y + 1, target.z) === 0) {
+      this.world.setBlock(target.x, target.y, target.z, 97);
+      this._recordEdit(target.x, target.y, target.z, 97);
+      Audio.mine();
+      return true;
+    }
+    return false;
+  }
+
+  /** Plant a seed/crop on farmland. */
+  _plant(type, cropId, target) {
+    if (!target) return false;
+    if (this.world.getBlock(target.x, target.y, target.z) !== 97) return false; // must be farmland
+    if (this.world.getBlock(target.x, target.y + 1, target.z) !== 0) return false;
+    this.world.setBlock(target.x, target.y + 1, target.z, cropId);
+    this._recordEdit(target.x, target.y + 1, target.z, cropId);
+    if (!this.inventory.isCreative) this.inventory.remove(type, 1);
+    return true;
+  }
+
+  /** Fill an empty bucket from a liquid (or milk a cow). */
+  _fillBucket(target) {
+    if (target) {
+      const id = this.world.getBlock(target.x, target.y, target.z);
+      if (id === 8 || id === 54) {
+        if (!this.inventory.isCreative) { this.inventory.remove('bucket', 1); this.inventory.add(id === 8 ? 'water_bucket' : 'lava_bucket', 1); }
+        return true;
+      }
+    }
+    // Milk a cow in front.
+    this.camera.getWorldDirection(this._dir);
+    if (this.entities.pickMob(this.camera.position, this._dir, 4, 'cow')) {
+      if (!this.inventory.isCreative) { this.inventory.remove('bucket', 1); this.inventory.add('milk_bucket', 1); }
+      this.chat?.system('🥛 Milked the cow.');
+      return true;
+    }
+    return false;
+  }
+
+  /** Place a liquid from a filled bucket against the targeted face. */
+  _placeLiquid(bucketType, blockId, target) {
+    if (!target) return false;
+    const px = target.x + target.nx, py = target.y + target.ny, pz = target.z + target.nz;
+    if (this.world.getBlock(px, py, pz) !== 0) return false;
+    this.world.setBlock(px, py, pz, blockId);
+    this._recordEdit(px, py, pz, blockId);
+    if (!this.inventory.isCreative) { this.inventory.remove(bucketType, 1); this.inventory.add('bucket', 1); }
+    Audio.place();
+    return true;
   }
 
   /** Drink a potion: apply its effect and return an empty bottle. */
@@ -1052,6 +1142,8 @@ class Game {
         }));
       }
     }
+
+    this._growCrops(dt);
 
     // Mobile: reveal the SMELT button only when near a placed furnace.
     if (this.touchControls) {
