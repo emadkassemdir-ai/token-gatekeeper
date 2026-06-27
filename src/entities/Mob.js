@@ -66,6 +66,17 @@ export const MOB_TYPES = {
     drop: 'phantom_membrane', dropCount: 1, body: 0x49586a, head: 0x49586a, w: 1.2, h: 0.5 },
   wither: { hostile: true, ranged: true, flying: true, boss: true, hp: 100, speed: 2.6, aggro: 60,
     drop: 'nether_star', dropCount: 1, body: 0x161616, head: 0x2a2a2a, w: 1.2, h: 3.0 },
+  // ---- Illagers (raids) ----
+  pillager: { hostile: true, ranged: true, illager: true, hp: 12, speed: 2.2, aggro: 22,
+    drops: [['arrow', 2], ['emerald', 1]], body: 0x4a4f4c, head: 0x9aa79a, w: 0.6, h: 1.9 },
+  vindicator: { hostile: true, melee: true, illager: true, hp: 12, speed: 2.6, aggro: 20,
+    drop: 'emerald', dropCount: 1, body: 0x3f4441, head: 0x9aa79a, w: 0.6, h: 1.9 },
+  evoker: { hostile: true, ranged: true, illager: true, hp: 12, speed: 2.0, aggro: 20,
+    drops: [['emerald', 1], ['totem', 1]], body: 0x35393a, head: 0x9aa79a, w: 0.6, h: 1.9 },
+  ravager: { hostile: true, melee: true, illager: true, hp: 50, speed: 2.4, aggro: 24,
+    drop: 'saddle', dropCount: 1, body: 0x4a3a30, head: 0x5a4636, w: 1.5, h: 1.7 },
+  vex: { hostile: true, melee: true, flying: true, illager: true, hp: 4, speed: 3.4, aggro: 20,
+    drop: null, body: 0x7c9ab2, head: 0x7c9ab2, w: 0.3, h: 0.5 },
   cow: { passive: true, hp: 5, speed: 1.4, drops: [['raw_beef', 1], ['leather', 1]],
     body: 0x4a3526, head: 0xd8d2c8, w: 0.8, h: 1.3 },
   sheep: { passive: true, hp: 5, speed: 1.3, drop: 'raw_mutton', dropCount: 1,
@@ -122,7 +133,9 @@ export class Mob {
       witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
       wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager,
       wither_skeleton: buildSkeleton, magma_cube: buildSlime, phantom: buildPhantom,
-      wither: buildWither
+      wither: buildWither,
+      pillager: buildIllager, vindicator: buildIllager, evoker: buildIllager,
+      ravager: buildRavager, vex: buildVex
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -604,6 +617,36 @@ function buildWither(group) {
   // Wispy lower body (tail).
   add(group, box(0.35, 0.7, 0.3, dark), 0, 1.0, 0);
   add(group, box(0.22, 0.5, 0.2, dark), 0, 0.5, 0);
+}
+
+function buildIllager(group, cfg) {
+  const robe = cfg?.body ?? 0x444946, skin = cfg?.head ?? 0x9aa79a;
+  add(group, box(0.55, 1.0, 0.4, robe), 0, 1.0, 0);          // robe
+  const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#9aa79a'); rect(ctx, 3, 6, 3, 3, '#2a1a1a'); rect(ctx, 10, 6, 3, 3, '#2a1a1a'); rect(ctx, 6, 8, 4, 6, '#7a8478'); rect(ctx, 6, 13, 4, 1, '#3a2a2a'); }); // long nose, frown
+  add(group, headWithFace(0.5, 0.55, 0.5, skin, face), 0, 1.75, 0);
+  add(group, box(0.14, 0.8, 0.18, robe), -0.32, 1.0, 0.08); // arms crossed forward
+  add(group, box(0.14, 0.8, 0.18, robe), 0.32, 1.0, 0.08);
+  add(group, box(0.18, 0.5, 0.2, mulHex(robe, 0.7)), -0.1, 0.4, 0);
+  add(group, box(0.18, 0.5, 0.2, mulHex(robe, 0.7)), 0.1, 0.4, 0);
+}
+
+function buildRavager(group, cfg) {
+  const c = cfg?.body ?? 0x4a3a30;
+  add(group, box(1.3, 1.0, 1.9, c), 0, 1.0, 0);             // big body
+  add(group, box(0.9, 0.8, 0.8, mulHex(c, 1.1)), 0, 0.9, 1.2); // head
+  add(group, box(0.2, 0.2, 0.2, 0x111), 0.25, 1.1, 1.6); add(group, box(0.2, 0.2, 0.2, 0x111), -0.25, 1.1, 1.6); // eyes
+  add(group, box(0.3, 0.25, 0.3, 0xbfb6a8), 0, 0.55, 1.6);  // mouth/tusks
+  add(group, box(0.25, 0.3, 0.25, 0x6a5236), 0, 1.5, 0.3);  // saddle hump
+  quadLegs(group, mulHex(c, 0.8), 0.45, 0.7, 0.5, 0);
+}
+
+function buildVex(group) {
+  const c = 0x7c9ab2;
+  add(group, box(0.28, 0.4, 0.2, c), 0, 1.0, 0);            // body
+  add(group, box(0.24, 0.24, 0.22, 0xb8c8d4), 0, 1.28, 0.02); // head
+  add(group, box(0.05, 0.05, 0.05, 0xc04040), 0.06, 1.3, 0.13); add(group, box(0.05, 0.05, 0.05, 0xc04040), -0.06, 1.3, 0.13); // red eyes
+  const wL = add(group, box(0.4, 0.35, 0.03, 0xdfe8f0), -0.3, 1.1, -0.05); wL.rotation.z = 0.3;
+  const wR = add(group, box(0.4, 0.35, 0.03, 0xdfe8f0), 0.3, 1.1, -0.05); wR.rotation.z = -0.3;
 }
 
 function buildGeneric(group, cfg) {

@@ -292,6 +292,11 @@ class Game {
       this.stats.addXp(kind === 'ender_dragon' || kind === 'wither' ? 500 : 5); // killing mobs grants XP
       if (kind === 'ender_dragon') this.chat?.system('🏆 You have slain the Ender Dragon! (+500 XP)');
       else if (kind === 'wither') this.chat?.system('🏆 You have defeated the Wither! It dropped a Nether Star.');
+      // Killing a pillager can curse you with Bad Omen, triggering a raid.
+      if (kind === 'pillager' && !this._raid && !this.stats.hasEffect('bad_omen') && Math.random() < 0.5) {
+        this.stats.applyEffect('bad_omen', 300);
+        this.chat?.error('🏴 You feel a Bad Omen…');
+      }
     };
   }
 
@@ -615,6 +620,34 @@ class Game {
       case 88: return this._grindstone();                        // grindstone
       default: return false;
     }
+  }
+
+  /** Drive an illager raid while Bad Omen is active: waves spawn near the player. */
+  _updateRaid() {
+    if (this.dim !== 'overworld' || !this.stats.hasEffect('bad_omen')) {
+      if (this._raid) this._raid = null;
+      return;
+    }
+    if (!this._raid) { this._raid = { wave: 0 }; this.chat?.error('🏴 A raid is coming!'); }
+    if (this.entities._countWhere((m) => m.cfg.illager) > 0) return; // wave still active
+
+    this._raid.wave++;
+    if (this._raid.wave > 3) {
+      delete this.stats.effects['bad_omen'];
+      this._raid = null;
+      this.chat?.system('🏆 Raid defeated — you are a Hero of the Village!');
+      this.stats.applyEffect('regeneration', 12);
+      return;
+    }
+    const wave = this._raid.wave;
+    const counts = { pillager: 2 + wave, vindicator: 1 + (wave >> 1), evoker: wave >= 3 ? 1 : 0, ravager: wave >= 3 ? 1 : 0 };
+    for (const kind in counts) {
+      for (let i = 0; i < counts[kind]; i++) {
+        const s = this.entities._findSurfaceSpot(this.physics.position);
+        if (s) this.entities.spawnKind(kind, s);
+      }
+    }
+    this.chat?.error(`⚔️ Raid — wave ${wave} of 3!`);
   }
 
   /** Slowly ripen planted crops near the player (young -> ripe). */
@@ -1144,6 +1177,7 @@ class Game {
     }
 
     this._growCrops(dt);
+    this._updateRaid();
 
     // Mobile: reveal the SMELT button only when near a placed furnace.
     if (this.touchControls) {

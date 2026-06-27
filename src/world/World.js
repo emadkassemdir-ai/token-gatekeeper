@@ -1262,6 +1262,35 @@ export class World {
         this.noise.hash2(cx * 557 + 3, cz * 557 + 7) < 0.06) {
       this._buildPyramid(ccx, ccz);
     }
+
+    // Pillager outpost: a tall watchtower on plains/savanna with a loot chest.
+    const b = this.sampleColumn(ccx, ccz).biome;
+    if ((b === BIOME.PLAINS || b === BIOME.SAVANNA) &&
+        this.noise.hash2(cx * 733 + 9, cz * 733 + 1) < 0.04) {
+      this._buildOutpost(ccx, ccz);
+    }
+  }
+
+  _buildOutpost(cx, cz) {
+    const base = this.getSpawnHeight(cx, cz);
+    if (base < SEA_LEVEL) return;
+    const H = 11;
+    for (let dy = 0; dy < H; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dz = -2; dz <= 2; dz++) {
+          const edge = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+          const id = (dy === 0) ? 19 : (edge ? (dy % 3 === 0 ? 19 : 91) : 0); // cobble corners, acacia walls
+          if (id) this.setBlock(cx + dx, base + dy, cz + dz, id);
+        }
+      }
+    }
+    // Open-air platform on top with a loot chest.
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) this.setBlock(cx + dx, base + H, cz + dz, 91);
+    this.setBlock(cx, base + H + 1, cz, 65);
+    this.loot[`${cx},${base + H + 1},${cz}`] = [
+      { type: 'crossbow', count: 1 }, { type: 'arrow', count: 12 },
+      { type: 'emerald', count: 2 }, { type: 'iron_ingot', count: 3 }
+    ];
   }
 
   _buildDungeon(cx, y, cz) {

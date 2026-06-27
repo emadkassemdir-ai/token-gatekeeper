@@ -208,7 +208,8 @@ export class EntityManager {
         if (spot) {
           const roll = Math.random();
           if (roll < 0.1) { const a = this._findAirSpot(playerPos); if (a) this._spawn('phantom', a); }
-          else this._spawn(roll < 0.2 ? 'enderman' : this._pickHostile(), spot);
+          else if (roll < 0.16) this._spawn('pillager', spot); // patrol (can give Bad Omen)
+          else this._spawn(roll < 0.26 ? 'enderman' : this._pickHostile(), spot);
         }
       }
     } else {

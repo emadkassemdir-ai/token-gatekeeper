@@ -254,7 +254,9 @@ export const ITEMS = {
   green_dye:      { type: 'green_dye', name: 'Green Dye', maxStack: 64, glyph: '●' },
   flint_and_steel:{ type: 'flint_and_steel', name: 'Flint and Steel', maxStack: 1, ignite: true, glyph: '🔥' },
   bow:            { type: 'bow', name: 'Bow', maxStack: 1, bow: true, damage: 0.5, glyph: '🏹' },
+  crossbow:       { type: 'crossbow', name: 'Crossbow', maxStack: 1, bow: true, damage: 1.0, glyph: '🏹' },
   arrow:          { type: 'arrow', name: 'Arrow', maxStack: 64, glyph: '➶' },
+  saddle:         { type: 'saddle', name: 'Saddle', maxStack: 1, glyph: '🐾' },
   // Leather armor (early-game protection from cow/zombie leather).
   leather_helmet:     { type: 'leather_helmet', name: 'Leather Cap', maxStack: 1, armor: 1, slot: 'head', glyph: '⛑' },
   leather_chestplate: { type: 'leather_chestplate', name: 'Leather Tunic', maxStack: 1, armor: 3, slot: 'chest', glyph: '🦺' },

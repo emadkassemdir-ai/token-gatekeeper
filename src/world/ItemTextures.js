@@ -145,7 +145,7 @@ function drawMaterial(ctx, type) {
     for (let y = 8; y <= 11; y++) px(ctx, y, 11, steel);
     for (let y = 6; y <= 11; y++) for (let x = 9; x <= 13; x++) { const dx = x - 11, dy = y - 9; if (dx * dx + dy * dy < 7) px(ctx, x, y, flint); } // flint
     px(ctx, 10, 5, [1, 0.8, 0.2]); px(ctx, 11, 4, [1, 0.6, 0.1]); // sparks
-  } else if (type === 'bow') {
+  } else if (type === 'bow' || type === 'crossbow') {
     const wood = [0.5, 0.36, 0.2];
     for (let y = 2; y <= 13; y++) { const x = 11 - Math.round(Math.sin((y - 2) / 11 * Math.PI) * 4); px(ctx, x, y, wood); px(ctx, x - 1, y, mul(wood, 0.8)); }
     for (let y = 2; y <= 13; y++) px(ctx, 11, y, [0.85, 0.85, 0.85]); // string
@@ -178,7 +178,8 @@ const MAT_COLORS = {
   nether_star: [0.95, 0.98, 0.9], phantom_membrane: [0.55, 0.6, 0.5],
   wheat_seeds: [0.5, 0.7, 0.3], wheat: [0.85, 0.72, 0.3],
   bucket: [0.72, 0.74, 0.78], water_bucket: [0.25, 0.45, 0.9],
-  lava_bucket: [0.95, 0.5, 0.12], milk_bucket: [0.96, 0.96, 0.92]
+  lava_bucket: [0.95, 0.5, 0.12], milk_bucket: [0.96, 0.96, 0.92],
+  saddle: [0.55, 0.34, 0.2]
 };
 
 /** Potion liquid colours for the bottle icon. */

@@ -110,6 +110,7 @@ export const RECIPES = [
   { id: 'flint_and_steel', output: 'flint_and_steel', outputCount: 1, inputs: [{ type: 'flint', count: 1 }, { type: 'iron_ingot', count: 1 }], requiresTable: true },
   { id: 'bow', output: 'bow', outputCount: 1, inputs: [{ type: 'stick', count: 3 }, { type: 'string', count: 3 }], requiresTable: true },
   { id: 'arrow', output: 'arrow', outputCount: 4, inputs: [{ type: 'flint', count: 1 }, { type: 'stick', count: 1 }, { type: 'feather', count: 1 }], requiresTable: true },
+  { id: 'crossbow', output: 'crossbow', outputCount: 1, inputs: [{ type: 'stick', count: 3 }, { type: 'string', count: 2 }, { type: 'iron_ingot', count: 1 }], requiresTable: true },
   { id: 'tnt', output: 'tnt', outputCount: 1, inputs: [{ type: 'gunpowder', count: 5 }, { type: 'sand', count: 4 }], requiresTable: true },
   { id: 'bonemeal', output: 'bonemeal', outputCount: 3, inputs: [{ type: 'bone', count: 1 }], requiresTable: false },
   { id: 'blue_wool', output: 'blue_wool', outputCount: 1, inputs: [{ type: 'white_wool', count: 1 }, { type: 'lapis', count: 1 }], requiresTable: true },
