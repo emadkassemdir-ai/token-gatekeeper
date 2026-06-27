@@ -149,7 +149,18 @@ const TEX = {
   82: { all: 'lever_off' },
   83: { all: 'lever_on' },
   84: { all: 'redstone_torch' },
-  85: { all: 'spawner' }
+  85: { all: 'spawner' },
+  86: { top: 'stone', side: 'furnace', bottom: 'stone' },   // blast furnace
+  87: { top: 'planks', side: 'furnace', bottom: 'stone' },  // smoker
+  88: { all: 'stone' },                                     // grindstone
+  89: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, // acacia
+  90: { all: 'leaves' },
+  91: { all: 'planks' },
+  92: { top: 'log_top', side: 'birch_side', bottom: 'log_top' }, // cherry
+  93: { all: 'leaves' },
+  94: { all: 'planks' },
+  95: { all: 'skull' },
+  96: { all: 'beacon' }
 };
 
 const TILE = 16; // texels per tile
@@ -479,6 +490,16 @@ function paintTile(ctx, ox, kind, base, accent) {
           break;
         case 'spawner':
           c = (px % 2 === 0 && py % 2 === 0) ? [0.1, 0.12, 0.14] : mul(base, 0.8 + n * 0.2); // cage bars
+          break;
+        case 'skull':
+          c = mul([0.16, 0.16, 0.18], 0.85 + n * 0.25);
+          if ((px >= 4 && px <= 6 || px >= 9 && px <= 11) && py >= 5 && py <= 8) c = [0.02, 0.02, 0.03]; // eye sockets
+          if (px >= 5 && px <= 10 && py >= 10 && py <= 13) c = [0.05, 0.05, 0.06]; // jaw
+          break;
+        case 'beacon':
+          c = mul([0.1, 0.4, 0.45], 0.8 + n * 0.3);
+          if (px >= 4 && px <= 11 && py >= 4 && py <= 11) c = [0.5, 0.95, 0.95]; // bright core
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [0.85, 1.0, 1.0];
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);
@@ -1129,10 +1150,10 @@ export class World {
         let density = 0, type = 'oak';
         switch (biome) {
           case BIOME.JUNGLE:  density = 0.10; type = 'jungle'; break;
-          case BIOME.FOREST:  density = 0.12; type = this.noise.hash2(wx * 3, wz * 3) < 0.4 ? 'birch' : 'oak'; break;
+          case BIOME.FOREST:  density = 0.12; type = this.noise.hash2(wx * 3, wz * 3) < 0.2 ? 'cherry' : (this.noise.hash2(wx * 3, wz * 3) < 0.5 ? 'birch' : 'oak'); break;
           case BIOME.TAIGA:   density = 0.10; type = 'spruce'; break;
           case BIOME.PLAINS:  density = 0.035; type = this.noise.hash2(wx * 3, wz * 3) < 0.25 ? 'birch' : 'oak'; break;
-          case BIOME.SAVANNA: density = 0.02; type = 'oak'; break;
+          case BIOME.SAVANNA: density = 0.025; type = 'acacia'; break;
           case BIOME.SNOWY:   density = 0.03; type = 'spruce'; break;
           default: density = 0;
         }
@@ -1159,7 +1180,9 @@ export class World {
       oak:    { log: 5, leaf: 6, min: 4, span: 3 },
       birch:  { log: 28, leaf: 29, min: 5, span: 3 },
       spruce: { log: 30, leaf: 31, min: 6, span: 3, conifer: true },
-      jungle: { log: 5, leaf: 14, min: 7, span: 4 }
+      jungle: { log: 5, leaf: 14, min: 7, span: 4 },
+      acacia: { log: 89, leaf: 90, min: 5, span: 3 },
+      cherry: { log: 92, leaf: 93, min: 5, span: 3 }
     }[type] || { log: 5, leaf: 6, min: 4, span: 3 };
 
     const trunkHeight = conf.min + (Math.floor(roll * 90) % conf.span);

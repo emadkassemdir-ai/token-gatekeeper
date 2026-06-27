@@ -58,6 +58,14 @@ export const MOB_TYPES = {
   ender_dragon: { hostile: true, ranged: true, melee: true, flying: true, end: true, boss: true,
     hp: 50, speed: 3.2, aggro: 80, drop: 'dragon_egg', dropCount: 1,
     body: 0x1a1a22, head: 0x1a1a22, w: 3.0, h: 2.0 },
+  wither_skeleton: { hostile: true, melee: true, nether: true, hp: 10, speed: 2.4, aggro: 18,
+    drops: [['bone', 1], ['coal', 1], ['wither_skeleton_skull', 1]], body: 0x1c1c1c, head: 0x282828, w: 0.5, h: 2.0 },
+  magma_cube: { hostile: true, melee: true, nether: true, hp: 6, speed: 2.2, aggro: 16,
+    drop: 'magma_cream', dropCount: 1, body: 0xd84a20, head: 0xd84a20, w: 0.9, h: 0.9 },
+  phantom: { hostile: true, ranged: true, flying: true, hp: 6, speed: 3.0, aggro: 24,
+    drop: 'phantom_membrane', dropCount: 1, body: 0x49586a, head: 0x49586a, w: 1.2, h: 0.5 },
+  wither: { hostile: true, ranged: true, flying: true, boss: true, hp: 100, speed: 2.6, aggro: 60,
+    drop: 'nether_star', dropCount: 1, body: 0x161616, head: 0x2a2a2a, w: 1.2, h: 3.0 },
   cow: { passive: true, hp: 5, speed: 1.4, drops: [['raw_beef', 1], ['leather', 1]],
     body: 0x4a3526, head: 0xd8d2c8, w: 0.8, h: 1.3 },
   sheep: { passive: true, hp: 5, speed: 1.3, drop: 'raw_mutton', dropCount: 1,
@@ -112,7 +120,9 @@ export class Mob {
       spider: buildSpider, enderman: buildEnderman, ender_dragon: buildDragon,
       husk: buildZombie, drowned: buildZombie, stray: buildSkeleton,
       witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
-      wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager
+      wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager,
+      wither_skeleton: buildSkeleton, magma_cube: buildSlime, phantom: buildPhantom,
+      wither: buildWither
     }[this.kind] || buildGeneric;
     build(group, this.cfg);
     return group;
@@ -568,6 +578,32 @@ function buildVillager(group, cfg) {
 function mulHex(hex, m) {
   const r = ((hex >> 16) & 255) * m, g = ((hex >> 8) & 255) * m, b = (hex & 255) * m;
   return ((r & 255) << 16) | ((g & 255) << 8) | (b & 255);
+}
+
+function buildPhantom(group) {
+  const c = 0x49586a;
+  add(group, box(0.6, 0.3, 0.9, c), 0, 1.4, 0);             // body
+  add(group, box(0.35, 0.25, 0.3, c), 0, 1.45, 0.55);       // head
+  add(group, box(0.06, 0.06, 0.06, 0x6cf06c), 0.1, 1.5, 0.7); // glowing eyes
+  add(group, box(0.06, 0.06, 0.06, 0x6cf06c), -0.1, 1.5, 0.7);
+  const wL = add(group, box(1.1, 0.06, 0.6, 0x3a4656), -0.8, 1.45, 0); wL.rotation.z = 0.2;
+  const wR = add(group, box(1.1, 0.06, 0.6, 0x3a4656), 0.8, 1.45, 0); wR.rotation.z = -0.2;
+  add(group, box(0.18, 0.18, 0.5, c), 0, 1.4, -0.7);        // tail
+}
+
+function buildWither(group) {
+  const dark = 0x1c1c1c, rib = 0x2a2a2a;
+  add(group, box(0.6, 1.2, 0.4, dark), 0, 2.0, 0);          // spine/body
+  add(group, box(0.5, 0.3, 0.3, rib), 0, 1.7, 0); add(group, box(0.5, 0.3, 0.3, rib), 0, 1.3, 0); // ribs
+  // Three skull heads.
+  const skull = (x) => {
+    const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#282828'); rect(ctx, 3, 5, 3, 3, '#ff5a30'); rect(ctx, 10, 5, 3, 3, '#ff5a30'); rect(ctx, 5, 11, 6, 2, '#0a0a0a'); });
+    add(group, headWithFace(0.55, 0.55, 0.55, rib, face), x, 2.8, 0);
+  };
+  skull(0); skull(-0.6); skull(0.6);
+  // Wispy lower body (tail).
+  add(group, box(0.35, 0.7, 0.3, dark), 0, 1.0, 0);
+  add(group, box(0.22, 0.5, 0.2, dark), 0, 0.5, 0);
 }
 
 function buildGeneric(group, cfg) {

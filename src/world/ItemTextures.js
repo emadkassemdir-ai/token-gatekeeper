@@ -171,7 +171,8 @@ const MAT_COLORS = {
   raw_copper: [0.78, 0.45, 0.3], copper_ingot: [0.85, 0.52, 0.36], sugar: [0.95, 0.95, 0.98],
   slimeball: [0.5, 0.8, 0.4], magma_cream: [0.85, 0.45, 0.15], rabbit_foot: [0.8, 0.7, 0.55],
   fermented_spider_eye: [0.4, 0.3, 0.5], glass_bottle: [0.7, 0.85, 0.9],
-  netherite_scrap: [0.5, 0.38, 0.3], netherite_ingot: [0.3, 0.26, 0.28]
+  netherite_scrap: [0.5, 0.38, 0.3], netherite_ingot: [0.3, 0.26, 0.28],
+  nether_star: [0.95, 0.98, 0.9], phantom_membrane: [0.55, 0.6, 0.5]
 };
 
 /** Potion liquid colours for the bottle icon. */

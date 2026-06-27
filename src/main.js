@@ -183,6 +183,7 @@ class Game {
       this.viewModel?.swing();
       if (id === 0) Audio.mine(); else Audio.place();
       this._redstoneTouch(x, y, z, id);
+      if (id === 95) this._checkWither(x, y, z); // wither skeleton skull placed
     };
     this.interaction.onMine = (dropType) => {
       this.inventory.add(dropType, 1);
@@ -286,8 +287,9 @@ class Game {
     };
     this.entities.onExplosion = () => this.chat?.error('💥 A creeper exploded!');
     this.entities.onMobKilled = (kind) => {
-      this.stats.addXp(kind === 'ender_dragon' ? 500 : 5); // killing mobs grants XP
+      this.stats.addXp(kind === 'ender_dragon' || kind === 'wither' ? 500 : 5); // killing mobs grants XP
       if (kind === 'ender_dragon') this.chat?.system('🏆 You have slain the Ender Dragon! (+500 XP)');
+      else if (kind === 'wither') this.chat?.system('🏆 You have defeated the Wither! It dropped a Nether Star.');
     };
   }
 
@@ -546,7 +548,35 @@ class Game {
   }
 
   _nearCraftingTable() { return this._nearBlock(CRAFTING_TABLE_ID); }
-  _nearFurnace() { return this._nearBlock(FURNACE_ID); }
+  _nearFurnace() { return this._nearBlock(FURNACE_ID) || this._nearBlock(86) || this._nearBlock(87); }
+
+  /**
+   * Check whether placing a Wither Skeleton Skull completed the summoning
+   * structure (3 skulls on a T of soul sand) and, if so, spawn the Wither.
+   */
+  _checkWither(sx, sy, sz) {
+    const SKULL = 95, SOUL = 55;
+    for (const [ax, az] of [[1, 0], [0, 1]]) {
+      for (let off = -1; off <= 1; off++) {
+        const cx = sx - ax * off, cz = sz - az * off; // candidate centre column
+        let ok = true;
+        for (let i = -1; i <= 1; i++) {
+          if (this.world.getBlock(cx + ax * i, sy, cz + az * i) !== SKULL) ok = false;
+          if (this.world.getBlock(cx + ax * i, sy - 1, cz + az * i) !== SOUL) ok = false;
+        }
+        if (ok && this.world.getBlock(cx, sy - 2, cz) === SOUL) {
+          const clear = (x, y, z) => { this.world.setBlock(x, y, z, 0); this._recordEdit(x, y, z, 0); };
+          for (let i = -1; i <= 1; i++) { clear(cx + ax * i, sy, cz + az * i); clear(cx + ax * i, sy - 1, cz + az * i); }
+          clear(cx, sy - 2, cz);
+          this.entities.spawnKind('wither', new THREE.Vector3(cx + 0.5, sy + 1, cz + 0.5));
+          this.chat?.error('💀 The Wither awakens!');
+          Audio.craft();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   /** Count bookshelves near the player (the enchanting table's power source). */
   _bookshelfPower() {
@@ -579,7 +609,8 @@ class Game {
         return true;
       }
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
-      case FURNACE_ID: this.smelting.openMenu(); return true;
+      case FURNACE_ID: case 86: case 87: this.smelting.openMenu(); return true; // furnace/blast/smoker
+      case 88: return this._grindstone();                        // grindstone
       default: return false;
     }
   }
@@ -593,6 +624,19 @@ class Game {
       }
     }
     if (near) recomputeRedstone(this.world, x, y, z);
+  }
+
+  /** Grindstone: strip the held item's enchantment and refund half its levels. */
+  _grindstone() {
+    const held = this.inventory.getSelectedType();
+    const lvl = this.stats.getEnchant(held);
+    if (!held || lvl <= 0) { this.chat?.system('Hold an enchanted item to grind off its enchantment.'); return true; }
+    this.stats.enchants[held] = 0;
+    const refund = Math.max(1, Math.floor(lvl / 2));
+    this.stats.levels += refund;
+    this.chat?.system(`Ground off the enchantment (+${refund} levels).`);
+    Audio.craft();
+    return true;
   }
 
   /** Sleep in a bed: set spawn here and skip the night. */

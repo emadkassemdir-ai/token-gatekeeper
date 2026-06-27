@@ -244,7 +244,32 @@ export const BLOCKS = {
   84: { id: 84, name: 'Redstone Torch', color: [0.55, 0.12, 0.12], solid: true, transparent: false, breakable: true, hardness: 0.2, liquid: false },
 
   // ---- Structures ----
-  85: { id: 85, name: 'Spawner', color: [0.18, 0.2, 0.24], solid: true, transparent: true, breakable: true, hardness: 3.0, liquid: false, opacity: 0.7 }
+  85: { id: 85, name: 'Spawner', color: [0.18, 0.2, 0.24], solid: true, transparent: true, breakable: true, hardness: 3.0, liquid: false, opacity: 0.7 },
+
+  // ---- Functional smelting/utility ----
+  86: { id: 86, name: 'Blast Furnace', color: [0.3, 0.3, 0.34],
+    faceColors: { top: [0.26, 0.26, 0.3], bottom: [0.26, 0.26, 0.3], side: [0.32, 0.32, 0.36] },
+    solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+  87: { id: 87, name: 'Smoker', color: [0.3, 0.25, 0.2],
+    faceColors: { top: [0.26, 0.22, 0.18], bottom: [0.26, 0.22, 0.18], side: [0.34, 0.28, 0.22] },
+    solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  88: { id: 88, name: 'Grindstone', color: [0.5, 0.5, 0.52], solid: true, transparent: false, breakable: true, hardness: 1.5, liquid: false },
+
+  // ---- More wood ----
+  89: { id: 89, name: 'Acacia Log', color: [0.5, 0.34, 0.2],
+    faceColors: { top: [0.62, 0.42, 0.26], bottom: [0.62, 0.42, 0.26], side: [0.46, 0.3, 0.18] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  90: { id: 90, name: 'Acacia Leaves', color: [0.45, 0.55, 0.24], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.86 },
+  91: { id: 91, name: 'Acacia Planks', color: [0.74, 0.42, 0.26], solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  92: { id: 92, name: 'Cherry Log', color: [0.42, 0.36, 0.38],
+    faceColors: { top: [0.86, 0.62, 0.66], bottom: [0.86, 0.62, 0.66], side: [0.4, 0.34, 0.36] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  93: { id: 93, name: 'Cherry Leaves', color: [0.93, 0.72, 0.82], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false, opacity: 0.88 },
+  94: { id: 94, name: 'Cherry Planks', color: [0.86, 0.58, 0.6], solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+
+  // ---- The Wither + Beacon ----
+  95: { id: 95, name: 'Wither Skeleton Skull', color: [0.16, 0.16, 0.18], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.9 },
+  96: { id: 96, name: 'Beacon', color: [0.3, 0.85, 0.85], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.6 }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -258,7 +283,8 @@ export const PLACEABLE_BLOCKS = [
   63, 64, 65,         // utility blocks
   66, 67, 68, 69, 70, 71, 72, // brewing/copper/stone/light
   73, 74, 75, 76, 77,         // netherite + functional
-  78, 79, 80, 82, 84          // redstone (lamp-lit/lever-on/spawner are state-only)
+  78, 79, 80, 82, 84,         // redstone (lamp-lit/lever-on/spawner are state-only)
+  86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96 // functional/wood/wither
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

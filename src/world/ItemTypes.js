@@ -47,7 +47,10 @@ export const CATEGORY = {
   // Netherite + functional:
   73: 'stone', 74: 'stone', 75: 'wood', 76: 'wood', 77: 'stone',
   // Redstone + structures:
-  78: 'soft', 79: 'stone', 80: 'soft', 81: 'soft', 82: 'soft', 83: 'soft', 84: 'soft', 85: 'stone'
+  78: 'soft', 79: 'stone', 80: 'soft', 81: 'soft', 82: 'soft', 83: 'soft', 84: 'soft', 85: 'stone',
+  // Functional / wood / wither:
+  86: 'stone', 87: 'stone', 88: 'stone', 89: 'wood', 90: 'leaves', 91: 'wood',
+  92: 'wood', 93: 'leaves', 94: 'wood', 95: 'stone', 96: 'glass'
 };
 
 /**
@@ -105,7 +108,11 @@ export const BLOCK_DROPS = {
   73: 'ancient_debris', 74: 'netherite_block', 75: 'smithing_table', 76: 'barrel', 77: 'ender_chest',
   // Redstone:
   78: 'redstone', 79: 'redstone_block', 80: 'redstone_lamp', 81: 'redstone_lamp',
-  82: 'lever', 83: 'lever', 84: 'redstone_torch', 85: null
+  82: 'lever', 83: 'lever', 84: 'redstone_torch', 85: null,
+  // Functional / wood / wither:
+  86: 'blast_furnace', 87: 'smoker', 88: 'grindstone', 89: 'acacia_log', 90: null,
+  91: 'acacia_planks', 92: 'cherry_log', 93: null, 94: 'cherry_planks',
+  95: 'wither_skeleton_skull', 96: 'beacon'
 };
 
 /**
@@ -202,6 +209,17 @@ export const ITEMS = {
   lever:             { type: 'lever', name: 'Lever', maxStack: 64, place: 82 },
   redstone_torch:    { type: 'redstone_torch', name: 'Redstone Torch', maxStack: 64, place: 84 },
   spawner:           { type: 'spawner', name: 'Spawner', maxStack: 64, place: 85 },
+  blast_furnace:     { type: 'blast_furnace', name: 'Blast Furnace', maxStack: 64, place: 86 },
+  smoker:            { type: 'smoker', name: 'Smoker', maxStack: 64, place: 87 },
+  grindstone:        { type: 'grindstone', name: 'Grindstone', maxStack: 64, place: 88 },
+  acacia_log:        { type: 'acacia_log', name: 'Acacia Log', maxStack: 64, place: 89 },
+  acacia_leaves:     { type: 'acacia_leaves', name: 'Acacia Leaves', maxStack: 64, place: 90 },
+  acacia_planks:     { type: 'acacia_planks', name: 'Acacia Planks', maxStack: 64, place: 91 },
+  cherry_log:        { type: 'cherry_log', name: 'Cherry Log', maxStack: 64, place: 92 },
+  cherry_leaves:     { type: 'cherry_leaves', name: 'Cherry Leaves', maxStack: 64, place: 93 },
+  cherry_planks:     { type: 'cherry_planks', name: 'Cherry Planks', maxStack: 64, place: 94 },
+  wither_skeleton_skull: { type: 'wither_skeleton_skull', name: 'Wither Skeleton Skull', maxStack: 64, place: 95 },
+  beacon:            { type: 'beacon', name: 'Beacon', maxStack: 64, place: 96 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -282,6 +300,8 @@ export const ITEMS = {
   golden_carrot:  { type: 'golden_carrot', name: 'Golden Carrot', maxStack: 64, glyph: '🥕', food: { hunger: 3 } },
   netherite_scrap: { type: 'netherite_scrap', name: 'Netherite Scrap', maxStack: 64, glyph: '◆' },
   netherite_ingot: { type: 'netherite_ingot', name: 'Netherite Ingot', maxStack: 64, glyph: '▬' },
+  nether_star:     { type: 'nether_star', name: 'Nether Star', maxStack: 64, glyph: '✦' },
+  phantom_membrane: { type: 'phantom_membrane', name: 'Phantom Membrane', maxStack: 64, glyph: '◇' },
   // Expansion: food.
   apple:          { type: 'apple', name: 'Apple', maxStack: 64, glyph: '🍎', food: { hunger: 2 } },
   bread:          { type: 'bread', name: 'Bread', maxStack: 64, glyph: '🍞', food: { hunger: 2.5 } },
@@ -369,7 +389,9 @@ export const CREATIVE_PALETTE = [
   'end_stone', 'dragon_egg', 'enchanting_table', 'bed', 'chest', 'bookshelf',
   'brewing_stand', 'copper_ore', 'copper_block', 'deepslate', 'smooth_stone', 'sea_lantern', 'nether_wart',
   'ancient_debris', 'netherite_block', 'smithing_table', 'barrel', 'ender_chest',
-  'redstone', 'redstone_block', 'redstone_lamp', 'lever', 'redstone_torch'
+  'redstone', 'redstone_block', 'redstone_lamp', 'lever', 'redstone_torch',
+  'blast_furnace', 'smoker', 'grindstone', 'acacia_log', 'acacia_leaves', 'acacia_planks',
+  'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon'
 ];
 
 /** Items a fresh survival player starts with (none — pure survival). */

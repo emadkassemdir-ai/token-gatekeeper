@@ -167,10 +167,16 @@ export class EntityManager {
       if (this.peaceful) return;
       if (this._countWhere((m) => m.hostile) >= HOSTILE_CAP_CAVE) return;
       const r = Math.random();
-      if (r < 0.5) {
+      if (r < 0.34) {
         const s = this._findCaveSpot(playerPos);     // pigman walks the netherrack
         if (s) this._spawn('pigman', s);
-      } else if (r < 0.8) {
+      } else if (r < 0.5) {
+        const s = this._findCaveSpot(playerPos);     // wither skeleton (fortress dweller)
+        if (s) this._spawn('wither_skeleton', s);
+      } else if (r < 0.66) {
+        const s = this._findCaveSpot(playerPos);     // magma cube bounces
+        if (s) this._spawn('magma_cube', s);
+      } else if (r < 0.85) {
         const s = this._findAirSpot(playerPos);       // blaze hovers
         if (s) this._spawn('blaze', s);
       } else {
@@ -198,8 +204,12 @@ export class EntityManager {
     if (time.isNight && !this.peaceful) {
       if (this._countWhere((m) => m.hostile || m.kind === 'enderman') < HOSTILE_CAP_SURFACE) {
         const spot = this._findSurfaceSpot(playerPos);
-        // Endermen wander at night too (neutral until provoked).
-        if (spot) this._spawn(Math.random() < 0.12 ? 'enderman' : this._pickHostile(), spot);
+        // Endermen wander at night; phantoms swoop from above.
+        if (spot) {
+          const roll = Math.random();
+          if (roll < 0.1) { const a = this._findAirSpot(playerPos); if (a) this._spawn('phantom', a); }
+          else this._spawn(roll < 0.2 ? 'enderman' : this._pickHostile(), spot);
+        }
       }
     } else {
       // Daytime passive animals on grassy ground (cow/sheep/pig/chicken).
