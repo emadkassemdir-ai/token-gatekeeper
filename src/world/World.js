@@ -1456,6 +1456,125 @@ export class World {
         this.noise.hash2(cx * 733 + 9, cz * 733 + 1) < 0.04) {
       this._buildOutpost(ccx, ccz);
     }
+
+    // Stronghold: a rare deep stone-brick complex with a library + portal room.
+    if (this.noise.hash2(cx * 1009 + 17, cz * 1009 + 23) < 0.012) {
+      const y = 8 + Math.floor(this.noise.hash2(cx + 2, cz + 2) * 6);
+      this._buildStronghold(ccx, y, ccz);
+    }
+
+    // Jungle temple: a mossy cobblestone ziggurat hiding treasure.
+    if (b === BIOME.JUNGLE && this.noise.hash2(cx * 617 + 13, cz * 617 + 5) < 0.05) {
+      this._buildJungleTemple(ccx, ccz);
+    }
+
+    // Ocean monument: a prismarine hall rising from a deep seabed.
+    if (this.noise.hash2(cx * 887 + 19, cz * 887 + 29) < 0.03) {
+      this._buildOceanMonument(ccx, ccz);
+    }
+
+    // Ruined portal: a broken obsidian frame amid netherrack rubble.
+    if ((b === BIOME.PLAINS || b === BIOME.SAVANNA || b === BIOME.DESERT || b === BIOME.FOREST) &&
+        this.noise.hash2(cx * 431 + 2, cz * 431 + 8) < 0.025) {
+      this._buildRuinedPortal(ccx, ccz);
+    }
+  }
+
+  /** Deep stone-brick stronghold: a sealed room with bookshelves + portal base. */
+  _buildStronghold(cx, y, cz) {
+    const R = 4, H = 5;
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        for (let dy = 0; dy <= H; dy++) {
+          const x = cx + dx, Y = y + dy, z = cz + dz;
+          const shell = dx === -R || dx === R || dz === -R || dz === R || dy === 0 || dy === H;
+          if (shell) this.setBlock(x, Y, z, this.noise.hash3(x, Y, z) < 0.3 ? 23 : 24); // mossy/stone bricks
+          else this.setBlock(x, Y, z, AIR);
+        }
+      }
+    }
+    // Library wall of bookshelves.
+    for (let dx = -3; dx <= 3; dx++)
+      for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + dx, y + dy, cz - R + 1, 37);
+    // Decorative obsidian portal base in the centre of the floor.
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dz = -1; dz <= 1; dz++) this.setBlock(cx + dx, y, cz + dz, 35);
+    // Loot chest in a corner.
+    const chx = cx + R - 1, chz = cz + R - 1;
+    this.setBlock(chx, y + 1, chz, 65);
+    this.loot[`${chx},${y + 1},${chz}`] = [
+      { type: 'eye_of_ender', count: 2 }, { type: 'ender_pearl', count: 2 },
+      { type: 'book', count: 3 }, { type: 'iron_ingot', count: 5 },
+      { type: 'gold_ingot', count: 3 }, { type: 'diamond', count: 1 }
+    ];
+  }
+
+  /** Mossy stepped ziggurat in the jungle with a buried treasure chest. */
+  _buildJungleTemple(cx, cz) {
+    const base = this.getSpawnHeight(cx, cz) - 1;
+    if (base < SEA_LEVEL) return;
+    for (let layer = 0; layer < 4; layer++) {
+      const r = 4 - layer;
+      for (let dx = -r; dx <= r; dx++)
+        for (let dz = -r; dz <= r; dz++) {
+          const edge = Math.abs(dx) === r || Math.abs(dz) === r;
+          // Hollow upper layers (edge ring only) for a temple look; solid base.
+          if (layer === 0 || edge) this.setBlock(cx + dx, base + layer, cz + dz, 23); // mossy cobble
+        }
+    }
+    this.setBlock(cx, base - 1, cz, 65); // hidden treasure below
+    this.loot[`${cx},${base - 1},${cz}`] = [
+      { type: 'emerald', count: 4 }, { type: 'diamond', count: 2 },
+      { type: 'gold_ingot', count: 4 }, { type: 'bamboo', count: 6 }, { type: 'bone', count: 3 }
+    ];
+  }
+
+  /** Prismarine hall on a deep seabed, lit by sea lanterns, holding gold. */
+  _buildOceanMonument(cx, cz) {
+    const seabed = this.getSpawnHeight(cx, cz);
+    if (seabed >= SEA_LEVEL - 3) return; // only in genuinely deep water
+    const H = Math.min(SEA_LEVEL - seabed, 8), R = 3;
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        for (let dy = 0; dy <= H; dy++) {
+          const x = cx + dx, Y = seabed + dy, z = cz + dz;
+          const shell = dx === -R || dx === R || dz === -R || dz === R || dy === 0 || dy === H;
+          if (!shell) { this.setBlock(x, Y, z, AIR); continue; }
+          const corner = Math.abs(dx) === R && Math.abs(dz) === R;
+          this.setBlock(x, Y, z, corner ? 72 : 71); // sea-lantern corners, smooth-stone walls
+        }
+      }
+    }
+    const chx = cx, chz = cz;
+    this.setBlock(chx, seabed + 1, chz, 65);
+    this.loot[`${chx},${seabed + 1},${chz}`] = [
+      { type: 'gold_block', count: 1 }, { type: 'sea_lantern', count: 4 },
+      { type: 'diamond', count: 1 }, { type: 'emerald', count: 2 }
+    ];
+  }
+
+  /** A half-collapsed obsidian portal frame on a rubble of netherrack. */
+  _buildRuinedPortal(cx, cz) {
+    const base = this.getSpawnHeight(cx, cz);
+    if (base < SEA_LEVEL) return;
+    // Frame: 4 wide × 5 tall outline, ~30% of blocks missing (ruined).
+    for (let dx = 0; dx <= 3; dx++) {
+      for (let dy = 0; dy <= 4; dy++) {
+        const edge = dx === 0 || dx === 3 || dy === 0 || dy === 4;
+        if (!edge) continue;
+        if (this.noise.hash3(cx + dx, base + dy, cz) < 0.3) continue; // crumbled gap
+        this.setBlock(cx + dx, base + dy, cz, 35); // obsidian
+      }
+    }
+    // Netherrack rubble scattered at the foot.
+    for (let dx = -2; dx <= 4; dx++)
+      for (let dz = -1; dz <= 1; dz++)
+        if (this.noise.hash3(cx + dx, base, cz + dz) < 0.4) this.setBlock(cx + dx, base - 1, cz + dz, 53);
+    this.setBlock(cx + 1, base, cz + 2, 65); // loot chest beside it
+    this.loot[`${cx + 1},${base},${cz + 2}`] = [
+      { type: 'gold_ingot', count: 4 }, { type: 'obsidian', count: 3 },
+      { type: 'flint_and_steel', count: 1 }, { type: 'iron_ingot', count: 2 }
+    ];
   }
 
   _buildOutpost(cx, cz) {
