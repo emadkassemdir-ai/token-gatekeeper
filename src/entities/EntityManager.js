@@ -119,6 +119,7 @@ export class EntityManager {
     }
 
     for (const m of this.mobs) {
+      if (m.cfg.defender) this._defendVillage(m);
       m.update(dt, this.world, playerPos);
       if (m.cfg.melee && m.canAttack(playerPos)) {
         m.resetAttackCooldown();
@@ -189,6 +190,9 @@ export class EntityManager {
     const surfaceY = this.world.getSpawnHeight(playerPos.x, playerPos.z);
     const inCave = surfaceY - playerPos.y > 4;
 
+    // Villages stay populated with residents + a guardian golem at any hour.
+    if (!inCave) this._trySpawnVillage(playerPos);
+
     if (inCave && !this.peaceful) {
       // Caves: hostiles, 2x cap. Slower spawn at night (1.5x less) than day.
       const cap = HOSTILE_CAP_CAVE;
@@ -231,6 +235,48 @@ export class EntityManager {
         this._spawn(kind, wspot);
       }
     }
+  }
+
+  /** Iron golem: lock onto the nearest hostile and strike it when in reach. */
+  _defendVillage(m) {
+    let target = null, best = 16; // search radius
+    for (const o of this.mobs) {
+      if (!o.alive || !o.hostile) continue;
+      const d = o.position.distanceTo(m.position);
+      if (d < best) { best = d; target = o; }
+    }
+    m._defendTarget = target ? target.position : null;
+    if (target && best < 2.6 && m._attackCooldown <= 0) {
+      m._attackCooldown = 1.0;
+      const kx = target.position.x - m.position.x, kz = target.position.z - m.position.z;
+      const kl = Math.hypot(kx, kz) || 1;
+      target.takeDamage(m.cfg.attack || 7, new THREE.Vector3(kx / kl, 0, kz / kl));
+    }
+  }
+
+  /** Populate nearby villages with villagers and a guardian iron golem. */
+  _trySpawnVillage(playerPos) {
+    const villages = this.world.villages;
+    if (!villages || !villages.length) return;
+    for (const v of villages) {
+      if (Math.hypot(v.x - playerPos.x, v.z - playerPos.z) > 48) continue;
+      const near = (kind) => this._countWhere(
+        (m) => m.kind === kind && Math.hypot(m.position.x - v.x, m.position.z - v.z) < 28);
+      if (near('villager') < 4 && Math.random() < 0.5) {
+        const s = this._villageSpot(v); if (s) this._spawn('villager', s);
+      }
+      if (near('iron_golem') < 1) {
+        const s = this._villageSpot(v); if (s) this._spawn('iron_golem', s);
+      }
+    }
+  }
+
+  /** A surface spot scattered around a village centre. */
+  _villageSpot(v) {
+    const x = Math.floor(v.x + (Math.random() * 16 - 8)) + 0.5;
+    const z = Math.floor(v.z + (Math.random() * 16 - 8)) + 0.5;
+    const y = this.world.getSpawnHeight(x, z);
+    return new THREE.Vector3(x, y, z);
   }
 
   _isGrassy(pos) {

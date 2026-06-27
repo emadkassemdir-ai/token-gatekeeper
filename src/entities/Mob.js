@@ -45,6 +45,8 @@ export const MOB_TYPES = {
   fox: { passive: true, hp: 5, speed: 2.8, drop: null, body: 0xd07a3a, head: 0xd07a3a, w: 0.5, h: 0.6 },
   goat: { passive: true, hp: 10, speed: 2.2, drop: null, body: 0xd8d2c6, head: 0xe0dccf, w: 0.7, h: 1.2 },
   villager: { passive: true, hp: 10, speed: 1.4, drop: null, body: 0x9a8268, head: 0xc8a888, w: 0.6, h: 1.9 },
+  iron_golem: { defender: true, hp: 50, speed: 1.6, attack: 7, drops: [['iron_ingot', 4]],
+    body: 0xd8d8d8, head: 0xd0d0c8, w: 1.4, h: 2.7 },
   bat: { passive: true, flying: true, hp: 2, speed: 2.6, drop: null,
     body: 0x3a2e24, head: 0x3a2e24, w: 0.4, h: 0.4 },
   // ---- Nether mobs ----
@@ -132,6 +134,7 @@ export class Mob {
       husk: buildZombie, drowned: buildZombie, stray: buildSkeleton,
       witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
       wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager,
+      iron_golem: buildIronGolem,
       wither_skeleton: buildSkeleton, magma_cube: buildSlime, phantom: buildPhantom,
       wither: buildWither,
       pillager: buildIllager, vindicator: buildIllager, evoker: buildIllager,
@@ -192,6 +195,16 @@ export class Mob {
         if (this._fuse >= 1.4) this.detonate = true;
       } else if (this.kind === 'creeper') {
         this._fuse = Math.max(0, this._fuse - dt * 0.5);
+      }
+    } else if (this.cfg.defender && this._defendTarget) {
+      // Iron golems march toward the hostile the manager assigned them.
+      const tdx = this._defendTarget.x - this.position.x;
+      const tdz = this._defendTarget.z - this.position.z;
+      const td = Math.hypot(tdx, tdz);
+      if (td > 0.001) {
+        mx = (tdx / td) * speed * dt;
+        mz = (tdz / td) * speed * dt;
+        this._heading = Math.atan2(tdx, tdz);
       }
     } else {
       // Wander (passive / out of range). Flee away from the player if recently hit.
@@ -585,6 +598,26 @@ function buildVillager(group, cfg) {
   add(group, box(0.5, 0.3, 0.42, 0x5a4a38), 0, 1.55, 0);     // crossed-arms band
   add(group, box(0.18, 0.5, 0.2, robe), -0.1, 0.4, 0);       // robe legs
   add(group, box(0.18, 0.5, 0.2, robe), 0.1, 0.4, 0);
+}
+
+function buildIronGolem(group, cfg) {
+  const iron = cfg?.body ?? 0xd8d8d8, dark = mulHex(iron, 0.8);
+  add(group, box(1.1, 1.3, 0.7, iron), 0, 1.6, 0);            // broad torso
+  add(group, box(0.9, 0.4, 0.55, dark), 0, 1.0, 0);           // belt/hips
+  // Vines across the chest.
+  add(group, box(1.12, 0.15, 0.72, 0x4a7a3a), 0, 1.7, 0);
+  const face = faceTexture((ctx) => {
+    rect(ctx, 0, 0, 16, 16, '#cfcfc8');
+    rect(ctx, 3, 5, 3, 4, '#3a3a3a'); rect(ctx, 10, 5, 3, 4, '#3a3a3a'); // eyes
+    rect(ctx, 7, 8, 2, 6, '#b04a30');                                    // long nose
+  });
+  add(group, headWithFace(0.6, 0.7, 0.55, cfg?.head ?? 0xd0d0c8, face), 0, 2.45, 0.05);
+  // Heavy arms hanging to the ground.
+  add(group, box(0.35, 1.5, 0.4, iron), -0.78, 1.3, 0);
+  add(group, box(0.35, 1.5, 0.4, iron), 0.78, 1.3, 0);
+  // Stubby legs.
+  add(group, box(0.45, 0.7, 0.5, dark), -0.3, 0.35, 0);
+  add(group, box(0.45, 0.7, 0.5, dark), 0.3, 0.35, 0);
 }
 
 /** Multiply a packed hex colour by m (for shaded limbs). */

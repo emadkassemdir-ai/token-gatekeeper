@@ -839,6 +839,9 @@ export class World {
 
     /** Pending loot for generated chests: "x,y,z" -> [{type,count}]. */
     this.loot = {};
+
+    /** Centres of generated villages: [{x,z}] (used to populate residents). */
+    this.villages = [];
   }
 
   /**
@@ -1472,6 +1475,10 @@ export class World {
       const hz = czw + offsets[i][1];
       if (this._buildHouse(hx, hz)) built++;
       if (built >= 3) break;
+    }
+    // Remember the centre so the EntityManager can populate this village.
+    if (built > 0 && !this.villages.some((v) => v.x === cxw && v.z === czw)) {
+      this.villages.push({ x: cxw, z: czw });
     }
   }
 
