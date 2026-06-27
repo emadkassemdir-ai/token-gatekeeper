@@ -30,6 +30,8 @@ const SWIM_SPEED = 3.0;
 const WATER_GRAVITY = 7.0;
 const WATER_DRAG = 6.0; // velocity damping per second while submerged
 const BUOYANCY = 9.0;
+const LADDER_ID = 107;
+const CLIMB_SPEED = 3.2; // m/s up a ladder
 
 export class PhysicsEngine {
   /**
@@ -213,6 +215,25 @@ export class PhysicsEngine {
     return false;
   }
 
+  /** @returns {boolean} whether the player's body overlaps a ladder voxel. */
+  _onLadder() {
+    const p = this.position;
+    const minX = Math.floor(p.x - HALF_WIDTH);
+    const maxX = Math.floor(p.x + HALF_WIDTH);
+    const minY = Math.floor(p.y);
+    const maxY = Math.floor(p.y + HEIGHT);
+    const minZ = Math.floor(p.z - HALF_WIDTH);
+    const maxZ = Math.floor(p.z + HALF_WIDTH);
+    for (let y = minY; y <= maxY; y++) {
+      for (let z = minZ; z <= maxZ; z++) {
+        for (let x = minX; x <= maxX; x++) {
+          if (this.world.getBlock(x, y, z) === LADDER_ID) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /** Sample whether any part of the body / the eye is inside Water. */
   _updateFluidState() {
     const p = this.position;
@@ -326,6 +347,15 @@ export class PhysicsEngine {
       if (this._jumpHeld) this.velocity.y += SWIM_SPEED * dt * 6;
       // Exponential drag deceleration.
       this.velocity.y -= this.velocity.y * Math.min(1, WATER_DRAG * dt);
+      return;
+    }
+
+    // Ladder climbing: vertical motion is driven by intent, gravity suspended.
+    if (this._onLadder()) {
+      if (this._jumpHeld || this._flyUp) this.velocity.y = CLIMB_SPEED;          // climb up
+      else if (this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this._flyDown) this.velocity.y = -CLIMB_SPEED; // descend
+      else if (iz > 0.1) this.velocity.y = CLIMB_SPEED * 0.55;                    // hold forward to climb
+      else this.velocity.y = -1.4;                                               // gentle slide down
       return;
     }
 

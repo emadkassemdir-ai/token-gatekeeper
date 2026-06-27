@@ -150,6 +150,12 @@ export const RECIPES = [
   { id: 'blaze_powder', output: 'blaze_powder', outputCount: 2, inputs: [{ type: 'blaze_rod', count: 1 }], requiresTable: false },
   { id: 'eye_of_ender', output: 'eye_of_ender', outputCount: 1, inputs: [{ type: 'ender_pearl', count: 1 }, { type: 'blaze_powder', count: 1 }], requiresTable: false },
 
+  // ---- Pistons / doors / ladders (redstone mechanisms) ----
+  { id: 'piston', output: 'piston', outputCount: 1, inputs: [{ type: 'oak_planks', count: 3 }, { type: 'cobblestone', count: 4 }, { type: 'iron_ingot', count: 1 }, { type: 'redstone', count: 1 }], requiresTable: true },
+  { id: 'sticky_piston', output: 'sticky_piston', outputCount: 1, inputs: [{ type: 'piston', count: 1 }, { type: 'slimeball', count: 1 }], requiresTable: true },
+  { id: 'ladder', output: 'ladder', outputCount: 3, inputs: [{ type: 'stick', count: 7 }], requiresTable: true },
+  { id: 'door', output: 'door', outputCount: 3, inputs: [{ type: 'oak_planks', count: 6 }], requiresTable: true },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

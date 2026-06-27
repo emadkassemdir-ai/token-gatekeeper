@@ -164,7 +164,13 @@ const TEX = {
   97: { top: 'farmland', side: 'dirt', bottom: 'dirt' },
   98: { all: 'crop' }, 99: { all: 'crop' },
   100: { all: 'crop' }, 101: { all: 'crop' },
-  102: { all: 'crop' }, 103: { all: 'crop' }
+  102: { all: 'crop' }, 103: { all: 'crop' },
+  // Pistons / doors / ladders
+  104: { top: 'piston_face', side: 'piston_side', bottom: 'piston_back' },
+  105: { all: 'piston_head' },
+  106: { top: 'piston_sticky', side: 'piston_side', bottom: 'piston_back' },
+  107: { all: 'ladder' },
+  108: { all: 'door' }, 109: { all: 'door' }
 };
 
 const TILE = 16; // texels per tile
@@ -512,6 +518,41 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'crop':
           c = [0.34, 0.22, 0.12]; // soil backing
           if (px % 4 === 1 || px % 4 === 2) c = mul(base, 0.8 + n * 0.4); // vertical stalks in base colour
+          break;
+        case 'piston_side':
+          c = mul([0.62, 0.52, 0.34], 0.85 + n * 0.2); // oak plank body
+          if (py === 4 || py === 11) c = [0.3, 0.24, 0.14]; // plank grooves
+          if (px === 0 || px === 15 || py === 0 || py === 15) c = mul(c, 0.7); // frame edge
+          break;
+        case 'piston_back':
+          c = mul([0.5, 0.5, 0.52], 0.85 + n * 0.2); // cobble back
+          if ((px + py) % 5 === 0) c = mul(c, 0.7);
+          break;
+        case 'piston_face':
+          c = mul([0.5, 0.5, 0.52], 0.85 + n * 0.2); // retracted face = smooth stone
+          if (px >= 2 && px <= 13 && py >= 2 && py <= 13) c = mul([0.7, 0.62, 0.42], 0.9 + n * 0.2); // wood pad
+          if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.3, 0.24, 0.14];
+          break;
+        case 'piston_sticky':
+          c = mul([0.5, 0.5, 0.52], 0.85 + n * 0.2);
+          if (px >= 2 && px <= 13 && py >= 2 && py <= 13) c = mul([0.55, 0.7, 0.4], 0.9 + n * 0.25); // green slime pad
+          if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.4, 0.55, 0.3];
+          break;
+        case 'piston_head':
+          c = mul([0.7, 0.62, 0.42], 0.9 + n * 0.2); // protruding wood head
+          if (py >= 6 && py <= 9) c = mul([0.5, 0.5, 0.52], 0.9); // stone collar
+          break;
+        case 'ladder':
+          c = [0.0, 0.0, 0.0]; // transparent gaps render as backing
+          if (px === 3 || px === 12) c = mul([0.55, 0.4, 0.24], 0.85 + n * 0.3); // two rails
+          if ((py === 3 || py === 8 || py === 13) && px >= 3 && px <= 12) c = mul([0.6, 0.44, 0.26], 0.85 + n * 0.3); // rungs
+          break;
+        case 'door':
+          c = mul([0.6, 0.44, 0.26], 0.85 + n * 0.2); // wood planks
+          if (py === 7 || py === 8) c = mul([0.4, 0.28, 0.16], 0.9); // mid rail
+          if (px >= 2 && px <= 6 && py >= 2 && py <= 5) c = mul([0.7, 0.52, 0.3], 0.95); // upper panel
+          if (px >= 9 && px <= 13 && py >= 2 && py <= 5) c = mul([0.7, 0.52, 0.3], 0.95);
+          if (px === 12 && py >= 9 && py <= 11) c = [0.75, 0.72, 0.3]; // brass handle
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);

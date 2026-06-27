@@ -52,7 +52,9 @@ export const CATEGORY = {
   86: 'stone', 87: 'stone', 88: 'stone', 89: 'wood', 90: 'leaves', 91: 'wood',
   92: 'wood', 93: 'leaves', 94: 'wood', 95: 'stone', 96: 'glass',
   // Farming:
-  97: 'soft', 98: 'leaves', 99: 'leaves', 100: 'leaves', 101: 'leaves', 102: 'leaves', 103: 'leaves'
+  97: 'soft', 98: 'leaves', 99: 'leaves', 100: 'leaves', 101: 'leaves', 102: 'leaves', 103: 'leaves',
+  // Pistons / doors / ladders:
+  104: 'wood', 105: 'wood', 106: 'wood', 107: 'wood', 108: 'wood', 109: 'wood'
 };
 
 /**
@@ -116,7 +118,9 @@ export const BLOCK_DROPS = {
   91: 'acacia_planks', 92: 'cherry_log', 93: null, 94: 'cherry_planks',
   95: 'wither_skeleton_skull', 96: 'beacon',
   // Farming (young crops drop their seed/item; ripe drop the harvest):
-  97: 'dirt', 98: 'wheat_seeds', 99: 'wheat', 100: 'carrot', 101: 'carrot', 102: 'potato', 103: 'potato'
+  97: 'dirt', 98: 'wheat_seeds', 99: 'wheat', 100: 'carrot', 101: 'carrot', 102: 'potato', 103: 'potato',
+  // Pistons / doors / ladders (head & open-door drop the base item):
+  104: 'piston', 105: 'piston', 106: 'sticky_piston', 107: 'ladder', 108: 'door', 109: 'door'
 };
 
 /**
@@ -224,6 +228,10 @@ export const ITEMS = {
   cherry_planks:     { type: 'cherry_planks', name: 'Cherry Planks', maxStack: 64, place: 94 },
   wither_skeleton_skull: { type: 'wither_skeleton_skull', name: 'Wither Skeleton Skull', maxStack: 64, place: 95 },
   beacon:            { type: 'beacon', name: 'Beacon', maxStack: 64, place: 96 },
+  piston:            { type: 'piston', name: 'Piston', maxStack: 64, place: 104 },
+  sticky_piston:     { type: 'sticky_piston', name: 'Sticky Piston', maxStack: 64, place: 106 },
+  ladder:            { type: 'ladder', name: 'Ladder', maxStack: 64, place: 107 },
+  door:              { type: 'door', name: 'Oak Door', maxStack: 64, place: 108 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -416,7 +424,8 @@ export const CREATIVE_PALETTE = [
   'ancient_debris', 'netherite_block', 'smithing_table', 'barrel', 'ender_chest',
   'redstone', 'redstone_block', 'redstone_lamp', 'lever', 'redstone_torch',
   'blast_furnace', 'smoker', 'grindstone', 'acacia_log', 'acacia_leaves', 'acacia_planks',
-  'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon'
+  'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon',
+  'piston', 'sticky_piston', 'ladder', 'door'
 ];
 
 /** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */

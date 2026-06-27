@@ -280,7 +280,19 @@ export const BLOCKS = {
   100: { id: 100, name: 'Carrot Crop', color: [0.3, 0.5, 0.2], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
   101: { id: 101, name: 'Carrot Crop (ripe)', color: [0.55, 0.6, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
   102: { id: 102, name: 'Potato Crop', color: [0.3, 0.5, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
-  103: { id: 103, name: 'Potato Crop (ripe)', color: [0.45, 0.55, 0.28], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false }
+  103: { id: 103, name: 'Potato Crop (ripe)', color: [0.45, 0.55, 0.28], solid: false, transparent: true, breakable: true, hardness: 0.1, liquid: false },
+
+  // ---- Pistons / doors / ladders ----
+  104: { id: 104, name: 'Piston', color: [0.58, 0.5, 0.36],
+    faceColors: { top: [0.62, 0.52, 0.34], bottom: [0.5, 0.5, 0.52], side: [0.5, 0.5, 0.52] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  105: { id: 105, name: 'Piston Head', color: [0.6, 0.5, 0.32], solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  106: { id: 106, name: 'Sticky Piston', color: [0.5, 0.62, 0.4],
+    faceColors: { top: [0.5, 0.66, 0.42], bottom: [0.5, 0.5, 0.52], side: [0.5, 0.5, 0.52] },
+    solid: true, transparent: false, breakable: true, hardness: 1.0, liquid: false },
+  107: { id: 107, name: 'Ladder', color: [0.5, 0.36, 0.2], solid: false, transparent: true, breakable: true, hardness: 0.4, liquid: false },
+  108: { id: 108, name: 'Door', color: [0.55, 0.4, 0.24], solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false, opacity: 0.98 },
+  109: { id: 109, name: 'Door (open)', color: [0.55, 0.4, 0.24], solid: false, transparent: true, breakable: true, hardness: 1.0, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -296,7 +308,8 @@ export const PLACEABLE_BLOCKS = [
   73, 74, 75, 76, 77,         // netherite + functional
   78, 79, 80, 82, 84,         // redstone (lamp-lit/lever-on/spawner are state-only)
   86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, // functional/wood/wither
-  97                                          // farmland (crops are placed via planting)
+  97,                                         // farmland (crops are placed via planting)
+  104, 106, 107, 108                          // piston, sticky piston, ladder, door (head/open are state-only)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

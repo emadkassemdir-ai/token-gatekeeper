@@ -39,7 +39,8 @@ import { BrewingMenu } from './ui/BrewingMenu.js';
 import { SmithingMenu } from './ui/SmithingMenu.js';
 import { TradeMenu } from './ui/TradeMenu.js';
 import { isPotion, drinkPotion } from './state/Potions.js';
-import { recomputeRedstone, isRedstone } from './world/Redstone.js';
+import { recomputeRedstone, computePowered, isRedstone } from './world/Redstone.js';
+import { actuatePistons, PISTON, STICKY_PISTON } from './world/Pistons.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
@@ -82,6 +83,8 @@ class Game {
     // record.dimData so builds persist, but a fresh load always starts topside.
     this.dim = 'overworld';
     this._nether = false;
+    // Piston facing per dimension: dimName -> Map("x,y,z" -> [dx,dy,dz]).
+    this._pistonDirs = {};
     this._portalTimer = 0;
     this._lavaTimer = 0;
 
@@ -182,6 +185,7 @@ class Game {
       this.net?.sendEdit({ x, y, z, id }); // share local edits with peers
       this.viewModel?.swing();
       if (id === 0) Audio.mine(); else Audio.place();
+      if (id === PISTON || id === STICKY_PISTON) this._recordPistonFacing(x, y, z); // capture facing
       this._redstoneTouch(x, y, z, id);
       if (id === 95) this._checkWither(x, y, z); // wither skeleton skull placed
     };
@@ -611,13 +615,20 @@ class Game {
         const next = id === 83 ? 82 : 83;
         this.world.setBlock(target.x, target.y, target.z, next);
         this._recordEdit(target.x, target.y, target.z, next);
-        recomputeRedstone(this.world, target.x, target.y, target.z);
+        this._runRedstone(target.x, target.y, target.z);
         Audio.click();
         return true;
       }
       case CRAFTING_TABLE_ID: this.crafting.openMenu(); return true;
       case FURNACE_ID: case 86: case 87: this.smelting.openMenu(); return true; // furnace/blast/smoker
       case 88: return this._grindstone();                        // grindstone
+      case 108: case 109: {                                      // door: toggle open/closed
+        const next = id === 108 ? 109 : 108;
+        this.world.setBlock(target.x, target.y, target.z, next);
+        this._recordEdit(target.x, target.y, target.z, next);
+        Audio.click();
+        return true;
+      }
       default: return false;
     }
   }
@@ -671,15 +682,46 @@ class Game {
     }
   }
 
-  /** Recompute redstone if the edited cell or a neighbour is part of a circuit. */
+  /** Recompute redstone (lamps + pistons) if the edit touches a circuit or piston. */
   _redstoneTouch(x, y, z, id) {
-    let near = isRedstone(id);
+    let near = isRedstone(id) || id === PISTON || id === STICKY_PISTON;
     if (!near) {
       for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
-        if (isRedstone(this.world.getBlock(x + dx, y + dy, z + dz))) { near = true; break; }
+        const n = this.world.getBlock(x + dx, y + dy, z + dz);
+        if (isRedstone(n) || n === PISTON || n === STICKY_PISTON) { near = true; break; }
       }
     }
-    if (near) recomputeRedstone(this.world, x, y, z);
+    if (near) this._runRedstone(x, y, z);
+  }
+
+  /** Recompute lamps then actuate pistons in a local box, persisting changes. */
+  _runRedstone(x, y, z) {
+    recomputeRedstone(this.world, x, y, z);
+    const R = 8;
+    const powered = computePowered(this.world, x, y, z, R);
+    const dirs = this._pistonMap();
+    const changes = actuatePistons(this.world, x, y, z, R, powered, dirs);
+    for (const [cx, cy, cz, cid] of changes) {
+      this._recordEdit(cx, cy, cz, cid);
+      this.net?.sendEdit({ x: cx, y: cy, z: cz, id: cid });
+    }
+    if (changes.length) Audio.click();
+  }
+
+  /** Facing map for the current dimension (created lazily). */
+  _pistonMap() {
+    return (this._pistonDirs[this.dim] ||= new Map());
+  }
+
+  /** Store a freshly-placed piston's facing from the player's view direction. */
+  _recordPistonFacing(x, y, z) {
+    this.camera.getWorldDirection(this._dir);
+    const d = this._dir, ax = Math.abs(d.x), ay = Math.abs(d.y), az = Math.abs(d.z);
+    let dir;
+    if (ay >= ax && ay >= az) dir = [0, d.y >= 0 ? 1 : -1, 0];
+    else if (ax >= az) dir = [d.x >= 0 ? 1 : -1, 0, 0];
+    else dir = [0, 0, d.z >= 0 ? 1 : -1];
+    this._pistonMap().set(`${x},${y},${z}`, dir);
   }
 
   /** Grindstone: strip the held item's enchantment and refund half its levels. */

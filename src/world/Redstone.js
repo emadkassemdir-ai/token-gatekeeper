@@ -24,15 +24,19 @@ export function isRedstone(id) {
 
 const NEIGHBORS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 
-/**
- * Recompute lamps in a box around (ox,oy,oz).
- * @param {import('./World.js').World} world
- */
-export function recomputeRedstone(world, ox, oy, oz, R = 24) {
-  const key = (x, y, z) => `${x},${y},${z}`;
-  const isSource = (id) => id === RS.BLOCK || id === RS.TORCH || id === RS.LEVER_ON;
+const isSource = (id) => id === RS.BLOCK || id === RS.TORCH || id === RS.LEVER_ON;
 
-  // 1. Flood power through dust from every source in the box.
+/**
+ * Flood power through dust in a box and return a `powered(x,y,z)` predicate that
+ * answers whether a given cell carries signal (a source, or lit dust). Shared by
+ * the lamp pass and by piston actuation so both see the same power field.
+ * @param {import('./World.js').World} world
+ * @returns {(x:number,y:number,z:number)=>boolean}
+ */
+export function computePowered(world, ox, oy, oz, R = 24) {
+  const key = (x, y, z) => `${x},${y},${z}`;
+
+  // Flood power through dust from every source in the box.
   const level = new Map();   // "x,y,z" -> power 0..15 (dust only)
   const queue = [];
   for (let y = oy - R; y <= oy + R; y++) {
@@ -60,14 +64,22 @@ export function recomputeRedstone(world, ox, oy, oz, R = 24) {
     }
   }
 
-  // 2. A cell is "powered" if it's a source or powered dust.
-  const powered = (x, y, z) => {
+  // A cell is "powered" if it's a source or powered dust.
+  return (x, y, z) => {
     const id = world.getBlock(x, y, z);
     if (isSource(id)) return true;
     return id === RS.DUST && (level.get(key(x, y, z)) || 0) > 0;
   };
+}
 
-  // 3. Update every lamp in the box.
+/**
+ * Recompute lamps in a box around (ox,oy,oz).
+ * @param {import('./World.js').World} world
+ */
+export function recomputeRedstone(world, ox, oy, oz, R = 24) {
+  const powered = computePowered(world, ox, oy, oz, R);
+
+  // Update every lamp in the box.
   let changed = 0;
   for (let y = oy - R; y <= oy + R; y++) {
     for (let z = oz - R; z <= oz + R; z++) {
