@@ -92,7 +92,13 @@ export const MOB_TYPES = {
   fish: { passive: true, aquatic: true, hp: 2, speed: 2.0, drop: 'raw_salmon', dropCount: 1,
     body: 0xc8624a, head: 0xc8624a, w: 0.3, h: 0.3 },
   squid: { passive: true, aquatic: true, hp: 3, speed: 1.4, drop: null,
-    body: 0x35476b, head: 0x35476b, w: 0.6, h: 0.7 }
+    body: 0x35476b, head: 0x35476b, w: 0.6, h: 0.7 },
+  axolotl: { passive: true, aquatic: true, hp: 7, speed: 1.8, drops: [['tropical_fish', 1]],
+    body: 0xf2a7c4, head: 0xf2a7c4, w: 0.5, h: 0.4 },
+  dolphin: { passive: true, aquatic: true, hp: 5, speed: 2.8, drop: null,
+    body: 0x9fb4c4, head: 0x9fb4c4, w: 0.9, h: 0.6 },
+  turtle: { passive: true, hp: 15, speed: 0.9, drops: [['seagrass', 1], ['scute', 1]],
+    body: 0x4a7a3a, head: 0x6aa84a, w: 1.0, h: 0.5 }
 };
 
 export class Mob {
@@ -137,6 +143,7 @@ export class Mob {
       witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
       wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager,
       iron_golem: buildIronGolem, snow_golem: buildSnowGolem,
+      axolotl: buildAxolotl, dolphin: buildDolphin, turtle: buildTurtle,
       wither_skeleton: buildSkeleton, magma_cube: buildSlime, phantom: buildPhantom,
       wither: buildWither,
       pillager: buildIllager, vindicator: buildIllager, evoker: buildIllager,
@@ -414,6 +421,38 @@ function buildSquid(group) {
   }
   add(group, box(0.08, 0.08, 0.08, 0x111), 0.14, 0.15, 0.26); // eyes
   add(group, box(0.08, 0.08, 0.08, 0x111), -0.14, 0.15, 0.26);
+}
+
+function buildAxolotl(group, cfg) {
+  const c = cfg?.body ?? 0xf2a7c4;
+  add(group, box(0.45, 0.22, 0.22, c), 0, 0, 0);              // body
+  add(group, box(0.28, 0.26, 0.24, c), 0.3, 0.02, 0);        // head
+  add(group, box(0.06, 0.06, 0.06, 0x111), 0.42, 0.08, 0.1); // eyes
+  add(group, box(0.06, 0.06, 0.06, 0x111), 0.42, 0.08, -0.1);
+  for (const dz of [-0.13, 0.13]) { const f = box(0.05, 0.14, 0.05, 0xe65a8a); add(group, f, 0.36, 0.14, dz); } // gill fronds
+  add(group, box(0.16, 0.24, 0.04, c), -0.28, 0, 0);         // tail fin
+}
+
+function buildDolphin(group, cfg) {
+  const c = cfg?.body ?? 0x9fb4c4, belly = 0xeef2f5;
+  add(group, box(0.8, 0.4, 0.34, c), 0, 0.1, 0);             // body
+  add(group, box(0.78, 0.14, 0.34, belly), 0, -0.06, 0);     // pale belly
+  add(group, box(0.34, 0.26, 0.28, c), 0.5, 0.08, 0);        // snout/head
+  add(group, box(0.05, 0.05, 0.05, 0x111), 0.62, 0.12, 0.12);
+  add(group, box(0.05, 0.05, 0.05, 0x111), 0.62, 0.12, -0.12);
+  const dorsal = add(group, box(0.16, 0.22, 0.04, c), 0.0, 0.32, 0); dorsal.rotation.z = -0.3;
+  add(group, box(0.26, 0.06, 0.34, c), -0.5, 0.1, 0);        // tail
+}
+
+function buildTurtle(group, cfg) {
+  const shell = cfg?.body ?? 0x4a7a3a, skin = cfg?.head ?? 0x6aa84a;
+  add(group, box(0.9, 0.32, 0.7, shell), 0, 0.2, 0);         // domed shell
+  add(group, box(0.7, 0.16, 0.5, mulHex(shell, 0.8)), 0, 0.05, 0); // underbelly rim
+  add(group, box(0.26, 0.2, 0.24, skin), 0.5, 0.12, 0);      // head
+  add(group, box(0.05, 0.05, 0.05, 0x111), 0.6, 0.16, 0.08);
+  add(group, box(0.05, 0.05, 0.05, 0x111), 0.6, 0.16, -0.08);
+  for (const [fx, fz] of [[0.32, 0.3], [0.32, -0.3], [-0.32, 0.3], [-0.32, -0.3]])
+    add(group, box(0.22, 0.1, 0.18, skin), fx, 0.04, fz);    // flippers
 }
 
 function buildPigman(group) {

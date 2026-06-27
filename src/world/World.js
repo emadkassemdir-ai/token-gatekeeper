@@ -188,7 +188,15 @@ const TEX = {
   124: { top: 'map_top', side: 'planks', bottom: 'planks' },
   125: { top: 'fletch_top', side: 'planks', bottom: 'planks' },
   126: { top: 'loom_top', side: 'planks', bottom: 'planks' },
-  127: { top: 'stonecut_top', side: 'stone', bottom: 'stone' }
+  127: { top: 'stonecut_top', side: 'stone', bottom: 'stone' },
+  // Extra wood types
+  128: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, // dark oak
+  129: { all: 'planks' },
+  130: { all: 'leaves' },
+  131: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, // mangrove
+  132: { all: 'planks' },
+  133: { all: 'leaves' },
+  134: { all: 'bamboo' }
 };
 
 const TILE = 16; // texels per tile
@@ -641,6 +649,11 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'stonecut_top':
           c = mul([0.6, 0.6, 0.62], 0.85 + n * 0.2); // stone bed
           if (px >= 7 && px <= 8 && py >= 1 && py <= 14) c = [0.85, 0.85, 0.88]; // saw blade
+          break;
+        case 'bamboo':
+          c = [0.05, 0.08, 0.04]; // dark backing (mostly transparent gaps)
+          if (px >= 6 && px <= 9) c = mul([0.46, 0.62, 0.24], 0.85 + n * 0.3); // central stalk
+          if (px >= 6 && px <= 9 && (py === 2 || py === 7 || py === 12)) c = mul([0.34, 0.48, 0.18], 0.9); // node rings
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);
@@ -1321,13 +1334,20 @@ export class World {
             continue;
           }
         }
+        // Jungle: scattered bamboo stalks rising from the floor.
+        if (biome === BIOME.JUNGLE && onGrass &&
+            this.noise.hash2(wx * 2.1 + 5, wz * 2.1 + 9) < 0.03) {
+          const bh = 2 + (Math.floor(this.noise.hash2(wx, wz) * 100) % 3);
+          for (let i = 1; i <= bh; i++) this.setBlock(wx, height + i, wz, 134);
+          continue;
+        }
 
         if (!onGrass && !onSnow) continue;
 
         let density = 0, type = 'oak';
         switch (biome) {
-          case BIOME.JUNGLE:  density = 0.10; type = 'jungle'; break;
-          case BIOME.FOREST:  density = 0.12; type = this.noise.hash2(wx * 3, wz * 3) < 0.2 ? 'cherry' : (this.noise.hash2(wx * 3, wz * 3) < 0.5 ? 'birch' : 'oak'); break;
+          case BIOME.JUNGLE:  density = 0.10; type = this.noise.hash2(wx * 3, wz * 3) < 0.18 ? 'mangrove' : 'jungle'; break;
+          case BIOME.FOREST:  density = 0.12; { const h = this.noise.hash2(wx * 3, wz * 3); type = h < 0.15 ? 'cherry' : h < 0.32 ? 'dark_oak' : h < 0.6 ? 'birch' : 'oak'; } break;
           case BIOME.TAIGA:   density = 0.10; type = 'spruce'; break;
           case BIOME.PLAINS:  density = 0.035; type = this.noise.hash2(wx * 3, wz * 3) < 0.25 ? 'birch' : 'oak'; break;
           case BIOME.SAVANNA: density = 0.025; type = 'acacia'; break;
@@ -1359,7 +1379,9 @@ export class World {
       spruce: { log: 30, leaf: 31, min: 6, span: 3, conifer: true },
       jungle: { log: 5, leaf: 14, min: 7, span: 4 },
       acacia: { log: 89, leaf: 90, min: 5, span: 3 },
-      cherry: { log: 92, leaf: 93, min: 5, span: 3 }
+      cherry: { log: 92, leaf: 93, min: 5, span: 3 },
+      dark_oak: { log: 128, leaf: 130, min: 6, span: 3 },
+      mangrove: { log: 131, leaf: 133, min: 6, span: 3 }
     }[type] || { log: 5, leaf: 6, min: 4, span: 3 };
 
     const trunkHeight = conf.min + (Math.floor(roll * 90) % conf.span);

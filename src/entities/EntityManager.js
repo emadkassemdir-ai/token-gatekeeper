@@ -230,9 +230,24 @@ export class EntityManager {
     if (this._countWhere((m) => m.aquatic) < PASSIVE_CAP) {
       const wspot = this._findWaterSpot(playerPos);
       if (wspot) {
-        const kind = (time.isNight && !this.peaceful && Math.random() < 0.4) ? 'drowned'
-          : (Math.random() < 0.5 ? 'fish' : 'squid');
+        let kind;
+        if (time.isNight && !this.peaceful && Math.random() < 0.4) kind = 'drowned';
+        else {
+          const r = Math.random();
+          kind = r < 0.3 ? 'fish' : r < 0.5 ? 'squid' : r < 0.72 ? 'axolotl'
+            : r < 0.9 ? 'dolphin' : 'tropical';
+          if (kind === 'tropical') kind = 'fish'; // tropical fish reuse the fish model
+        }
         this._spawn(kind, wspot);
+      }
+    }
+
+    // Sea turtles bask on sandy beaches near the water in daylight.
+    if (!time.isNight && this._countWhere((m) => m.kind === 'turtle') < 4) {
+      const spot = this._findSurfaceSpot(playerPos);
+      if (spot && this.world.getBlock(Math.floor(spot.x), Math.floor(spot.y) - 1, Math.floor(spot.z)) === 7
+          && Math.random() < 0.5) {
+        this._spawn('turtle', spot);
       }
     }
   }

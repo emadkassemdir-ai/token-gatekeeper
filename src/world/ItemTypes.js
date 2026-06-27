@@ -60,7 +60,9 @@ export const CATEGORY = {
   // Slabs + stairs (parent material):
   116: 'wood', 117: 'stone', 118: 'stone', 119: 'wood', 120: 'stone', 121: 'stone',
   // Villager job-site blocks:
-  122: 'wood', 123: 'wood', 124: 'wood', 125: 'wood', 126: 'wood', 127: 'stone'
+  122: 'wood', 123: 'wood', 124: 'wood', 125: 'wood', 126: 'wood', 127: 'stone',
+  // Extra wood types:
+  128: 'wood', 129: 'wood', 130: 'leaves', 131: 'wood', 132: 'wood', 133: 'leaves', 134: 'leaves'
 };
 
 /**
@@ -133,7 +135,9 @@ export const BLOCK_DROPS = {
   116: 'oak_slab', 117: 'stone_slab', 118: 'cobblestone_slab',
   119: 'oak_stairs', 120: 'stone_stairs', 121: 'cobblestone_stairs',
   // Villager job-site blocks:
-  122: 'composter', 123: 'lectern', 124: 'cartography_table', 125: 'fletching_table', 126: 'loom', 127: 'stonecutter'
+  122: 'composter', 123: 'lectern', 124: 'cartography_table', 125: 'fletching_table', 126: 'loom', 127: 'stonecutter',
+  // Extra wood types (leaves drop nothing):
+  128: 'dark_oak_log', 129: 'dark_oak_planks', 130: null, 131: 'mangrove_log', 132: 'mangrove_planks', 133: null, 134: 'bamboo'
 };
 
 /**
@@ -263,6 +267,13 @@ export const ITEMS = {
   fletching_table:   { type: 'fletching_table', name: 'Fletching Table', maxStack: 64, place: 125 },
   loom:              { type: 'loom', name: 'Loom', maxStack: 64, place: 126 },
   stonecutter:       { type: 'stonecutter', name: 'Stonecutter', maxStack: 64, place: 127 },
+  dark_oak_log:      { type: 'dark_oak_log', name: 'Dark Oak Log', maxStack: 64, place: 128 },
+  dark_oak_planks:   { type: 'dark_oak_planks', name: 'Dark Oak Planks', maxStack: 64, place: 129 },
+  dark_oak_leaves:   { type: 'dark_oak_leaves', name: 'Dark Oak Leaves', maxStack: 64, place: 130 },
+  mangrove_log:      { type: 'mangrove_log', name: 'Mangrove Log', maxStack: 64, place: 131 },
+  mangrove_planks:   { type: 'mangrove_planks', name: 'Mangrove Planks', maxStack: 64, place: 132 },
+  mangrove_leaves:   { type: 'mangrove_leaves', name: 'Mangrove Leaves', maxStack: 64, place: 133 },
+  bamboo:            { type: 'bamboo', name: 'Bamboo', maxStack: 64, place: 134 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -373,6 +384,9 @@ export const ITEMS = {
   cooked_mutton:  { type: 'cooked_mutton', name: 'Deluxe Sheep Meat', maxStack: 64, glyph: '🍖', food: { hunger: 4 } },
   raw_salmon:     { type: 'raw_salmon', name: 'Raw Salmon', maxStack: 64, glyph: '🐟', food: { hunger: 1.5, raw: true } },
   cooked_salmon:  { type: 'cooked_salmon', name: 'Cooked Salmon', maxStack: 64, glyph: '🍣', food: { hunger: 3.5 } },
+  tropical_fish:  { type: 'tropical_fish', name: 'Tropical Fish', maxStack: 64, glyph: '🐠', food: { hunger: 0.5, raw: true } },
+  seagrass:       { type: 'seagrass', name: 'Seagrass', maxStack: 64, glyph: '🌿' },
+  scute:          { type: 'scute', name: 'Scute', maxStack: 64, glyph: '🐢' },
 
   // Tools / weapons (don't stack). Tier controls mining speed + attack damage.
   wooden_pickaxe:  { type: 'wooden_pickaxe', name: 'Wooden Pickaxe', maxStack: 1, tool: 'pickaxe', tier: 'wood', damage: 0.5, glyph: '⛏' },
@@ -459,7 +473,9 @@ export const CREATIVE_PALETTE = [
   'piston', 'sticky_piston', 'ladder', 'door',
   'repeater', 'observer', 'hopper', 'dispenser', 'dropper',
   'oak_slab', 'stone_slab', 'cobblestone_slab', 'oak_stairs', 'stone_stairs', 'cobblestone_stairs',
-  'composter', 'lectern', 'cartography_table', 'fletching_table', 'loom', 'stonecutter'
+  'composter', 'lectern', 'cartography_table', 'fletching_table', 'loom', 'stonecutter',
+  'dark_oak_log', 'dark_oak_planks', 'dark_oak_leaves',
+  'mangrove_log', 'mangrove_planks', 'mangrove_leaves', 'bamboo'
 ];
 
 /** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */

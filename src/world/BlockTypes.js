@@ -324,7 +324,16 @@ export const BLOCKS = {
   124: { id: 124, name: 'Cartography Table', color: [0.5, 0.4, 0.26], faceColors: { top: [0.86, 0.84, 0.76], side: [0.5, 0.4, 0.26], bottom: [0.46, 0.36, 0.22] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
   125: { id: 125, name: 'Fletching Table', color: [0.62, 0.52, 0.34], faceColors: { top: [0.8, 0.74, 0.56], side: [0.62, 0.52, 0.34], bottom: [0.5, 0.4, 0.26] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
   126: { id: 126, name: 'Loom', color: [0.6, 0.5, 0.32], faceColors: { top: [0.85, 0.8, 0.62], side: [0.6, 0.5, 0.32], bottom: [0.5, 0.4, 0.26] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
-  127: { id: 127, name: 'Stonecutter', color: [0.5, 0.5, 0.52], faceColors: { top: [0.6, 0.6, 0.62], side: [0.5, 0.5, 0.52], bottom: [0.46, 0.46, 0.48] }, solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false }
+  127: { id: 127, name: 'Stonecutter', color: [0.5, 0.5, 0.52], faceColors: { top: [0.6, 0.6, 0.62], side: [0.5, 0.5, 0.52], bottom: [0.46, 0.46, 0.48] }, solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false },
+
+  // ---- Extra wood types (dark oak / mangrove / bamboo) ----
+  128: { id: 128, name: 'Dark Oak Log', color: [0.28, 0.2, 0.12], faceColors: { top: [0.34, 0.26, 0.16], side: [0.24, 0.17, 0.1], bottom: [0.34, 0.26, 0.16] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  129: { id: 129, name: 'Dark Oak Planks', color: [0.32, 0.22, 0.13], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  130: { id: 130, name: 'Dark Oak Leaves', color: [0.2, 0.34, 0.16], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false },
+  131: { id: 131, name: 'Mangrove Log', color: [0.4, 0.22, 0.18], faceColors: { top: [0.46, 0.3, 0.22], side: [0.38, 0.2, 0.16], bottom: [0.46, 0.3, 0.22] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  132: { id: 132, name: 'Mangrove Planks', color: [0.52, 0.24, 0.2], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  133: { id: 133, name: 'Mangrove Leaves', color: [0.28, 0.45, 0.22], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false },
+  134: { id: 134, name: 'Bamboo', color: [0.45, 0.62, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.3, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -345,7 +354,8 @@ export const PLACEABLE_BLOCKS = [
   110, 112,                                   // repeater, observer (repeater-on is state-only)
   113, 114, 115,                              // hopper, dispenser, dropper
   116, 117, 118, 119, 120, 121,               // slabs + stairs
-  122, 123, 124, 125, 126, 127                // villager job-site blocks
+  122, 123, 124, 125, 126, 127,               // villager job-site blocks
+  128, 129, 130, 131, 132, 133, 134           // dark oak / mangrove / bamboo
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */
