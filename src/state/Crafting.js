@@ -173,6 +173,14 @@ export const RECIPES = [
   { id: 'stone_stairs', output: 'stone_stairs', outputCount: 4, inputs: [{ type: 'stone', count: 6 }], requiresTable: true },
   { id: 'cobblestone_stairs', output: 'cobblestone_stairs', outputCount: 4, inputs: [{ type: 'cobblestone', count: 6 }], requiresTable: true },
 
+  // ---- Villager job-site blocks ----
+  { id: 'composter', output: 'composter', outputCount: 1, inputs: [{ type: 'oak_slab', count: 7 }], requiresTable: true },
+  { id: 'lectern', output: 'lectern', outputCount: 1, inputs: [{ type: 'oak_slab', count: 4 }, { type: 'bookshelf', count: 1 }], requiresTable: true },
+  { id: 'cartography_table', output: 'cartography_table', outputCount: 1, inputs: [{ type: 'paper', count: 2 }, { type: 'oak_planks', count: 4 }], requiresTable: true },
+  { id: 'fletching_table', output: 'fletching_table', outputCount: 1, inputs: [{ type: 'oak_planks', count: 4 }, { type: 'flint', count: 2 }], requiresTable: true },
+  { id: 'loom', output: 'loom', outputCount: 1, inputs: [{ type: 'string', count: 2 }, { type: 'oak_planks', count: 2 }], requiresTable: true },
+  { id: 'stonecutter', output: 'stonecutter', outputCount: 1, inputs: [{ type: 'iron_ingot', count: 1 }, { type: 'stone', count: 3 }], requiresTable: true },
+
   // Tiered tools (stone/iron/gold/diamond) generated below.
   ...buildTierTools(),
   // Armor (iron/gold/diamond) generated below.

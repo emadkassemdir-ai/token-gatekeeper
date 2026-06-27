@@ -181,7 +181,14 @@ const TEX = {
   115: { top: 'dispenser', side: 'dropper_front', bottom: 'cobble' },
   // Slabs reuse the parent block's texture
   116: { all: 'planks' }, 117: { all: 'stone' }, 118: { all: 'cobble' },
-  119: { all: 'planks' }, 120: { all: 'stone' }, 121: { all: 'cobble' }
+  119: { all: 'planks' }, 120: { all: 'stone' }, 121: { all: 'cobble' },
+  // Villager job-site blocks
+  122: { top: 'composter_top', side: 'composter', bottom: 'planks' },
+  123: { top: 'lectern_top', side: 'planks', bottom: 'planks' },
+  124: { top: 'map_top', side: 'planks', bottom: 'planks' },
+  125: { top: 'fletch_top', side: 'planks', bottom: 'planks' },
+  126: { top: 'loom_top', side: 'planks', bottom: 'planks' },
+  127: { top: 'stonecut_top', side: 'stone', bottom: 'stone' }
 };
 
 const TILE = 16; // texels per tile
@@ -603,6 +610,37 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'dropper_front':
           c = mul([0.42, 0.42, 0.44], 0.85 + n * 0.2);
           if (px >= 5 && px <= 10 && py >= 5 && py <= 10) c = [0.12, 0.12, 0.13]; // square port
+          break;
+        case 'composter':
+          c = mul([0.55, 0.42, 0.24], 0.85 + n * 0.2); // wood slats
+          if (px === 0 || px === 7 || px === 8 || px === 15) c = mul(c, 0.7); // vertical staves
+          break;
+        case 'composter_top':
+          c = mul([0.5, 0.38, 0.22], 0.85 + n * 0.2); // rim
+          if (px >= 2 && px <= 13 && py >= 2 && py <= 13) c = mul([0.34, 0.5, 0.18], 0.8 + n * 0.4); // green compost
+          break;
+        case 'lectern_top':
+          c = mul([0.58, 0.45, 0.26], 0.85 + n * 0.2); // slanted stand
+          if (px >= 3 && px <= 12 && py >= 3 && py <= 12) c = mul([0.85, 0.78, 0.55], 0.9); // open book pages
+          if (px === 8) c = mul([0.5, 0.4, 0.26], 0.9); // spine
+          break;
+        case 'map_top':
+          c = mul([0.86, 0.84, 0.76], 0.9 + n * 0.1); // parchment
+          if ((px + py) % 7 === 0) c = [0.6, 0.45, 0.3]; // map lines
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [0.7, 0.2, 0.2]; // red marker
+          break;
+        case 'fletch_top':
+          c = mul([0.8, 0.74, 0.56], 0.9 + n * 0.12); // sanded top
+          if (px === 4 || px === 11) c = [0.3, 0.22, 0.14]; // fletching saw marks (diagonal-ish)
+          if (py === 4 || py === 11) c = mul(c, 0.85);
+          break;
+        case 'loom_top':
+          c = mul([0.85, 0.8, 0.62], 0.9 + n * 0.12); // weave surface
+          if (px % 3 === 0) c = mul([0.6, 0.5, 0.32], 0.9); // warp threads
+          break;
+        case 'stonecut_top':
+          c = mul([0.6, 0.6, 0.62], 0.85 + n * 0.2); // stone bed
+          if (px >= 7 && px <= 8 && py >= 1 && py <= 14) c = [0.85, 0.85, 0.88]; // saw blade
           break;
         default:
           c = mul(base, 0.9 + n * 0.2);

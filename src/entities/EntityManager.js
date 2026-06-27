@@ -237,7 +237,10 @@ export class EntityManager {
     }
   }
 
-  /** Iron golem: lock onto the nearest hostile and strike it when in reach. */
+  /**
+   * Golems lock onto the nearest hostile. Melee golems (iron) strike in reach;
+   * ranged golems (snow) pelt snowballs from a distance.
+   */
   _defendVillage(m) {
     let target = null, best = 16; // search radius
     for (const o of this.mobs) {
@@ -246,8 +249,10 @@ export class EntityManager {
       if (d < best) { best = d; target = o; }
     }
     m._defendTarget = target ? target.position : null;
-    if (target && best < 2.6 && m._attackCooldown <= 0) {
-      m._attackCooldown = 1.0;
+    if (!target || m._attackCooldown > 0) return;
+    const reach = m.cfg.ranged ? (m.cfg.range || 10) : 2.6;
+    if (best < reach) {
+      m._attackCooldown = m.cfg.ranged ? 0.8 : 1.0;
       const kx = target.position.x - m.position.x, kz = target.position.z - m.position.z;
       const kl = Math.hypot(kx, kz) || 1;
       target.takeDamage(m.cfg.attack || 7, new THREE.Vector3(kx / kl, 0, kz / kl));

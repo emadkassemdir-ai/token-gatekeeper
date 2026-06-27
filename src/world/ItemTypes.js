@@ -58,7 +58,9 @@ export const CATEGORY = {
   // Redstone logic + transport:
   110: 'stone', 111: 'stone', 112: 'stone', 113: 'stone', 114: 'stone', 115: 'stone',
   // Slabs + stairs (parent material):
-  116: 'wood', 117: 'stone', 118: 'stone', 119: 'wood', 120: 'stone', 121: 'stone'
+  116: 'wood', 117: 'stone', 118: 'stone', 119: 'wood', 120: 'stone', 121: 'stone',
+  // Villager job-site blocks:
+  122: 'wood', 123: 'wood', 124: 'wood', 125: 'wood', 126: 'wood', 127: 'stone'
 };
 
 /**
@@ -129,7 +131,9 @@ export const BLOCK_DROPS = {
   110: 'repeater', 111: 'repeater', 112: 'observer', 113: 'hopper', 114: 'dispenser', 115: 'dropper',
   // Slabs + stairs:
   116: 'oak_slab', 117: 'stone_slab', 118: 'cobblestone_slab',
-  119: 'oak_stairs', 120: 'stone_stairs', 121: 'cobblestone_stairs'
+  119: 'oak_stairs', 120: 'stone_stairs', 121: 'cobblestone_stairs',
+  // Villager job-site blocks:
+  122: 'composter', 123: 'lectern', 124: 'cartography_table', 125: 'fletching_table', 126: 'loom', 127: 'stonecutter'
 };
 
 /**
@@ -158,6 +162,7 @@ export const ITEMS = {
   crafting_table: { type: 'crafting_table', name: 'Crafting Table', maxStack: 64, place: 12 },
   bedrock:        { type: 'bedrock', name: 'Bedrock', maxStack: 64, place: 4 },
   snow:           { type: 'snow', name: 'Snow', maxStack: 64, place: 13 },
+  snowball:       { type: 'snowball', name: 'Snowball', maxStack: 16, glyph: '❄' },
   jungle_leaves:  { type: 'jungle_leaves', name: 'Jungle Leaves', maxStack: 64, place: 14 },
   gold_ore:       { type: 'gold_ore', name: 'Raw Gold', maxStack: 64, place: 16 },
   furnace:        { type: 'furnace', name: 'Furnace', maxStack: 64, place: 18 },
@@ -252,6 +257,12 @@ export const ITEMS = {
   oak_stairs:        { type: 'oak_stairs', name: 'Oak Stairs', maxStack: 64, place: 119 },
   stone_stairs:      { type: 'stone_stairs', name: 'Stone Stairs', maxStack: 64, place: 120 },
   cobblestone_stairs:{ type: 'cobblestone_stairs', name: 'Cobblestone Stairs', maxStack: 64, place: 121 },
+  composter:         { type: 'composter', name: 'Composter', maxStack: 64, place: 122 },
+  lectern:           { type: 'lectern', name: 'Lectern', maxStack: 64, place: 123 },
+  cartography_table: { type: 'cartography_table', name: 'Cartography Table', maxStack: 64, place: 124 },
+  fletching_table:   { type: 'fletching_table', name: 'Fletching Table', maxStack: 64, place: 125 },
+  loom:              { type: 'loom', name: 'Loom', maxStack: 64, place: 126 },
+  stonecutter:       { type: 'stonecutter', name: 'Stonecutter', maxStack: 64, place: 127 },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -447,7 +458,8 @@ export const CREATIVE_PALETTE = [
   'cherry_log', 'cherry_leaves', 'cherry_planks', 'wither_skeleton_skull', 'beacon',
   'piston', 'sticky_piston', 'ladder', 'door',
   'repeater', 'observer', 'hopper', 'dispenser', 'dropper',
-  'oak_slab', 'stone_slab', 'cobblestone_slab', 'oak_stairs', 'stone_stairs', 'cobblestone_stairs'
+  'oak_slab', 'stone_slab', 'cobblestone_slab', 'oak_stairs', 'stone_stairs', 'cobblestone_stairs',
+  'composter', 'lectern', 'cartography_table', 'fletching_table', 'loom', 'stonecutter'
 ];
 
 /** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */

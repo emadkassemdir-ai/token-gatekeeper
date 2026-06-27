@@ -316,7 +316,15 @@ export const BLOCKS = {
   118: { id: 118, name: 'Cobblestone Slab', color: [0.5, 0.5, 0.52], shape: 'slab', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
   119: { id: 119, name: 'Oak Stairs', color: [0.62, 0.47, 0.28], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.0, liquid: false },
   120: { id: 120, name: 'Stone Stairs', color: [0.55, 0.55, 0.57], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
-  121: { id: 121, name: 'Cobblestone Stairs', color: [0.5, 0.5, 0.52], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false }
+  121: { id: 121, name: 'Cobblestone Stairs', color: [0.5, 0.5, 0.52], shape: 'stairs', solid: true, transparent: true, breakable: true, hardness: 1.5, liquid: false },
+
+  // ---- Villager job-site blocks ----
+  122: { id: 122, name: 'Composter', color: [0.55, 0.42, 0.24], faceColors: { top: [0.35, 0.5, 0.18], side: [0.55, 0.42, 0.24], bottom: [0.45, 0.34, 0.2] }, solid: true, transparent: false, breakable: true, hardness: 0.6, liquid: false },
+  123: { id: 123, name: 'Lectern', color: [0.58, 0.45, 0.26], faceColors: { top: [0.8, 0.72, 0.5], side: [0.58, 0.45, 0.26], bottom: [0.5, 0.38, 0.22] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  124: { id: 124, name: 'Cartography Table', color: [0.5, 0.4, 0.26], faceColors: { top: [0.86, 0.84, 0.76], side: [0.5, 0.4, 0.26], bottom: [0.46, 0.36, 0.22] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  125: { id: 125, name: 'Fletching Table', color: [0.62, 0.52, 0.34], faceColors: { top: [0.8, 0.74, 0.56], side: [0.62, 0.52, 0.34], bottom: [0.5, 0.4, 0.26] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  126: { id: 126, name: 'Loom', color: [0.6, 0.5, 0.32], faceColors: { top: [0.85, 0.8, 0.62], side: [0.6, 0.5, 0.32], bottom: [0.5, 0.4, 0.26] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
+  127: { id: 127, name: 'Stonecutter', color: [0.5, 0.5, 0.52], faceColors: { top: [0.6, 0.6, 0.62], side: [0.5, 0.5, 0.52], bottom: [0.46, 0.46, 0.48] }, solid: true, transparent: false, breakable: true, hardness: 2.5, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -336,7 +344,8 @@ export const PLACEABLE_BLOCKS = [
   104, 106, 107, 108,                         // piston, sticky piston, ladder, door (head/open are state-only)
   110, 112,                                   // repeater, observer (repeater-on is state-only)
   113, 114, 115,                              // hopper, dispenser, dropper
-  116, 117, 118, 119, 120, 121                // slabs + stairs
+  116, 117, 118, 119, 120, 121,               // slabs + stairs
+  122, 123, 124, 125, 126, 127                // villager job-site blocks
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

@@ -47,6 +47,8 @@ export const MOB_TYPES = {
   villager: { passive: true, hp: 10, speed: 1.4, drop: null, body: 0x9a8268, head: 0xc8a888, w: 0.6, h: 1.9 },
   iron_golem: { defender: true, hp: 50, speed: 1.6, attack: 7, drops: [['iron_ingot', 4]],
     body: 0xd8d8d8, head: 0xd0d0c8, w: 1.4, h: 2.7 },
+  snow_golem: { defender: true, ranged: true, hp: 4, speed: 1.8, attack: 1, range: 10,
+    drops: [['snowball', 4]], body: 0xeef2f5, head: 0xeef2f5, w: 0.7, h: 1.9 },
   bat: { passive: true, flying: true, hp: 2, speed: 2.6, drop: null,
     body: 0x3a2e24, head: 0x3a2e24, w: 0.4, h: 0.4 },
   // ---- Nether mobs ----
@@ -134,7 +136,7 @@ export class Mob {
       husk: buildZombie, drowned: buildZombie, stray: buildSkeleton,
       witch: buildWitch, slime: buildSlime, rabbit: buildRabbit, bat: buildBat,
       wolf: buildQuadruped, fox: buildFox, goat: buildGoat, villager: buildVillager,
-      iron_golem: buildIronGolem,
+      iron_golem: buildIronGolem, snow_golem: buildSnowGolem,
       wither_skeleton: buildSkeleton, magma_cube: buildSlime, phantom: buildPhantom,
       wither: buildWither,
       pillager: buildIllager, vindicator: buildIllager, evoker: buildIllager,
@@ -618,6 +620,22 @@ function buildIronGolem(group, cfg) {
   // Stubby legs.
   add(group, box(0.45, 0.7, 0.5, dark), -0.3, 0.35, 0);
   add(group, box(0.45, 0.7, 0.5, dark), 0.3, 0.35, 0);
+}
+
+function buildSnowGolem(group, cfg) {
+  const snow = cfg?.body ?? 0xeef2f5;
+  add(group, box(0.7, 0.7, 0.7, snow), 0, 0.55, 0);          // bottom snowball
+  add(group, box(0.6, 0.6, 0.6, snow), 0, 1.15, 0);          // upper snowball
+  const face = faceTexture((ctx) => {
+    rect(ctx, 0, 0, 16, 16, '#eef2f5');
+    rect(ctx, 4, 6, 2, 2, '#2a2a2a'); rect(ctx, 10, 6, 2, 2, '#2a2a2a'); // coal eyes
+    rect(ctx, 6, 9, 4, 1, '#2a2a2a'); rect(ctx, 5, 11, 6, 1, '#2a2a2a'); // coal smile
+  });
+  add(group, headWithFace(0.55, 0.55, 0.55, snow, face), 0, 1.65, 0);
+  add(group, box(0.3, 0.12, 0.12, 0x4a3520), 0, 1.95, 0);    // pumpkin-stem nub / brow
+  // Stick arms.
+  add(group, box(0.5, 0.08, 0.08, 0x6a4a2a), -0.55, 1.15, 0);
+  add(group, box(0.5, 0.08, 0.08, 0x6a4a2a), 0.55, 1.15, 0);
 }
 
 /** Multiply a packed hex colour by m (for shaded limbs). */

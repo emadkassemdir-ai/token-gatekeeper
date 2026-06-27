@@ -9,22 +9,94 @@
 import { ITEMS } from '../world/ItemTypes.js';
 import { itemIconHTML } from '../world/ItemTextures.js';
 
-/** give[] -> get. */
+/** give[] -> get. The unemployed villager's generic trades. */
 export const TRADES = [
   { give: [{ type: 'emerald', count: 1 }], get: { type: 'oak_planks', count: 16 } },
   { give: [{ type: 'emerald', count: 1 }], get: { type: 'bread', count: 6 } },
   { give: [{ type: 'emerald', count: 3 }], get: { type: 'ender_pearl', count: 1 } },
-  { give: [{ type: 'emerald', count: 5 }], get: { type: 'iron_pickaxe', count: 1 } },
-  { give: [{ type: 'emerald', count: 7 }], get: { type: 'iron_chestplate', count: 1 } },
   { give: [{ type: 'emerald', count: 6 }], get: { type: 'golden_carrot', count: 4 } },
-  { give: [{ type: 'emerald', count: 1 }], get: { type: 'carrot', count: 8 } },
-  { give: [{ type: 'emerald', count: 1 }], get: { type: 'potato', count: 8 } },
-  { give: [{ type: 'emerald', count: 1 }], get: { type: 'wheat_seeds', count: 6 } },
   { give: [{ type: 'wheat', count: 20 }], get: { type: 'emerald', count: 1 } },
   { give: [{ type: 'coal', count: 16 }], get: { type: 'emerald', count: 1 } },
-  { give: [{ type: 'raw_beef', count: 10 }], get: { type: 'emerald', count: 1 } },
   { give: [{ type: 'diamond', count: 1 }], get: { type: 'emerald', count: 1 } }
 ];
+
+/**
+ * Per-profession trade tables. A villager claims a nearby job-site block and
+ * offers that profession's deals (wiki-flavoured), falling back to TRADES when
+ * it has no job site (an "unemployed" villager).
+ */
+export const PROFESSIONS = {
+  none: { label: 'VILLAGER', trades: TRADES },
+  farmer: { label: 'FARMER', trades: [
+    { give: [{ type: 'wheat', count: 20 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'carrot', count: 22 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'potato', count: 22 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'bread', count: 6 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'apple', count: 4 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'golden_carrot', count: 3 } }
+  ] },
+  librarian: { label: 'LIBRARIAN', trades: [
+    { give: [{ type: 'paper', count: 24 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'book', count: 4 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 9 }], get: { type: 'book', count: 1 } },
+    { give: [{ type: 'emerald', count: 5 }], get: { type: 'bookshelf', count: 2 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'glass', count: 4 } }
+  ] },
+  cartographer: { label: 'CARTOGRAPHER', trades: [
+    { give: [{ type: 'paper', count: 24 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 2 }], get: { type: 'paper', count: 8 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'glass', count: 4 } }
+  ] },
+  fletcher: { label: 'FLETCHER', trades: [
+    { give: [{ type: 'stick', count: 32 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'flint', count: 26 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'arrow', count: 16 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'bow', count: 1 } }
+  ] },
+  shepherd: { label: 'SHEPHERD', trades: [
+    { give: [{ type: 'white_wool', count: 18 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'white_wool', count: 4 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'bed', count: 1 } }
+  ] },
+  mason: { label: 'MASON', trades: [
+    { give: [{ type: 'stone', count: 20 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'stone_bricks', count: 4 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'bricks', count: 4 } }
+  ] },
+  toolsmith: { label: 'TOOLSMITH', trades: [
+    { give: [{ type: 'coal', count: 15 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'iron_pickaxe', count: 1 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'iron_axe', count: 1 } },
+    { give: [{ type: 'emerald', count: 12 }], get: { type: 'diamond_pickaxe', count: 1 } }
+  ] },
+  weaponsmith: { label: 'WEAPONSMITH', trades: [
+    { give: [{ type: 'coal', count: 15 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'iron_sword', count: 1 } },
+    { give: [{ type: 'emerald', count: 12 }], get: { type: 'diamond_sword', count: 1 } }
+  ] },
+  armorer: { label: 'ARMORER', trades: [
+    { give: [{ type: 'coal', count: 15 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 5 }], get: { type: 'iron_chestplate', count: 1 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'iron_helmet', count: 1 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'iron_leggings', count: 1 } }
+  ] },
+  butcher: { label: 'BUTCHER', trades: [
+    { give: [{ type: 'raw_beef', count: 10 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'raw_porkchop', count: 10 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'steak', count: 4 } }
+  ] },
+  cleric: { label: 'CLERIC', trades: [
+    { give: [{ type: 'rotten_flesh', count: 32 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'redstone', count: 4 } },
+    { give: [{ type: 'emerald', count: 4 }], get: { type: 'glowstone', count: 2 } },
+    { give: [{ type: 'emerald', count: 3 }], get: { type: 'ender_pearl', count: 1 } }
+  ] },
+  fisherman: { label: 'FISHERMAN', trades: [
+    { give: [{ type: 'raw_salmon', count: 13 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'coal', count: 10 }], get: { type: 'emerald', count: 1 } },
+    { give: [{ type: 'emerald', count: 1 }], get: { type: 'cooked_salmon', count: 4 } }
+  ] }
+};
 
 export class TradeMenu {
   constructor(mount, inventory, hooks = {}) {
@@ -42,12 +114,13 @@ export class TradeMenu {
     root.id = 'trade';
     root.innerHTML = `
       <div class="trade-panel">
-        <div class="trade-head"><span>💚 VILLAGER TRADES</span><button class="trade-close" id="trade-close">✕</button></div>
+        <div class="trade-head"><span id="trade-title">💚 VILLAGER TRADES</span><button class="trade-close" id="trade-close">✕</button></div>
         <div class="trade-list" id="trade-list"></div>
       </div>`;
     this.mount.appendChild(root);
     this.root = root;
     this.listEl = root.querySelector('#trade-list');
+    this.headEl = root.querySelector('#trade-title');
     root.querySelector('#trade-close').addEventListener('click', () => this.close());
     root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
   }
@@ -57,7 +130,13 @@ export class TradeMenu {
     document.addEventListener('keydown', this._onKey);
   }
 
-  openMenu() { this.open = true; this.root.classList.add('open'); this.hooks.onOpen?.(); this.render(); }
+  openMenu(profession = 'none') {
+    this.profession = PROFESSIONS[profession] ? profession : 'none';
+    this.open = true; this.root.classList.add('open'); this.hooks.onOpen?.();
+    const prof = PROFESSIONS[this.profession];
+    this.headEl.textContent = '💚 ' + prof.label + ' TRADES';
+    this.render();
+  }
   close() { this.open = false; this.root.classList.remove('open'); this.hooks.onClose?.(); }
 
   _afford(trade) {
@@ -67,7 +146,8 @@ export class TradeMenu {
 
   render() {
     this.listEl.innerHTML = '';
-    for (const trade of TRADES) {
+    const trades = PROFESSIONS[this.profession || 'none'].trades;
+    for (const trade of trades) {
       const ok = this._afford(trade);
       const row = document.createElement('div');
       row.className = 'trade-row' + (ok ? '' : ' disabled');

@@ -254,11 +254,13 @@ class Game {
     this.interaction.onUse = (type, target) => this._useItem(type, target);
     // Right-clicking interactive blocks (bed/chest/tables) opens/uses them.
     this.interaction.onInteractBlock = (id, target) => this._interactBlock(id, target);
-    // Right-clicking a villager opens trading.
+    // Right-clicking a villager opens trading; its profession comes from the
+    // job-site block it has claimed nearby.
     this.interaction.onInteractMob = () => {
       this.camera.getWorldDirection(this._dir);
-      if (this.entities.pickMob(this.camera.position, this._dir, 4, 'villager')) {
-        this.tradeMenu.openMenu();
+      const villager = this.entities.pickMob(this.camera.position, this._dir, 4, 'villager');
+      if (villager) {
+        this.tradeMenu.openMenu(this._villagerProfession(villager.position));
         return true;
       }
       return false;
@@ -601,15 +603,26 @@ class Game {
    * an Iron Golem — consume the structure and spawn the guardian.
    */
   _checkIronGolem(px, py, pz) {
+    const clear = (x, y, z) => { this.world.setBlock(x, y, z, 0); this._recordEdit(x, y, z, 0); };
+    const isBlk = (x, y, z, id) => this.world.getBlock(x, y, z) === id;
+
+    // Snow Golem: pumpkin atop a two-high snow column.
+    if (isBlk(px, py - 1, pz, 13) && isBlk(px, py - 2, pz, 13)) {
+      clear(px, py, pz); clear(px, py - 1, pz); clear(px, py - 2, pz);
+      this.entities.spawnKind('snow_golem', new THREE.Vector3(px + 0.5, py - 2, pz + 0.5));
+      this.chat?.system('☃️ A Snow Golem appears!');
+      Audio.craft();
+      return true;
+    }
+
+    // Iron Golem: pumpkin atop a two-high iron spine with two iron arms.
     const IRON = 47;
-    const isIron = (x, y, z) => this.world.getBlock(x, y, z) === IRON;
-    if (!isIron(px, py - 1, pz) || !isIron(px, py - 2, pz)) return false; // two-block spine
+    if (!isBlk(px, py - 1, pz, IRON) || !isBlk(px, py - 2, pz, IRON)) return false;
     let ax = 0, az = 0;
-    if (isIron(px - 1, py - 1, pz) && isIron(px + 1, py - 1, pz)) ax = 1;       // arms along X
-    else if (isIron(px, py - 1, pz - 1) && isIron(px, py - 1, pz + 1)) az = 1;  // arms along Z
+    if (isBlk(px - 1, py - 1, pz, IRON) && isBlk(px + 1, py - 1, pz, IRON)) ax = 1;       // arms along X
+    else if (isBlk(px, py - 1, pz - 1, IRON) && isBlk(px, py - 1, pz + 1, IRON)) az = 1;  // arms along Z
     else return false;
 
-    const clear = (x, y, z) => { this.world.setBlock(x, y, z, 0); this._recordEdit(x, y, z, 0); };
     clear(px, py, pz);                         // pumpkin
     clear(px, py - 1, pz); clear(px, py - 2, pz);
     clear(px - ax, py - 1, pz - az); clear(px + ax, py - 1, pz + az); // arms
@@ -617,6 +630,29 @@ class Game {
     this.chat?.system('⚙️ An Iron Golem rises to defend you!');
     Audio.craft();
     return true;
+  }
+
+  /**
+   * Determine a villager's profession from the nearest claimed job-site block.
+   * Returns 'none' (unemployed) if no job site is within reach.
+   */
+  _villagerProfession(pos) {
+    const JOB = {
+      122: 'farmer', 123: 'librarian', 124: 'cartographer', 125: 'fletcher',
+      126: 'shepherd', 127: 'mason', 75: 'toolsmith', 88: 'weaponsmith',
+      86: 'armorer', 87: 'butcher', 67: 'cleric', 76: 'fisherman'
+    };
+    const cx = Math.floor(pos.x), cy = Math.floor(pos.y), cz = Math.floor(pos.z);
+    let best = null, bestD = 1e9;
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dz = -4; dz <= 4; dz++)
+        for (let dx = -4; dx <= 4; dx++) {
+          const prof = JOB[this.world.getBlock(cx + dx, cy + dy, cz + dz)];
+          if (!prof) continue;
+          const d = dx * dx + dy * dy + dz * dz;
+          if (d < bestD) { bestD = d; best = prof; }
+        }
+    return best || 'none';
   }
 
   /** Count bookshelves near the player (the enchanting table's power source). */
