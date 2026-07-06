@@ -16,7 +16,7 @@ import { Inventory } from './state/Inventory.js';
 import { PlayerStats } from './state/PlayerStats.js';
 import { Avatar } from './state/Avatar.js';
 import { WorldStore } from './state/WorldStore.js';
-import { World, CHUNK_SIZE } from './world/World.js';
+import { World, CHUNK_SIZE, WORLD_HEIGHT } from './world/World.js';
 import { CRAFTING_TABLE_ID, FURNACE_ID } from './world/BlockTypes.js';
 import { ITEMS, getFood, isShield, getAttackDamage, isIgnite, isBow, isEndEye, isHoe, plantCrop } from './world/ItemTypes.js';
 import { PhysicsEngine } from './player/PhysicsEngine.js';
@@ -42,7 +42,7 @@ import { isPotion, drinkPotion } from './state/Potions.js';
 import { recomputeRedstone, computePowered, isRedstone } from './world/Redstone.js';
 import { actuatePistons, PISTON, STICKY_PISTON } from './world/Pistons.js';
 import { injectTheme } from './world/UITextures.js';
-import { isYassin, applyYassinUI, applyYassinScene } from './world/EasterEgg.js';
+import { isYassin, isYassinSigma, applyYassinUI, applyYassinSigmaUI, applyYassinScene } from './world/EasterEgg.js';
 import { NetworkManager } from './net/NetworkManager.js';
 import { RemotePlayers } from './net/RemotePlayers.js';
 import { packState } from './net/Protocol.js';
@@ -76,8 +76,11 @@ class Game {
     this._dir = new THREE.Vector3();
 
     // Easter egg: naming yourself "yassin" turns the whole game into The Photo.
-    this._yassin = isYassin(record.username);
-    if (this._yassin) applyYassinUI();
+    // "yassinsigma" goes further — YassinCraft, every button, the works.
+    this._yassinSigma = isYassinSigma(record.username);
+    this._yassin = isYassin(record.username) || this._yassinSigma;
+    if (this._yassinSigma) applyYassinSigmaUI();
+    else if (this._yassin) applyYassinUI();
 
     // Dimension state ('overworld' | 'nether'); per-dimension edits are kept in
     // record.dimData so builds persist, but a fresh load always starts topside.
@@ -112,7 +115,18 @@ class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(0x87b9e6);
+    // Filmic tone mapping: richer colours, softer highlights, deeper shadows.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
     this.app.appendChild(this.renderer.domElement);
+
+    // Subtle vignette over the 3D view (under the HUD) for visual depth.
+    const vig = document.createElement('div');
+    vig.id = 'vignette';
+    vig.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;' +
+      'background:radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.28) 100%)';
+    this.app.appendChild(vig);
+    this._vignette = vig;
   }
 
   _initScene() {
@@ -136,9 +150,48 @@ class Game {
     this._skyDay = new THREE.Color(0x87b9e6);
     this._skyNight = new THREE.Color(0x0a1020);
     this._skyColor = new THREE.Color();
+    // Sun colour warms toward orange at dawn/dusk.
+    this._sunNoon = new THREE.Color(0xfff4e0);
+    this._sunHorizon = new THREE.Color(0xffa04a);
+
+    this._initClouds();
 
     // Easter egg: surround the player with The Photo instead of a sky.
     if (this._yassin) applyYassinScene(this.scene);
+  }
+
+  /** Flat Minecraft-style clouds drifting high above, wrapping around the player. */
+  _initClouds() {
+    this.clouds = new THREE.Group();
+    this._cloudMat = new THREE.MeshLambertMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false
+    });
+    this._cloudSpan = 280; // wrap width in blocks
+    for (let i = 0; i < 26; i++) {
+      const w = 8 + Math.random() * 16, d = 5 + Math.random() * 12;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.6, d), this._cloudMat);
+      m.position.set(
+        (Math.random() - 0.5) * this._cloudSpan,
+        WORLD_HEIGHT + 6 + Math.random() * 4,
+        (Math.random() - 0.5) * this._cloudSpan
+      );
+      this.clouds.add(m);
+    }
+    this.scene.add(this.clouds);
+  }
+
+  /** Drift the clouds east and keep the field centred on the player. */
+  _updateClouds(dt) {
+    if (!this.clouds || !this.clouds.visible) return;
+    const p = this.physics.position;
+    const half = this._cloudSpan / 2;
+    for (const m of this.clouds.children) {
+      m.position.x += dt * 1.5; // gentle easterly drift
+      if (m.position.x - p.x > half) m.position.x -= this._cloudSpan;
+      if (p.x - m.position.x > half) m.position.x += this._cloudSpan;
+      if (m.position.z - p.z > half) m.position.z -= this._cloudSpan;
+      if (p.z - m.position.z > half) m.position.z += this._cloudSpan;
+    }
   }
 
   _initWorld() {
@@ -1274,6 +1327,7 @@ class Game {
   /** Apply per-dimension sky/fog/lighting. @param {'overworld'|'nether'|'end'} target */
   _applyDimAmbiance(target) {
     this._nether = target === 'nether';
+    if (this.clouds) this.clouds.visible = target === 'overworld'; // no clouds underground
     if (target === 'nether') {
       if (!this._yassin) {
         this.scene.background = new THREE.Color(0x2a0a0a);
@@ -1421,6 +1475,7 @@ class Game {
     this._growCrops(dt);
     this._tickHoppers(dt);
     this._updateRaid();
+    this._updateClouds(dt);
 
     // Mobile: reveal the SMELT button only when near a placed furnace.
     if (this.touchControls) {
@@ -1492,6 +1547,12 @@ class Game {
     this.sun.intensity = 0.15 + d * 0.85;
     this.hemi.intensity = 0.3 + d * 0.7;
     this.ambient.intensity = 0.08 + d * 0.14;
+
+    // Golden hour: near the day/night boundary the sun goes warm orange.
+    const horizon = Math.max(0, 1 - Math.abs(d - 0.35) / 0.3);
+    this.sun.color.copy(this._sunNoon).lerp(this._sunHorizon, horizon * 0.85);
+    // Clouds fade at night so they don't glow in the dark.
+    if (this._cloudMat) this._cloudMat.opacity = 0.15 + d * 0.6;
   }
 
   /** Persist the world record (player state + edits + time) to WorldStore. */

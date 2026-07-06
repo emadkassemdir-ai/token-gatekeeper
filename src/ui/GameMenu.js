@@ -13,6 +13,7 @@
 import { PlayerProfile } from '../state/PlayerProfile.js';
 import { WorldStore, DIFFICULTIES } from '../state/WorldStore.js';
 import { GoogleAuth } from '../state/GoogleAuth.js';
+import { isYassinSigma, applyYassinSigmaUI } from '../world/EasterEgg.js';
 
 export class GameMenu {
   /**
@@ -78,6 +79,8 @@ export class GameMenu {
       const res = PlayerProfile.validateUsername(input.value);
       button.disabled = !res.valid;
       error.textContent = res.valid || !input.value.length ? '' : res.reason;
+      // Live: typing the sigma name transforms the menu on the spot.
+      if (isYassinSigma(input.value)) applyYassinSigmaUI();
     };
     const submit = () => {
       const res = PlayerProfile.validateUsername(input.value);
@@ -89,6 +92,8 @@ export class GameMenu {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
     button.addEventListener('click', submit);
     validate();
+    // Coming back to this screen with sigma already active: keep the retitle.
+    if (isYassinSigma(this.username)) applyYassinSigmaUI();
     setTimeout(() => input.focus(), 50);
 
     // Optional "Sign in with Google": uses the Google name as the multiplayer
@@ -118,7 +123,7 @@ export class GameMenu {
     root.innerHTML = `
       <div class="worlds-card">
         <div class="worlds-head">
-          <h2>Worlds</h2>
+          <h2>${isYassinSigma(this.username) ? 'YassinCraft Worlds' : 'Worlds'}</h2>
           <span class="worlds-user">${this._escape(this.username)}</span>
         </div>
         <div id="worlds-list" class="worlds-list"></div>
@@ -135,6 +140,7 @@ export class GameMenu {
     root.querySelector('#back-button').addEventListener('click', () => this._renderUsername());
     root.querySelector('#create-button').addEventListener('click', () => this._renderCreate());
 
+    if (isYassinSigma(this.username)) applyYassinSigmaUI();
     this._refreshWorldsList();
   }
 
