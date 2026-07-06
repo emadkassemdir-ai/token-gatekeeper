@@ -97,15 +97,22 @@ class Game {
     this._time = record.time ?? 0.2;
     this._dayLength = 480; // seconds for a full day/night cycle (8 min)
 
-    this._initRenderer();
-    this._initScene();
-    this._initWorld();
-    this._initState();
-    this._initPlayer();
-    this._initEntities();
-    this._initNet();
-    this._initUI();
-    this._bindLifecycle();
+    const t0 = performance.now();
+    const phase = (name, fn) => {
+      const t = performance.now();
+      fn();
+      console.debug(`[boot] ${name}: ${(performance.now() - t).toFixed(0)}ms`);
+    };
+    phase('renderer', () => this._initRenderer());
+    phase('scene', () => this._initScene());
+    phase('world', () => this._initWorld());
+    phase('state', () => this._initState());
+    phase('player', () => this._initPlayer());
+    phase('entities', () => this._initEntities());
+    phase('net', () => this._initNet());
+    phase('ui', () => this._initUI());
+    phase('lifecycle', () => this._bindLifecycle());
+    console.debug(`[boot] total: ${(performance.now() - t0).toFixed(0)}ms`);
   }
 
   /* ------------------------------- setup --------------------------------- */
@@ -418,6 +425,19 @@ class Game {
   _initUI() {
     this.hud = new HUD(this.app, this.record, this.inventory, this.stats);
     this.crosshair.classList.add('visible');
+
+    // Leave button (top-right): save the world and return to the main menu.
+    const leave = document.createElement('button');
+    leave.id = 'leave-button';
+    leave.textContent = '✕ LEAVE';
+    leave.style.cssText = 'position:fixed;top:10px;right:10px;z-index:60;' +
+      'padding:8px 14px;font-size:16px;letter-spacing:1px;';
+    leave.addEventListener('click', () => {
+      this.save();
+      window.location.reload(); // back to the menu with everything persisted
+    });
+    this.app.appendChild(leave);
+    this._leaveBtn = leave;
 
     // First-person held-item viewmodel (overlay).
     this.viewModel = new ViewModel();
@@ -1199,40 +1219,50 @@ class Game {
   }
 
   /**
-   * Validate a 2×3 obsidian frame around an interior cell and fill it with portal
-   * blocks. `axis` is the in-plane horizontal direction.
+   * Flood-fill portal ignition (wiki rules): from the ignition cell, collect the
+   * connected air region in the frame's vertical plane. If every in-plane
+   * neighbour beyond the region is obsidian and the interior is at least 2×3
+   * (a 4×5 frame) and at most 21×21, fill the whole interior with portal.
+   * Any frame that big or bigger lights — 4×5, 5×5, 10×12, whatever you build.
    */
   _fillPortalIfFramed(cx, cy, cz, axis) {
     const ax = axis === 'x' ? 1 : 0, az = axis === 'x' ? 0 : 1;
     const g = (x, y, z) => this.world.getBlock(x, y, z);
-    const obs = (x, y, z) => g(x, y, z) === 35;               // obsidian
-    const air = (x, y, z) => { const b = g(x, y, z); return b === 0 || b === 58; };
-    if (!air(cx, cy, cz)) return false;
+    const isAirish = (b) => b === 0 || b === 58;
+    if (!isAirish(g(cx, cy, cz))) return false;
 
-    let y = cy;
-    while (air(cx, y - 1, cz) && cy - y < 6) y--;             // descend to floor
-    if (!obs(cx, y - 1, cz)) return false;
+    const MAXI = 21;                       // max interior span per the wiki
+    const seen = new Set();
+    const cells = [];
+    const queue = [[cx, cy, cz]];
+    seen.add(`${cx},${cy},${cz}`);
+    let minU = Infinity, maxU = -Infinity, minY = Infinity, maxY = -Infinity;
 
-    let lx = cx, lz = cz, steps = 0;
-    while (air(lx - ax, y, lz - az) && steps < 6) { lx -= ax; lz -= az; steps++; }
-    if (!obs(lx - ax, y, lz - az)) return false;              // left wall
-
-    let w = 0;
-    while (air(lx + ax * w, y, lz + az * w) && w < 6) w++;
-    if (w !== 2 || !obs(lx + ax * w, y, lz + az * w)) return false; // 2-wide + right wall
-
-    for (let h = 0; h < 3; h++) {
-      for (let i = 0; i < w; i++) if (!air(lx + ax * i, y + h, lz + az * i)) return false;
-      if (!obs(lx - ax, y + h, lz - az) || !obs(lx + ax * w, y + h, lz + az * w)) return false;
-    }
-    for (let i = 0; i < w; i++) if (!obs(lx + ax * i, y + 3, lz + az * i)) return false; // top
-
-    for (let h = 0; h < 3; h++) {
-      for (let i = 0; i < w; i++) {
-        const x = lx + ax * i, Y = y + h, z = lz + az * i;
-        this.world.setBlock(x, Y, z, 58);
-        this._recordEdit(x, Y, z, 58);
+    while (queue.length) {
+      const [x, y, z] = queue.pop();
+      cells.push([x, y, z]);
+      const u = ax ? x : z;
+      if (u < minU) minU = u; if (u > maxU) maxU = u;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      if (maxU - minU + 1 > MAXI || maxY - minY + 1 > MAXI) return false; // too big
+      // In-plane neighbours: ±axis and ±y.
+      for (const [dx, dy, dz] of [[ax, 0, az], [-ax, 0, -az], [0, 1, 0], [0, -1, 0]]) {
+        const nx = x + dx, ny = y + dy, nz = z + dz;
+        const key = `${nx},${ny},${nz}`;
+        if (seen.has(key)) continue;
+        const b = g(nx, ny, nz);
+        if (isAirish(b)) { seen.add(key); queue.push([nx, ny, nz]); }
+        else if (b !== 35) return false;   // region touches a non-obsidian block
       }
+    }
+
+    const w = maxU - minU + 1, h = maxY - minY + 1;
+    if (w < 2 || h < 3) return false;                 // smaller than a 4×5 frame
+    if (cells.length !== w * h) return false;         // not a clean rectangle
+
+    for (const [x, y, z] of cells) {
+      this.world.setBlock(x, y, z, 58);
+      this._recordEdit(x, y, z, 58);
     }
     return true;
   }
@@ -1593,8 +1623,11 @@ async function boot() {
   });
   const record = await menu.show(); // username -> world select/create
 
+  console.debug('[boot] menu resolved at', performance.now().toFixed(0));
   const game = new Game(record, avatar);
+  const ts = performance.now();
   game.start();
+  console.debug(`[boot] start(): ${(performance.now() - ts).toFixed(0)}ms`);
 
   window.__voxelcraft = game;
 }

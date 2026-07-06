@@ -45,7 +45,7 @@ export const MOB_TYPES = {
   fox: { passive: true, hp: 5, speed: 2.8, drop: null, body: 0xd07a3a, head: 0xd07a3a, w: 0.5, h: 0.6 },
   goat: { passive: true, hp: 10, speed: 2.2, drop: null, body: 0xd8d2c6, head: 0xe0dccf, w: 0.7, h: 1.2 },
   villager: { passive: true, hp: 10, speed: 1.4, drop: null, body: 0x9a8268, head: 0xc8a888, w: 0.6, h: 1.9 },
-  iron_golem: { defender: true, hp: 50, speed: 1.6, attack: 7, drops: [['iron_ingot', 4]],
+  iron_golem: { defender: true, hp: 50, speed: 1.6, attack: 7, drops: [['iron_ingot', 3]],
     body: 0xd8d8d8, head: 0xd0d0c8, w: 1.4, h: 2.7 },
   snow_golem: { defender: true, ranged: true, hp: 4, speed: 1.8, attack: 1, range: 10,
     drops: [['snowball', 4]], body: 0xeef2f5, head: 0xeef2f5, w: 0.7, h: 1.9 },
@@ -361,8 +361,11 @@ function quadLegs(group, color, x, z, h, top) {
 function buildCow(group) {
   const brown = 0x4a3526, white = 0xddd8cf, pink = 0xd98a8a;
   add(group, box(0.85, 0.7, 1.4, brown), 0, 0.95, 0);          // body
-  add(group, box(0.5, 0.3, 0.2, white), 0.2, 1.05, 0.2);       // white patch
+  // Canon piebald hide: several white patches over the brown coat.
+  add(group, box(0.5, 0.3, 0.2, white), 0.2, 1.05, 0.2);
   add(group, box(0.4, 0.25, 0.2, white), -0.25, 0.9, -0.3);
+  add(group, box(0.3, 0.2, 0.25, white), 0.28, 0.85, -0.5);
+  add(group, box(0.86, 0.2, 0.35, white), 0, 0.68, 0.45);      // white underbelly
   const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#c9a07a'); rect(ctx, 3, 5, 3, 3, '#222'); rect(ctx, 10, 5, 3, 3, '#222'); rect(ctx, 5, 11, 6, 3, '#d98a8a'); });
   add(group, headWithFace(0.55, 0.5, 0.45, 0x6b4a32, face), 0, 1.15, 0.85); // head forward (+z)
   add(group, box(0.12, 0.12, 0.12, 0xeee0c0), -0.18, 1.42, 0.85); // horns
@@ -379,7 +382,8 @@ function buildSheep(group) {
 }
 
 function buildZombie(group, cfg) {
-  const skin = cfg?.head ?? 0x4a8f44, shirt = 0x3a5a8c, pants = 0x2f3a6b;
+  // Canon zombie outfit: teal shirt, purple-blue pants.
+  const skin = cfg?.head ?? 0x4a8f44, shirt = 0x2e8b8b, pants = 0x35357a;
   add(group, box(0.6, 1.0, 0.35, shirt), 0, 1.0, 0);          // torso
   const face = faceTexture((ctx) => { rect(ctx, 0, 0, 16, 16, '#3a7d35'); rect(ctx, 3, 5, 3, 3, '#0a1a0a'); rect(ctx, 10, 5, 3, 3, '#0a1a0a'); rect(ctx, 5, 11, 6, 2, '#0a1a0a'); });
   add(group, headWithFace(0.5, 0.5, 0.5, skin, face), 0, 1.75, 0);
@@ -527,8 +531,11 @@ function buildSpider(group) {
   const dark = 0x2a2420;
   add(group, box(0.7, 0.45, 0.7, dark), 0, 0.4, -0.2);        // abdomen
   add(group, box(0.5, 0.4, 0.5, dark), 0, 0.4, 0.45);         // head/thorax
-  add(group, box(0.08, 0.08, 0.08, 0xc02020), 0.12, 0.5, 0.7); // red eyes
-  add(group, box(0.08, 0.08, 0.08, 0xc02020), -0.12, 0.5, 0.7);
+  // Canon spider: two rows of glowing red eyes.
+  for (const [ex, ey] of [[0.16, 0.52], [-0.16, 0.52], [0.06, 0.54], [-0.06, 0.54],
+                          [0.12, 0.42], [-0.12, 0.42], [0.04, 0.42], [-0.04, 0.42]]) {
+    add(group, box(0.06, 0.06, 0.04, 0xc02020), ex, ey, 0.71);
+  }
   for (const sx of [-1, 1]) for (const sz of [-0.3, 0, 0.3]) {
     const leg = box(0.6, 0.08, 0.08, 0x1a1410); add(group, leg, sx * 0.5, 0.4, sz);
     leg.rotation.z = sx * 0.5;

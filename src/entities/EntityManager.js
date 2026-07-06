@@ -16,7 +16,7 @@
 import * as THREE from 'three';
 import { Mob, MOB_TYPES } from './Mob.js';
 import { getAttackDamage } from '../world/ItemTypes.js';
-import { BIOME } from '../world/World.js';
+import { BIOME, SEA_LEVEL } from '../world/World.js';
 
 const PLAYER_REACH = 4.2;
 const HOSTILE_CAP_SURFACE = 6;
@@ -288,6 +288,10 @@ export class EntityManager {
       if (near('iron_golem') < 1) {
         const s = this._villageSpot(v); if (s) this._spawn('iron_golem', s);
       }
+      // A witch sometimes lurks at the edge of town (rarer, hostile).
+      if (!this.peaceful && near('witch') < 1 && Math.random() < 0.08) {
+        const s = this._villageSpot(v); if (s) this._spawn('witch', s);
+      }
     }
   }
 
@@ -352,7 +356,7 @@ export class EntityManager {
     for (let i = 0; i < 8; i++) {
       const x = Math.floor(playerPos.x + (Math.random() * 20 - 10)) + 0.5;
       const z = Math.floor(playerPos.z + (Math.random() * 20 - 10)) + 0.5;
-      for (let y = 28; y <= 31; y++) {
+      for (let y = SEA_LEVEL - 2; y <= SEA_LEVEL + 1; y++) {
         if (this.world.isLiquidAt(x, y, z)) return new THREE.Vector3(x, y, z);
       }
     }

@@ -27,7 +27,9 @@ function genTile(kind) {
     dirt: [0.42, 0.30, 0.18],
     stone: [0.50, 0.50, 0.53],
     plank: [0.62, 0.46, 0.27],
-    diamond: [0.45, 0.78, 0.82]
+    diamond: [0.45, 0.78, 0.82],
+    grass: [0.36, 0.62, 0.26],   // canon button green
+    redstone: [0.72, 0.16, 0.12] // danger-button red
   };
   const base = bases[kind] || [0.5, 0.5, 0.5];
   for (let y = 0; y < TILE; y++) {
@@ -42,6 +44,8 @@ function genTile(kind) {
         m = 0.85 + n * 0.25;
         if ((x + y) % 8 === 0 || (x - y + 16) % 8 === 0) m = 1.15;
       }
+      if (kind === 'grass') { m = 0.85 + n * 0.3; if (n > 0.8) m = 1.2; }
+      if (kind === 'redstone') { m = 0.85 + n * 0.25; if (n < 0.12) m = 0.65; }
       const r = Math.max(0, Math.min(255, base[0] * m * 255)) | 0;
       const g = Math.max(0, Math.min(255, base[1] * m * 255)) | 0;
       const b = Math.max(0, Math.min(255, base[2] * m * 255)) | 0;
@@ -60,11 +64,15 @@ export function injectTheme() {
   const stone = genTile('stone');
   const plank = genTile('plank');
   const diamond = genTile('diamond');
+  const grass = genTile('grass');
+  const redstone = genTile('redstone');
   const root = document.documentElement;
   if (dirt) root.style.setProperty('--mc-dirt', `url(${dirt})`);
   if (stone) root.style.setProperty('--mc-stone', `url(${stone})`);
   if (plank) root.style.setProperty('--mc-plank', `url(${plank})`);
   if (diamond) root.style.setProperty('--mc-diamond', `url(${diamond})`);
+  if (grass) root.style.setProperty('--mc-grass', `url(${grass})`);
+  if (redstone) root.style.setProperty('--mc-redstone', `url(${redstone})`);
 
   const style = document.createElement('style');
   style.id = 'mc-theme';
@@ -97,6 +105,35 @@ export function injectTheme() {
       background-size: 48px; image-rendering: pixelated;
       border: 4px solid #161616; box-shadow: 0 0 0 4px #5a5a5a, 0 12px 40px rgba(0,0,0,0.6);
       border-radius: 0;
+    }
+
+    /* ---- Colourful wiki-canon buttons, applied game-wide. ---- */
+    /* Primary actions: grass-green, like the classic "Play" button. */
+    #next-button, #cw-create, #create-button, .primary-wide, .world-play,
+    .trade-btn:not(:disabled), .craft-btn:not(:disabled), .smelt-btn:not(:disabled) {
+      background-color: #3c8527 !important; background-image: var(--mc-grass) !important;
+      background-size: 32px; image-rendering: pixelated;
+      color: #ffffff !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.55);
+      border: 3px solid; border-color: #79c95c #1d4711 #1d4711 #79c95c !important;
+      border-radius: 0 !important; cursor: pointer;
+    }
+    #next-button:hover, #cw-create:hover, #create-button:hover, .primary-wide:hover,
+    .world-play:hover { filter: brightness(1.15); }
+    /* Secondary actions: beveled stone. */
+    .secondary-button, #back-button, #cw-cancel, #avatar-button, #avatar-button2 {
+      background-color: #8a8a8a !important; background-image: var(--mc-stone) !important;
+      background-size: 32px; image-rendering: pixelated;
+      color: #ffffff !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+      border: 3px solid; border-color: #d4d4d4 #4a4a4a #4a4a4a #d4d4d4 !important;
+      border-radius: 0 !important; cursor: pointer;
+    }
+    /* Destructive actions: redstone. */
+    .world-del, #leave-button {
+      background-color: #a02a1e !important; background-image: var(--mc-redstone) !important;
+      background-size: 32px; image-rendering: pixelated;
+      color: #ffffff !important; text-shadow: 2px 2px 0 rgba(0,0,0,0.55);
+      border: 3px solid; border-color: #e07a6a #4a0f08 #4a0f08 #e07a6a !important;
+      border-radius: 0 !important; cursor: pointer;
     }
   `;
   document.head.appendChild(style);

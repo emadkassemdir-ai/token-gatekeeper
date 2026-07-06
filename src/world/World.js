@@ -25,8 +25,9 @@ import {
 import { NoiseGenerator } from './NoiseGenerator.js';
 
 export const CHUNK_SIZE = 16;
-export const WORLD_HEIGHT = 64; // taller world leaves room for caves below
-export const SEA_LEVEL = 30;
+export const WORLD_HEIGHT = 256; // deep world: ~190 blocks of cave/ore rock below the surface
+export const SEA_LEVEL = 190;
+export const NETHER_ROOF = 96;   // the Nether stays a compact cavern band at the bottom
 
 export const BIOME = Object.freeze({
   PLAINS: 'plains',
@@ -71,14 +72,14 @@ const TEX = {
   7: { all: 'sand' },
   8: { all: 'water' },
   9: { all: 'glass' },
-  10: { all: 'ore', base: STONE_BASE, accent: [0.82, 0.7, 0.55] }, // iron
+  10: { all: 'ore', base: STONE_BASE, accent: [0.85, 0.68, 0.56] }, // iron (tan-pink, canon)
   11: { all: 'planks' },
   12: { top: 'craft_top', side: 'craft_side', bottom: 'planks' },
   13: { all: 'snow' },
   14: { all: 'leaves' },
-  15: { all: 'ore', base: STONE_BASE, accent: [0.12, 0.12, 0.13] }, // coal
-  16: { all: 'ore', base: STONE_BASE, accent: [0.95, 0.8, 0.2] },   // gold
-  17: { all: 'ore', base: STONE_BASE, accent: [0.5, 0.9, 0.95] },   // diamond
+  15: { all: 'ore', base: STONE_BASE, accent: [0.18, 0.18, 0.2] },  // coal
+  16: { all: 'ore', base: STONE_BASE, accent: [0.98, 0.9, 0.28] },  // gold
+  17: { all: 'ore', base: STONE_BASE, accent: [0.36, 0.93, 0.87] }, // diamond (cyan, canon)
   18: { top: 'stone', side: 'furnace', bottom: 'stone' },
 
   // ---- Expansion textures ----
@@ -103,9 +104,9 @@ const TEX = {
   37: { top: 'planks', side: 'bookshelf', bottom: 'planks' },
   38: { all: 'ice' },
   39: { all: 'clay' },
-  40: { all: 'ore', base: STONE_BASE, accent: [0.16, 0.3, 0.85] }, // lapis
-  41: { all: 'ore', base: STONE_BASE, accent: [0.85, 0.12, 0.12] }, // redstone
-  42: { all: 'ore', base: STONE_BASE, accent: [0.15, 0.85, 0.45] }, // emerald
+  40: { all: 'ore', base: STONE_BASE, accent: [0.12, 0.32, 0.78] }, // lapis
+  41: { all: 'ore', base: STONE_BASE, accent: [1.0, 0.1, 0.1] },   // redstone (glowing red)
+  42: { all: 'ore', base: STONE_BASE, accent: [0.1, 0.85, 0.37] }, // emerald
   43: { all: 'wool' },
   44: { all: 'wool' },
   45: { all: 'wool' },
@@ -132,7 +133,7 @@ const TEX = {
   65: { top: 'chesttop', side: 'chestside', bottom: 'planks' },
   66: { all: 'netherwart' },
   67: { top: 'brewtop', side: 'brewside', bottom: 'stone' },
-  68: { all: 'ore', base: STONE_BASE, accent: [0.85, 0.5, 0.3] }, // copper ore
+  68: { all: 'ore', base: STONE_BASE, accent: [0.9, 0.5, 0.33] }, // copper (orange, canon)
   69: { all: 'metal' },
   70: { all: 'stone' },   // deepslate (dark colour applied)
   71: { all: 'smoothstone' },
@@ -216,27 +217,39 @@ function paintTile(ctx, ox, kind, base, accent) {
       let c;
       switch (kind) {
         case 'grass_top':
-          c = mul(base, 0.85 + n * 0.3);
-          if (n > 0.82) c = mul(base, 1.18);
+          // Vibrant two-tone turf with scattered bright blades.
+          c = mul(base, 0.82 + n * 0.3);
+          if (n > 0.78) c = mul(base, 1.22);
+          if (pnoise(px * 3 + 9, py * 3 + 4) > 0.9) c = mul(base, 1.35); // blade highlights
           break;
-        case 'grass_side':
-          if (py < 4) { c = mul(base, 0.85 + n * 0.3); if (py === 3 && n > 0.6) c = mul(base, 0.7); }
-          else { c = mul(dirt, 0.8 + pnoise(px, py + 7) * 0.35); }
+        case 'grass_side': {
+          // Dirt face with a grass band whose bottom edge dips unevenly (canon).
+          const fringe = 3 + (pnoise(ox + px, 99) > 0.55 ? 1 : 0);
+          if (py < fringe) { c = mul(base, 0.85 + n * 0.3); if (py === fringe - 1) c = mul(base, 0.72); }
+          else { c = mul(dirt, 0.8 + pnoise(px, py + 7) * 0.35); if (pnoise(px * 2, py * 2 + 3) > 0.86) c = mul(dirt, 0.6); }
           break;
+        }
         case 'dirt':
           c = mul(base, 0.8 + n * 0.35);
           if (n < 0.12) c = mul(base, 0.62);
+          if (pnoise(px * 2 + 5, py * 2 + 1) > 0.88) c = mul(base, 1.2); // pebbly flecks
           break;
         case 'stone':
-          c = mul(base, 0.9 + n * 0.2);
-          if (n < 0.08) c = mul(base, 0.72);
+          // Canon stone: light gray with soft 2-3px blotches, not just speckle.
+          c = mul(base, 0.92 + n * 0.14);
+          if (pnoise((px >> 1) * 2.3, (py >> 1) * 2.3) > 0.72) c = mul(base, 0.8);
+          if (pnoise(px * 1.3 + 8, py * 1.3 + 2) > 0.9) c = mul(base, 1.1);
           break;
-        case 'bedrock':
-          c = mul(base, 0.6 + n * 0.7);
+        case 'bedrock': {
+          // High-contrast slabs of near-black and mid gray (canon chaos).
+          const q = pnoise((px >> 1) * 3.1, (py >> 1) * 3.1);
+          c = q > 0.6 ? mul(base, 1.4) : q > 0.3 ? mul(base, 0.9) : mul(base, 0.4);
           break;
+        }
         case 'sand':
-          c = mul(base, 0.92 + n * 0.16);
-          if (n < 0.1) c = mul(base, 0.82);
+          c = mul(base, 0.94 + n * 0.12);
+          if (pnoise(px * 2.7, py * 2.7) > 0.85) c = mul(base, 0.84); // grain shadows
+          if (pnoise(px * 2.7 + 4, py * 2.7 + 9) > 0.92) c = mul(base, 1.1);
           break;
         case 'snow':
           c = mul(base, 0.95 + n * 0.07);
@@ -266,8 +279,11 @@ function paintTile(ctx, ox, kind, base, accent) {
           if (py < 6 && (px === 4 || px === 11)) c = mul(base, 0.6);
           break;
         case 'leaves':
-          c = mul(base, 0.72 + n * 0.45);
-          if (n < 0.15) c = mul(base, 0.55);
+          // Canon fancy leaves: deep green mass with dark "hole" pixels and
+          // bright young-leaf highlights.
+          c = mul(base, 0.7 + n * 0.4);
+          if (pnoise(px * 2.2 + 1, py * 2.2 + 6) > 0.82) c = mul(base, 0.32); // holes
+          if (pnoise(px * 1.8 + 7, py * 1.8 + 3) > 0.9) c = mul(base, 1.35);  // highlights
           break;
         case 'water': {
           const wave = Math.sin((py + px * 0.5) * 0.8) * 0.06;
@@ -283,12 +299,21 @@ function paintTile(ctx, ox, kind, base, accent) {
           if (px >= 4 && px <= 11 && py >= 7 && py <= 13) c = [0.12, 0.1, 0.1]; // opening
           if (py === 7 && px >= 4 && px <= 11) c = [0.5, 0.35, 0.2];
           break;
-        case 'ore':
-          c = mul(base, 0.9 + n * 0.2);
-          if (n < 0.08) c = mul(base, 0.72);
-          // Accent blobs clustered at a few spots.
-          if (pnoise(px * 1.7 + 3, py * 1.7 + 5) > 0.86) c = mul(accent, 0.85 + n * 0.4);
+        case 'ore': {
+          // Wiki-canon ore: chunky diamond-shaped clusters at fixed spots, each
+          // shaded light on the top-left and dark on the bottom-right.
+          c = mul(base, 0.9 + n * 0.16);
+          if (n < 0.08) c = mul(base, 0.75);
+          for (const [ax, ay] of [[3, 3], [11, 2], [6, 9], [13, 12], [2, 12]]) {
+            const ddx = px - ax, ddy = py - ay;
+            const d = Math.abs(ddx) + Math.abs(ddy);
+            if (d <= 1 || (d === 2 && pnoise(ax * 5 + px, ay * 5 + py) > 0.5)) {
+              const shade = ddx + ddy < 0 ? 1.2 : ddx + ddy > 1 ? 0.7 : 0.95;
+              c = mul(accent, shade);
+            }
+          }
           break;
+        }
         case 'cobble': {
           // Rounded cobbles separated by dark mortar.
           const cellX = (px + 1) % 8 < 4 ? 0 : 1;
@@ -363,14 +388,22 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'melon_top':
           c = mul(base, 0.85 + n * 0.2);
           break;
-        case 'obsidian':
-          c = mul(base, 0.7 + n * 0.6);
-          if (pnoise(px * 1.5, py * 1.5 + 4) > 0.85) c = [0.32, 0.2, 0.42]; // purple sheen
+        case 'obsidian': {
+          // Canon obsidian: near-black with violet swirls and rare blue glints.
+          const swirl = pnoise((px >> 1) * 2.1, (py >> 1) * 2.1);
+          c = swirl > 0.66 ? [0.24, 0.14, 0.36] : mul(base, 0.7 + n * 0.4);
+          if (pnoise(px * 2.3 + 6, py * 2.3 + 1) > 0.93) c = [0.45, 0.35, 0.7]; // glint
           break;
-        case 'glowstone':
-          c = mul(base, 0.7 + n * 0.6);
-          if (pnoise(px * 1.6 + 2, py * 1.6) > 0.7) c = [1.0, 0.95, 0.6]; // bright specks
+        }
+        case 'glowstone': {
+          // Canon glowstone: a mosaic of bright yellow crystal clumps in a
+          // brown-orange grout.
+          const cell = pnoise((px >> 2) * 4.7, (py >> 2) * 4.7);
+          c = cell > 0.45 ? [1.0, 0.9, 0.45] : [0.62, 0.42, 0.2];
+          if (cell > 0.8) c = [1.0, 1.0, 0.75]; // hottest cores
+          c = mul(c, 0.9 + n * 0.15);
           break;
+        }
         case 'bookshelf': {
           if (py < 2 || py > 13) { c = mul([0.6, 0.45, 0.28], 0.8 + n * 0.1); break; } // plank frame
           const spine = [[0.7, 0.2, 0.2], [0.2, 0.4, 0.7], [0.2, 0.6, 0.3], [0.7, 0.6, 0.2], [0.5, 0.3, 0.6]][px % 5];
@@ -397,10 +430,12 @@ function paintTile(ctx, ox, kind, base, accent) {
           c = (Math.abs(dx) + Math.abs(dy) < 8) ? mul(base, 0.85 + ((px + py) % 2) * 0.3) : mul(base, 0.7);
           break;
         }
-        case 'netherrack':
-          c = mul(base, 0.7 + n * 0.5);
-          if (pnoise(px * 1.6, py * 1.6 + 2) > 0.78) c = mul([0.6, 0.18, 0.18], 0.9); // veins
+        case 'netherrack': {
+          // Canon netherrack: marbled dark crimson with lighter fungal veins.
+          const vein = pnoise((px >> 1) * 1.9 + 3, (py >> 1) * 1.9);
+          c = vein > 0.68 ? [0.62, 0.22, 0.22] : vein < 0.2 ? mul(base, 0.55) : mul(base, 0.8 + n * 0.3);
           break;
+        }
         case 'lava': {
           const wave = Math.sin((py + px * 0.5) * 0.7) * 0.12;
           c = mul(base, 0.9 + wave + n * 0.1);
@@ -408,8 +443,14 @@ function paintTile(ctx, ox, kind, base, accent) {
           break;
         }
         case 'soulsand':
-          c = mul(base, 0.85 + n * 0.25);
-          if (pnoise(px * 1.5 + 1, py * 1.5) > 0.7) c = mul(base, 0.6); // sunken faces
+          // Canon soul sand: brown murk with sunken screaming faces.
+          c = mul(base, 0.85 + n * 0.22);
+          // Two face motifs per tile: hollow eyes + a wailing mouth.
+          for (const [fx, fy] of [[4, 4], [11, 10]]) {
+            if ((px === fx - 1 || px === fx + 1) && py === fy) c = mul(base, 0.35);      // eyes
+            if (px >= fx - 1 && px <= fx + 1 && py === fy + 2) c = mul(base, 0.3);       // mouth
+          }
+          if (pnoise(px * 1.5 + 1, py * 1.5) > 0.82) c = mul(base, 0.62); // pitted grain
           break;
         case 'netherbricks': {
           const row = Math.floor(py / 4);
@@ -1056,7 +1097,7 @@ export class World {
     // basins where the continent noise dips low.
     let height = SEA_LEVEL + elevation * 11;
     if (elevation > 0.35) height += (elevation - 0.35) * 75; // crags
-    if (elevation < -0.2) height = SEA_LEVEL - 6 + (elevation + 0.2) * 30; // basins
+    if (elevation < -0.2) height = SEA_LEVEL - 8 + (elevation + 0.2) * 55; // deep ocean basins
     height = Math.max(2, Math.min(WORLD_HEIGHT - 6, Math.round(height)));
 
     let biome;
@@ -1149,7 +1190,7 @@ export class World {
    * @param {Chunk} chunk
    */
   _fillNetherTerrain(chunk) {
-    const roof = WORLD_HEIGHT - 2; // bedrock ceiling
+    const roof = NETHER_ROOF; // the Nether is a compact cavern band; above is void
     const LAVA = 8;
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseZ = chunk.cz * CHUNK_SIZE;
@@ -1160,6 +1201,8 @@ export class World {
         const wz = baseZ + lz;
         const floorH = 14 + Math.floor(this.noise.fbm2(wx * 0.04, wz * 0.04, { octaves: 3 }) * 8);
         const ceilH = roof - 5 - Math.floor(this.noise.fbm2((wx + 500) * 0.04, (wz - 500) * 0.04, { octaves: 3 }) * 8);
+        // Biome mask: large soul sand valleys sweep across the floor.
+        const soulValley = this.noise.fbm2((wx - 900) * 0.02, (wz + 900) * 0.02, { octaves: 2 }) > 0.25;
 
         for (let y = 0; y <= roof; y++) {
           let id = AIR;
@@ -1173,9 +1216,10 @@ export class World {
           // Ore / soul sand inside the ground mass.
           if (id === 53) {
             const v = this.noise.hash3(wx, y, wz);
-            if (y <= floorH && v < 0.03) id = 55;        // soul sand near the floor
-            else if (v >= 0.03 && v < 0.05) id = 56;     // nether quartz ore
-            else if (y < 22 && v >= 0.05 && v < 0.054) id = 73; // ancient debris (rare, deep)
+            if (y <= floorH && soulValley && y >= floorH - 3) id = 55; // valley floor is soul sand
+            else if (y <= floorH && v < 0.03) id = 55;   // scattered soul sand pockets
+            else if (v >= 0.03 && v < 0.055) id = 56;    // nether quartz ore (a touch richer)
+            else if (y < 22 && v >= 0.055 && v < 0.059) id = 73; // ancient debris (rare, deep)
           }
           if (id !== AIR) chunk.setLocal(lx, y, lz, id);
         }
@@ -1183,14 +1227,18 @@ export class World {
         // Lava sea in the depths.
         for (let y = 1; y <= LAVA; y++) if (chunk.getLocal(lx, y, lz) === AIR) chunk.setLocal(lx, y, lz, 54);
 
-        // Occasional glowstone cluster hanging under the ceiling.
-        if (this.noise.hash2(wx * 1.3 + 7, wz * 1.3) < 0.012) {
+        // Glowstone clusters hanging under the ceiling (small chandeliers).
+        if (this.noise.hash2(wx * 1.3 + 7, wz * 1.3) < 0.02) {
           for (let y = ceilH; y > LAVA; y--) {
-            if (chunk.getLocal(lx, y, lz) === AIR) { chunk.setLocal(lx, y, lz, 36); break; }
+            if (chunk.getLocal(lx, y, lz) === AIR) {
+              chunk.setLocal(lx, y, lz, 36);
+              if (this.noise.hash2(wx, y) < 0.5 && y - 1 > LAVA) chunk.setLocal(lx, y - 1, lz, 36);
+              break;
+            }
           }
         }
         // Nether wart sprouting on exposed soul sand.
-        if (this.noise.hash2(wx * 1.7 + 3, wz * 1.7 + 9) < 0.04) {
+        if (this.noise.hash2(wx * 1.7 + 3, wz * 1.7 + 9) < 0.05) {
           for (let y = floorH; y > LAVA; y--) {
             if (chunk.getLocal(lx, y, lz) === 55 && chunk.getLocal(lx, y + 1, lz) === AIR) {
               chunk.setLocal(lx, y + 1, lz, 66); break;
@@ -1199,6 +1247,43 @@ export class World {
         }
       }
     }
+
+    // Nether fortress: rare nether-brick platform + corridor with loot.
+    if (this.noise.hash2(chunk.cx * 419 + 3, chunk.cz * 419 + 31) < 0.03) {
+      this._buildNetherFortress(baseX + 8, baseZ + 8);
+    }
+  }
+
+  /** A raised nether-brick platform on pillars with a corridor + loot chest. */
+  _buildNetherFortress(cx, cz) {
+    const Y = 34; // deck height above the lava sea
+    for (let dx = -5; dx <= 5; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        this.setBlock(cx + dx, Y, cz + dz, 57); // nether brick deck
+        // Corridor walls with window slits, roofed.
+        if (Math.abs(dz) === 2) {
+          for (let dy = 1; dy <= 3; dy++) {
+            if (dy === 2 && (dx % 3 === 0)) continue; // window slits
+            this.setBlock(cx + dx, Y + dy, cz + dz, 57);
+          }
+        }
+        this.setBlock(cx + dx, Y + 4, cz + dz, 57); // roof
+      }
+    }
+    // Support pillars down toward the lava.
+    for (const [px, pz] of [[-4, -2], [-4, 2], [4, -2], [4, 2]]) {
+      for (let y = Y - 1; y > 6; y--) {
+        if (this.getBlock(cx + px, y, cz + pz) !== AIR) break;
+        this.setBlock(cx + px, y, cz + pz, 57);
+      }
+    }
+    this.setBlock(cx, Y + 1, cz, 85);      // blaze spawner mid-corridor
+    this.setBlock(cx + 4, Y + 1, cz, 65);  // loot chest
+    this.loot[`${cx + 4},${Y + 1},${cz}`] = [
+      { type: 'blaze_rod', count: 2 }, { type: 'nether_wart', count: 3 },
+      { type: 'gold_ingot', count: 4 }, { type: 'obsidian', count: 2 },
+      { type: 'saddle', count: 1 }
+    ];
   }
 
   /**
@@ -1217,26 +1302,40 @@ export class World {
         const wx = baseX + lx, wz = baseZ + lz;
         const dist = Math.hypot(wx, wz);
         const edge = R + this.noise.fbm2(wx * 0.05, wz * 0.05, { octaves: 3 }) * 12;
-        if (dist >= edge) continue; // the void
-        const thick = 3 + Math.floor((1 - dist / edge) * 7); // domed underside
-        for (let y = CY - thick; y <= CY; y++) chunk.setLocal(lx, y, lz, 60);
+        if (dist < edge) {
+          const thick = 3 + Math.floor((1 - dist / edge) * 7); // domed underside
+          for (let y = CY - thick; y <= CY; y++) chunk.setLocal(lx, y, lz, 60);
+          continue;
+        }
+        // Outer islands: small floating end-stone discs far from the centre.
+        if (dist > 90) {
+          const o = this.noise.fbm2((wx + 3000) * 0.03, (wz - 3000) * 0.03, { octaves: 2 });
+          if (o > 0.42) {
+            const t = 2 + Math.floor((o - 0.42) * 12);
+            for (let y = CY - t; y <= CY - 1; y++) chunk.setLocal(lx, y, lz, 60);
+          }
+        }
       }
     }
 
-    // Ten obsidian pillars in a ring around the centre.
+    // Ten obsidian pillars (2x2, taller) in a ring around the centre.
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
       const px = Math.round(Math.cos(a) * 20);
       const pz = Math.round(Math.sin(a) * 20);
-      if (px < baseX || px >= baseX + CHUNK_SIZE || pz < baseZ || pz >= baseZ + CHUNK_SIZE) continue;
-      const h = 9 + (i % 4) * 3;
-      for (let y = CY + 1; y <= CY + h; y++) this.setBlock(px, y, pz, 35); // obsidian
+      const h = 12 + (i % 4) * 4;
+      for (const [ox2, oz2] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        const X = px + ox2, Z = pz + oz2;
+        if (X < baseX || X >= baseX + CHUNK_SIZE || Z < baseZ || Z >= baseZ + CHUNK_SIZE) continue;
+        for (let y = CY + 1; y <= CY + h; y++) this.setBlock(X, y, Z, 35); // obsidian
+        this.setBlock(X, CY + h + 1, Z, 36); // glowing crystal cap (glowstone)
+      }
     }
   }
 
   /** Find a safe standing Y in the Nether (solid floor with 2 air above). */
   getNetherSpawnY(wx, wz) {
-    for (let y = WORLD_HEIGHT - 6; y > 10; y--) {
+    for (let y = NETHER_ROOF - 4; y > 10; y--) {
       if (isSolid(this.getBlock(wx, y, wz)) && isAir(this.getBlock(wx, y + 1, wz)) && isAir(this.getBlock(wx, y + 2, wz))) {
         return y + 1;
       }
@@ -1270,20 +1369,21 @@ export class World {
    */
   _stoneOrOre(wx, y, wz) {
     const v = this.noise.hash3(wx, y, wz);
-    if (y < 14 && v < 0.010) return 17;                 // diamond (deep)
-    if (y < 22 && v >= 0.010 && v < 0.022) return 16;   // gold
-    if (y < 44 && v >= 0.022 && v < 0.045) return 10;   // iron
+    // Wiki-style depth bands, rescaled for the 256-deep world (surface ~190).
+    if (y < 60 && v < 0.010) return 17;                 // diamond (deepest)
+    if (y < 85 && v >= 0.010 && v < 0.022) return 16;   // gold
+    if (y < 170 && v >= 0.022 && v < 0.045) return 10;  // iron
     if (v >= 0.045 && v < 0.080) return 15;             // coal (any depth)
-    if (y < 16 && v >= 0.080 && v < 0.095) return 41;   // redstone (deep)
-    if (y < 30 && v >= 0.095 && v < 0.106) return 40;   // lapis
-    if (y < 24 && v >= 0.106 && v < 0.109) return 42;   // emerald (rare)
+    if (y < 70 && v >= 0.080 && v < 0.095) return 41;   // redstone (deep)
+    if (y < 120 && v >= 0.095 && v < 0.106) return 40;  // lapis
+    if (y < 80 && v >= 0.106 && v < 0.109) return 42;   // emerald (rare)
     // Stone variant pockets (cosmetic geology).
     if (v >= 0.110 && v < 0.140) return 20;             // gravel
     if (v >= 0.140 && v < 0.180) return 27;             // granite
     if (v >= 0.180 && v < 0.220) return 26;             // diorite
-    if (y < 40 && v >= 0.260 && v < 0.300) return 68;   // copper ore
+    if (y < 150 && v >= 0.260 && v < 0.300) return 68;  // copper ore
     if (v >= 0.220 && v < 0.260) return 25;             // andesite
-    return y < 8 ? 70 : 3;                              // deepslate deep down, else stone
+    return y < 100 ? 70 : 3;                            // deepslate layer, else stone
   }
 
   /**
@@ -1293,7 +1393,10 @@ export class World {
   _isCave(wx, wy, wz) {
     if (wy >= SEA_LEVEL + 2) return false; // keep surfaces mostly intact
     const n = this.noise.perlin3(wx * 0.06, wy * 0.10, wz * 0.06);
-    return Math.abs(n) > 0.55;
+    // Slightly roomier caverns near diamond level, without exploding the
+    // exposed-face count across 190 blocks of rock.
+    const threshold = wy < 80 ? 0.53 : 0.56;
+    return Math.abs(n) > threshold;
   }
 
   /**
@@ -1435,11 +1538,11 @@ export class World {
     if (this.dimension !== 'overworld') return;
     const cx = chunk.cx, cz = chunk.cz;
 
-    // Underground dungeon: mossy room with a spawner + loot chest.
-    if (this.noise.hash2(cx * 313 + 5, cz * 313 + 11) < 0.04) {
+    // Underground dungeon: mossy room with a spawner + loot chest, at any depth.
+    if (this.noise.hash2(cx * 313 + 5, cz * 313 + 11) < 0.05) {
       const wx = cx * CHUNK_SIZE + 4 + Math.floor(this.noise.hash2(cx, cz) * 6);
       const wz = cz * CHUNK_SIZE + 4 + Math.floor(this.noise.hash2(cz, cx) * 6);
-      const y = 10 + Math.floor(this.noise.hash2(cx + 1, cz + 1) * 10);
+      const y = 20 + Math.floor(this.noise.hash2(cx + 1, cz + 1) * 150);
       this._buildDungeon(wx, y, wz);
     }
 
@@ -1457,10 +1560,16 @@ export class World {
       this._buildOutpost(ccx, ccz);
     }
 
-    // Stronghold: a rare deep stone-brick complex with a library + portal room.
-    if (this.noise.hash2(cx * 1009 + 17, cz * 1009 + 23) < 0.012) {
-      const y = 8 + Math.floor(this.noise.hash2(cx + 2, cz + 2) * 6);
-      this._buildStronghold(ccx, y, ccz);
+    // Stronghold: exactly one per 32x32-chunk region (~512 blocks apart), buried
+    // deep in the rock (y ≈ 30-60, the modern-wiki "-40" band for this world).
+    {
+      const rx = Math.floor(cx / 32), rz = Math.floor(cz / 32);
+      const pickX = Math.floor(this.noise.hash2(rx * 71 + 11, rz * 71 + 5) * 32);
+      const pickZ = Math.floor(this.noise.hash2(rx * 73 + 3, rz * 73 + 17) * 32);
+      if (cx === rx * 32 + pickX && cz === rz * 32 + pickZ) {
+        const y = 30 + Math.floor(this.noise.hash2(cx + 2, cz + 2) * 30);
+        this._buildStronghold(ccx, y, ccz);
+      }
     }
 
     // Jungle temple: a mossy cobblestone ziggurat hiding treasure.
@@ -1480,27 +1589,46 @@ export class World {
     }
   }
 
-  /** Deep stone-brick stronghold: a sealed room with bookshelves + portal base. */
+  /**
+   * Deep stronghold: a multi-room complex of cobblestone and mossy cobblestone
+   * (with stone-brick accents) — main hall, corridor, library wall, a portal
+   * room with an obsidian base, and a loot chest.
+   */
   _buildStronghold(cx, y, cz) {
-    const R = 4, H = 5;
-    for (let dx = -R; dx <= R; dx++) {
-      for (let dz = -R; dz <= R; dz++) {
-        for (let dy = 0; dy <= H; dy++) {
-          const x = cx + dx, Y = y + dy, z = cz + dz;
-          const shell = dx === -R || dx === R || dz === -R || dz === R || dy === 0 || dy === H;
-          if (shell) this.setBlock(x, Y, z, this.noise.hash3(x, Y, z) < 0.3 ? 23 : 24); // mossy/stone bricks
-          else this.setBlock(x, Y, z, AIR);
+    // Walls are cobble/mossy-cobble mix with occasional stone bricks.
+    const wallBlock = (x, Y, z) => {
+      const v = this.noise.hash3(x, Y, z);
+      return v < 0.35 ? 23 : v < 0.85 ? 19 : 24; // mossy / cobble / stone bricks
+    };
+    const room = (ox, oz, rx, rz, H) => {
+      for (let dx = -rx; dx <= rx; dx++) {
+        for (let dz = -rz; dz <= rz; dz++) {
+          for (let dy = 0; dy <= H; dy++) {
+            const x = cx + ox + dx, Y = y + dy, z = cz + oz + dz;
+            const shell = dx === -rx || dx === rx || dz === -rz || dz === rz || dy === 0 || dy === H;
+            this.setBlock(x, Y, z, shell ? wallBlock(x, Y, z) : AIR);
+          }
         }
       }
+    };
+
+    room(0, 0, 5, 5, 6);       // main hall
+    room(9, 0, 4, 2, 4);       // corridor east
+    room(16, 0, 4, 4, 5);      // portal room
+    // Doorways between the rooms.
+    for (let dy = 1; dy <= 2; dy++) {
+      this.setBlock(cx + 5, y + dy, cz, AIR); this.setBlock(cx + 6, y + dy, cz, AIR);
+      this.setBlock(cx + 12, y + dy, cz, AIR); this.setBlock(cx + 13, y + dy, cz, AIR);
     }
-    // Library wall of bookshelves.
+    // Library wall of bookshelves in the main hall.
     for (let dx = -3; dx <= 3; dx++)
-      for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + dx, y + dy, cz - R + 1, 37);
-    // Decorative obsidian portal base in the centre of the floor.
+      for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + dx, y + dy, cz - 4, 37);
+    // Portal room: obsidian platform ringed by a lava moat feel (just the base).
     for (let dx = -1; dx <= 1; dx++)
-      for (let dz = -1; dz <= 1; dz++) this.setBlock(cx + dx, y, cz + dz, 35);
-    // Loot chest in a corner.
-    const chx = cx + R - 1, chz = cz + R - 1;
+      for (let dz = -1; dz <= 1; dz++) this.setBlock(cx + 16 + dx, y + 1, cz + dz, 35);
+    this.setBlock(cx + 16, y + 1, cz + 3, 85); // silverfish-style spawner
+    // Loot chest in the main hall.
+    const chx = cx + 3, chz = cz + 3;
     this.setBlock(chx, y + 1, chz, 65);
     this.loot[`${chx},${y + 1},${chz}`] = [
       { type: 'eye_of_ender', count: 2 }, { type: 'ender_pearl', count: 2 },
@@ -1655,10 +1783,86 @@ export class World {
       if (this._buildHouse(hx, hz)) built++;
       if (built >= 3) break;
     }
-    // Remember the centre so the EntityManager can populate this village.
-    if (built > 0 && !this.villages.some((v) => v.x === cxw && v.z === czw)) {
-      this.villages.push({ x: cxw, z: czw });
+    if (built > 0) {
+      // Every village gets a blacksmith (forge + loot) and a wheat farm.
+      this._buildBlacksmith(cxw + 9, czw - 6);
+      this._buildFarm(cxw - 8, czw - 4);
+      if (this.noise.hash2(chunk.cx * 91, chunk.cz * 91) < 0.5) this._buildFarm(cxw + 2, czw + 9);
+      // Remember the centre so the EntityManager can populate this village.
+      if (!this.villages.some((v) => v.x === cxw && v.z === czw)) {
+        this.villages.push({ x: cxw, z: czw });
+      }
     }
+  }
+
+  /**
+   * Wiki-style wheat farm: a log frame around two farmland strips flanking a
+   * central water channel, planted with wheat at mixed growth stages.
+   */
+  _buildFarm(cx, cz) {
+    const ground = this.getSpawnHeight(cx, cz) - 1;
+    if (ground < SEA_LEVEL) return false;
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        const edge = Math.abs(dx) === 3 || Math.abs(dz) === 2;
+        // Terraform the plot flat: dirt shoulder below, clear headroom above.
+        this.setBlock(cx + dx, ground - 1, cz + dz, 2);
+        for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + dx, ground + dy, cz + dz, AIR);
+        if (edge) { this.setBlock(cx + dx, ground, cz + dz, 5); continue; } // log frame
+        if (dz === 0) { this.setBlock(cx + dx, ground, cz + dz, 8); continue; } // water channel
+        this.setBlock(cx + dx, ground, cz + dz, 97); // farmland
+        // Wheat at mixed stages (young 98 / ripe 99).
+        const ripe = this.noise.hash2(cx + dx, cz + dz) < 0.5;
+        this.setBlock(cx + dx, ground + 1, cz + dz, ripe ? 99 : 98);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Village blacksmith: cobblestone forge with twin furnaces, a work porch and
+   * the classic loot chest — iron, apples, bread, obsidian, and (sometimes)
+   * diamonds.
+   */
+  _buildBlacksmith(cx, cz) {
+    const ground = this.getSpawnHeight(cx, cz) - 1;
+    if (ground < SEA_LEVEL) return false;
+    const floorY = ground + 1;
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        this.setBlock(cx + dx, ground, cz + dz, 19); // cobblestone floor
+        const edge = Math.abs(dx) === 3 || Math.abs(dz) === 2;
+        for (let dy = 0; dy < 3; dy++) {
+          const open = dx >= 1 && dz === -2;         // open forge front
+          if (edge && !open) {
+            const corner = Math.abs(dx) === 3 && Math.abs(dz) === 2;
+            this.setBlock(cx + dx, floorY + dy, cz + dz, corner ? 5 : (dy === 1 && dx === -3 ? 9 : 19));
+          } else {
+            this.setBlock(cx + dx, floorY + dy, cz + dz, AIR);
+          }
+        }
+        this.setBlock(cx + dx, floorY + 3, cz + dz, 117); // stone slab roof
+      }
+    }
+    // Doorway + door on the south wall.
+    this.setBlock(cx - 1, floorY, cz + 2, 108);
+    this.setBlock(cx - 1, floorY + 1, cz + 2, AIR);
+    // Twin furnaces + crafting table inside.
+    this.setBlock(cx + 2, floorY, cz + 1, 18);
+    this.setBlock(cx + 1, floorY, cz + 1, 18);
+    this.setBlock(cx - 2, floorY, cz - 1, 12);
+    // The classic blacksmith chest (diamonds are a lucky roll per-village).
+    this.setBlock(cx, floorY, cz - 1, 65);
+    const lucky = this.noise.hash2(cx * 13 + 1, cz * 13 + 7);
+    const loot = [
+      { type: 'iron_ingot', count: 3 + Math.floor(lucky * 3) },
+      { type: 'apple', count: 2 + Math.floor(lucky * 3) },
+      { type: 'bread', count: 2 },
+      { type: 'obsidian', count: 1 }
+    ];
+    if (lucky < 0.3) loot.push({ type: 'diamond', count: lucky < 0.08 ? 2 : 1 }); // small chance
+    this.loot[`${cx},${floorY},${cz - 1}`] = loot;
+    return true;
   }
 
   /**
@@ -1698,8 +1902,8 @@ export class World {
         this.setBlock(cx + dx, floorY + wallH, cz + dz, 11);
       }
     }
-    // Doorway on the +x wall (clear two blocks).
-    this.setBlock(cx + 2, floorY, cz, AIR);
+    // Doorway on the +x wall, fitted with a real oak door (right-click to open).
+    this.setBlock(cx + 2, floorY, cz, 108);
     this.setBlock(cx + 2, floorY + 1, cz, AIR);
     // A crafting table inside.
     this.setBlock(cx - 1, floorY, cz - 1, 12);
@@ -1731,9 +1935,18 @@ export class World {
   }
 
   /** Rebuild meshes for every chunk flagged dirty. */
-  rebuildDirtyChunks() {
+  /**
+   * Rebuild dirty chunk meshes with a per-frame time budget so a big backlog
+   * (fresh world / dimension switch) streams in over a few frames instead of
+   * freezing the first one. Collision reads voxels directly, so physics is
+   * correct even for chunks whose mesh hasn't landed yet.
+   */
+  rebuildDirtyChunks(budgetMs = 24) {
+    const started = performance.now();
     for (const chunk of this.chunks.values()) {
-      if (chunk.dirty) this._buildChunkMesh(chunk);
+      if (!chunk.dirty) continue;
+      this._buildChunkMesh(chunk);
+      if (performance.now() - started > budgetMs) break; // resume next frame
     }
   }
 
@@ -1752,6 +1965,22 @@ export class World {
     const baseZ = chunk.cz * CHUNK_SIZE;
 
     // Pass 1 — collect exposed instance positions per block type.
+    // Hot path for the 256-deep world: neighbour reads go through the chunk's
+    // typed array directly (with the 4 adjacent chunks cached for the borders)
+    // instead of the string-keyed world.getBlock lookup.
+    const nxm = this.getChunk(chunk.cx - 1, chunk.cz);
+    const nxp = this.getChunk(chunk.cx + 1, chunk.cz);
+    const nzm = this.getChunk(chunk.cx, chunk.cz - 1);
+    const nzp = this.getChunk(chunk.cx, chunk.cz + 1);
+    const at = (lx, y, lz) => {
+      if (y < 0 || y >= WORLD_HEIGHT) return AIR;
+      if (lx < 0) return nxm ? nxm.getLocal(lx + CHUNK_SIZE, y, lz) : AIR;
+      if (lx >= CHUNK_SIZE) return nxp ? nxp.getLocal(lx - CHUNK_SIZE, y, lz) : AIR;
+      if (lz < 0) return nzm ? nzm.getLocal(lx, y, lz + CHUNK_SIZE) : AIR;
+      if (lz >= CHUNK_SIZE) return nzp ? nzp.getLocal(lx, y, lz - CHUNK_SIZE) : AIR;
+      return chunk.getLocal(lx, y, lz);
+    };
+
     /** @type {Map<number, Array<[number,number,number]>>} */
     const buckets = new Map();
     for (let y = 0; y < WORLD_HEIGHT; y++) {
@@ -1759,9 +1988,14 @@ export class World {
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {
           const id = chunk.getLocal(lx, y, lz);
           if (isAir(id)) continue;
-          const wx = baseX + lx;
-          const wz = baseZ + lz;
-          if (!this._isExposed(wx, y, wz, id)) continue;
+          const exposed =
+            !this._occludes(at(lx, y + 1, lz), id) ||
+            !this._occludes(at(lx, y - 1, lz), id) ||
+            !this._occludes(at(lx + 1, y, lz), id) ||
+            !this._occludes(at(lx - 1, y, lz), id) ||
+            !this._occludes(at(lx, y, lz + 1), id) ||
+            !this._occludes(at(lx, y, lz - 1), id);
+          if (!exposed) continue;
           let bucket = buckets.get(id);
           if (!bucket) {
             bucket = [];

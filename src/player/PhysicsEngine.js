@@ -25,10 +25,12 @@ const JUMP_SUSTAIN = 26.0; // extra upward accel while jump held (variable jump)
 const MAX_JUMP_HOLD = 0.18; // seconds the sustain applies
 
 const WALK_SPEED = 4.6;
+const SPRINT_MULT = 1.35;  // sprint speed factor (canon ~1.3)
+const CROUCH_MULT = 0.35;  // sneak speed factor
 const FLY_SPEED = 10.0;
-const SWIM_SPEED = 3.0;
-const WATER_GRAVITY = 7.0;
-const WATER_DRAG = 6.0; // velocity damping per second while submerged
+const SWIM_SPEED = 3.6;
+const WATER_GRAVITY = 4.0; // gentle sink — water is water, not ground
+const WATER_DRAG = 6.0;    // velocity damping per second while submerged
 const BUOYANCY = 9.0;
 const LADDER_ID = 107;
 const CLIMB_SPEED = 3.2; // m/s up a ladder
@@ -66,6 +68,9 @@ export class PhysicsEngine {
     this._jumpHeld = false;
     this._jumpTimer = 0;
     this._flyToggleArmed = true;
+    this.sprinting = false;    // Ctrl (or double-tap W) while moving forward
+    this.crouching = false;    // Shift on the ground: slow, low, edge-safe
+    this._lastWTap = 0;        // double-tap-W sprint timing
 
     this.keys = Object.create(null);
     this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -169,6 +174,17 @@ export class PhysicsEngine {
     if (code === 'Space') {
       this._jumpHeld = down;
       if (down) e.preventDefault();
+    }
+
+    // Sprint: hold Ctrl, or double-tap W within 300ms (canon).
+    if ((code === 'ControlLeft' || code === 'ControlRight')) this.sprinting = down;
+    if (code === 'KeyW' && down) {
+      const now = performance.now();
+      if (now - this._lastWTap < 300) this.sprinting = true;
+      this._lastWTap = now;
+    }
+    if (code === 'KeyW' && !down && !this.keys['ControlLeft'] && !this.keys['ControlRight']) {
+      this.sprinting = false; // sprint ends when you stop running
     }
 
     // Toggle fly mode on a fresh 'F' press (debounced so holding won't flap).
@@ -351,8 +367,13 @@ export class PhysicsEngine {
     }
 
     const fly = this.flyMode || this.noclip;
+    // Crouch: Shift while grounded (walking only). Sprint needs forward motion.
+    this.crouching = !fly && !this.inWater && this.onGround &&
+      !!(this.keys['ShiftLeft'] || this.keys['ShiftRight']);
+    const sprint = this.sprinting && iz > 0.1 && !this.crouching;
     const baseSpeed = fly ? FLY_SPEED : this.inWater ? SWIM_SPEED : WALK_SPEED;
-    const speed = baseSpeed * this.speedMultiplier * this.statusSpeed;
+    const moveMult = this.crouching ? CROUCH_MULT : sprint ? SPRINT_MULT : 1;
+    const speed = baseSpeed * moveMult * this.speedMultiplier * this.statusSpeed;
     const wishX = (forward.x * iz + right.x * ix) * speed;
     const wishZ = (forward.z * iz + right.z * ix) * speed;
 
@@ -370,10 +391,11 @@ export class PhysicsEngine {
     }
 
     if (this.inWater) {
-      // Buoyancy + drag; swimming up by holding jump.
+      // Real swimming: gentle sink, buoyant float, jump to rise, shift to dive.
       this.velocity.y -= WATER_GRAVITY * dt;
-      this.velocity.y += BUOYANCY * dt * 0.5;
-      if (this._jumpHeld) this.velocity.y += SWIM_SPEED * dt * 6;
+      this.velocity.y += BUOYANCY * dt * 0.6;
+      if (this._jumpHeld || this._flyUp) this.velocity.y += SWIM_SPEED * dt * 7;
+      if (this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this._flyDown) this.velocity.y -= SWIM_SPEED * dt * 6;
       // Exponential drag deceleration.
       this.velocity.y -= this.velocity.y * Math.min(1, WATER_DRAG * dt);
       return;
@@ -408,18 +430,40 @@ export class PhysicsEngine {
    * @param {number} dt
    */
   _integrate(dt) {
+    const wasGrounded = this.onGround;
     this.onGround = false;
     // Resolve Y first so ground state is known, then horizontal sliding.
     this._moveAxis('y', this.velocity.y * dt);
-    this._moveAxis('x', this.velocity.x * dt);
-    this._moveAxis('z', this.velocity.z * dt);
+    // Sneaking on the ground never walks off an edge (canon sneak guard).
+    if (this.crouching && (wasGrounded || this.onGround)) {
+      this._moveAxisGuarded('x', this.velocity.x * dt);
+      this._moveAxisGuarded('z', this.velocity.z * dt);
+    } else {
+      this._moveAxis('x', this.velocity.x * dt);
+      this._moveAxis('z', this.velocity.z * dt);
+    }
+  }
+
+  /** Horizontal move that reverts if it would leave the player with no floor. */
+  _moveAxisGuarded(axis, amount) {
+    if (amount === 0) return;
+    const before = this.position[axis];
+    this._moveAxis(axis, amount);
+    const p = this.position;
+    // Probe straight down: is there still ground within half a block?
+    const probe = { x: p.x, y: p.y - 0.5, z: p.z };
+    if (!this._overlapBoxes(probe).length) {
+      this.position[axis] = before; // would step off the edge — stay put
+      this.velocity[axis] = 0;
+    }
   }
 
   /** Push the simulated state onto the Three.js camera. */
   _syncCamera() {
+    const eye = this.crouching ? EYE_HEIGHT - 0.3 : EYE_HEIGHT; // sneak dips the view
     this.camera.position.set(
       this.position.x,
-      this.position.y + EYE_HEIGHT,
+      this.position.y + eye,
       this.position.z
     );
     this._euler.set(this.pitch, this.yaw, 0, 'YXZ');
