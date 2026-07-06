@@ -60,8 +60,8 @@ export const MOB_TYPES = {
     drops: [['gunpowder', 1], ['ghast_tear', 1]], body: 0xeae6e0, head: 0xeae6e0, w: 1.4, h: 1.4 },
   // ---- The End ----
   ender_dragon: { hostile: true, ranged: true, melee: true, flying: true, end: true, boss: true,
-    hp: 50, speed: 3.2, aggro: 80, drop: 'dragon_egg', dropCount: 1,
-    body: 0x1a1a22, head: 0x1a1a22, w: 3.0, h: 2.0 },
+    hp: 60, speed: 3.2, aggro: 80, drop: 'dragon_egg', dropCount: 1,
+    body: 0x1a1a22, head: 0x1a1a22, w: 6.5, h: 4.5, scale: 2.4 },
   wither_skeleton: { hostile: true, melee: true, nether: true, hp: 10, speed: 2.4, aggro: 18,
     drops: [['bone', 1], ['coal', 1], ['wither_skeleton_skull', 1]], body: 0x1c1c1c, head: 0x282828, w: 0.5, h: 2.0 },
   magma_cube: { hostile: true, melee: true, nether: true, hp: 6, speed: 2.2, aggro: 16,
@@ -124,6 +124,7 @@ export class Mob {
     this._heading = 0;
 
     this.mesh = this._buildMesh();
+    if (this.cfg.scale) this.mesh.scale.setScalar(this.cfg.scale); // boss-sized models
     this.syncMesh();
   }
 

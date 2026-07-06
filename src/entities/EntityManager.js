@@ -22,6 +22,7 @@ const PLAYER_REACH = 4.2;
 const HOSTILE_CAP_SURFACE = 6;
 const HOSTILE_CAP_CAVE = 12;   // 2x in caves
 const PASSIVE_CAP = 8;
+const AQUATIC_CAP = 16;        // the sea is alive — schools of fish, pods of dolphins
 const CREEPER_BLAST = 4;       // radius of player damage
 const CREEPER_CRATER = 3;      // radius of block destruction
 
@@ -226,17 +227,17 @@ export class EntityManager {
       }
     }
 
-    // Aquatic animals whenever water is nearby (drowned lurk at night).
-    if (this._countWhere((m) => m.aquatic) < PASSIVE_CAP) {
-      const wspot = this._findWaterSpot(playerPos);
-      if (wspot) {
+    // Aquatic animals whenever water is nearby (drowned lurk at night). Spawn
+    // in pairs so the sea actually feels populated.
+    if (this._countWhere((m) => m.aquatic) < AQUATIC_CAP) {
+      for (let s = 0; s < 2; s++) {
+        const wspot = this._findWaterSpot(playerPos);
+        if (!wspot) break;
         let kind;
-        if (time.isNight && !this.peaceful && Math.random() < 0.4) kind = 'drowned';
+        if (time.isNight && !this.peaceful && Math.random() < 0.3) kind = 'drowned';
         else {
           const r = Math.random();
-          kind = r < 0.3 ? 'fish' : r < 0.5 ? 'squid' : r < 0.72 ? 'axolotl'
-            : r < 0.9 ? 'dolphin' : 'tropical';
-          if (kind === 'tropical') kind = 'fish'; // tropical fish reuse the fish model
+          kind = r < 0.35 ? 'fish' : r < 0.55 ? 'squid' : r < 0.75 ? 'axolotl' : 'dolphin';
         }
         this._spawn(kind, wspot);
       }
@@ -356,7 +357,7 @@ export class EntityManager {
     for (let i = 0; i < 8; i++) {
       const x = Math.floor(playerPos.x + (Math.random() * 20 - 10)) + 0.5;
       const z = Math.floor(playerPos.z + (Math.random() * 20 - 10)) + 0.5;
-      for (let y = SEA_LEVEL - 2; y <= SEA_LEVEL + 1; y++) {
+      for (let y = SEA_LEVEL - 8; y <= SEA_LEVEL + 1; y++) {
         if (this.world.isLiquidAt(x, y, z)) return new THREE.Vector3(x, y, z);
       }
     }

@@ -300,17 +300,16 @@ function paintTile(ctx, ox, kind, base, accent) {
           if (py === 7 && px >= 4 && px <= 11) c = [0.5, 0.35, 0.2];
           break;
         case 'ore': {
-          // Wiki-canon ore: chunky diamond-shaped clusters at fixed spots, each
-          // shaded light on the top-left and dark on the bottom-right.
-          c = mul(base, 0.9 + n * 0.16);
-          if (n < 0.08) c = mul(base, 0.75);
-          for (const [ax, ay] of [[3, 3], [11, 2], [6, 9], [13, 12], [2, 12]]) {
-            const ddx = px - ax, ddy = py - ay;
-            const d = Math.abs(ddx) + Math.abs(ddy);
-            if (d <= 1 || (d === 2 && pnoise(ax * 5 + px, ay * 5 + py) > 0.5)) {
-              const shade = ddx + ddy < 0 ? 1.2 : ddx + ddy > 1 ? 0.7 : 0.95;
-              c = mul(accent, shade);
-            }
+          // Wiki-canon ore: four BIG unmistakable clusters on plain stone.
+          // Each cluster is a fat diamond ~4px across: bright core, solid
+          // accent body, dark outline — instantly readable at a distance.
+          c = mul(base, 0.92 + n * 0.12);
+          for (const [ax, ay] of [[3, 3], [11, 4], [4, 11], [12, 12]]) {
+            const d = Math.abs(px - ax) + Math.abs(py - ay);
+            if (d === 0) c = mul(accent, 1.45);                    // gleaming core
+            else if (d === 1) c = mul(accent, 1.0);                // body
+            else if (d === 2) c = mul(accent, 0.62);               // shaded rim
+            else if (d === 3) { if (((px + py) & 1) === 0) c = mul(base, 0.7); } // outline hint
           }
           break;
         }
@@ -615,11 +614,17 @@ function paintTile(ctx, ox, kind, base, accent) {
           if ((py === 3 || py === 8 || py === 13) && px >= 3 && px <= 12) c = mul([0.6, 0.44, 0.26], 0.85 + n * 0.3); // rungs
           break;
         case 'door':
-          c = mul([0.6, 0.44, 0.26], 0.85 + n * 0.2); // wood planks
-          if (py === 7 || py === 8) c = mul([0.4, 0.28, 0.16], 0.9); // mid rail
-          if (px >= 2 && px <= 6 && py >= 2 && py <= 5) c = mul([0.7, 0.52, 0.3], 0.95); // upper panel
-          if (px >= 9 && px <= 13 && py >= 2 && py <= 5) c = mul([0.7, 0.52, 0.3], 0.95);
-          if (px === 12 && py >= 9 && py <= 11) c = [0.75, 0.72, 0.3]; // brass handle
+          // Canon oak door: framed panels with two glass windows up top and a
+          // brass handle — unmistakably a door, not a plank block.
+          c = mul([0.55, 0.4, 0.23], 0.9 + n * 0.12);                    // oak body
+          if (px === 0 || px === 15 || py === 0 || py === 15) c = mul([0.36, 0.26, 0.15], 0.95); // frame
+          if (py === 7 || py === 8 || px === 7 || px === 8) c = mul([0.42, 0.3, 0.17], 0.95);    // cross rails
+          if (px >= 2 && px <= 6 && py >= 2 && py <= 6) c = [0.62, 0.78, 0.85];                  // window L
+          if (px >= 9 && px <= 13 && py >= 2 && py <= 6) c = [0.62, 0.78, 0.85];                 // window R
+          if ((px === 4 || px === 11) && py >= 2 && py <= 6) c = [0.45, 0.6, 0.68];              // pane bars
+          if (px >= 2 && px <= 6 && py >= 10 && py <= 13) c = mul([0.66, 0.48, 0.28], 1.0);      // lower panels
+          if (px >= 9 && px <= 13 && py >= 10 && py <= 13) c = mul([0.66, 0.48, 0.28], 1.0);
+          if (px === 13 && py === 8) c = [0.85, 0.78, 0.3];                                       // handle
           break;
         case 'repeater':
         case 'repeater_on': {
@@ -1098,7 +1103,14 @@ export class World {
     let height = SEA_LEVEL + elevation * 11;
     if (elevation > 0.35) height += (elevation - 0.35) * 75; // crags
     if (elevation < -0.2) height = SEA_LEVEL - 8 + (elevation + 0.2) * 55; // deep ocean basins
-    height = Math.max(2, Math.min(WORLD_HEIGHT - 6, Math.round(height)));
+    height = Math.round(height);
+    // No knee-deep water: every submerged column is at least 4 deep, and real
+    // oceans plunge (depth amplified toward the basin centres).
+    if (height < SEA_LEVEL) {
+      const depth = SEA_LEVEL - height;
+      height = SEA_LEVEL - Math.max(4, Math.round(depth * 2.2));
+    }
+    height = Math.max(2, Math.min(WORLD_HEIGHT - 6, height));
 
     let biome;
     if (height < SEA_LEVEL - 1) {
@@ -1248,41 +1260,128 @@ export class World {
       }
     }
 
-    // Nether fortress: rare nether-brick platform + corridor with loot.
-    if (this.noise.hash2(chunk.cx * 419 + 3, chunk.cz * 419 + 31) < 0.03) {
+    // Nether fortress: rare crossing-bridge complex with a central keep.
+    if (this.noise.hash2(chunk.cx * 419 + 3, chunk.cz * 419 + 31) < 0.02) {
       this._buildNetherFortress(baseX + 8, baseZ + 8);
+    }
+    // Bastion remnant: rarer still, and never in a fortress chunk.
+    else if (this.noise.hash2(chunk.cx * 787 + 5, chunk.cz * 787 + 19) < 0.015) {
+      this._buildBastion(baseX + 8, baseZ + 8);
     }
   }
 
-  /** A raised nether-brick platform on pillars with a corridor + loot chest. */
+  /**
+   * Wiki-style Nether Fortress: two long crossing bridges of nether brick on
+   * arched support pillars over the lava, meeting at a central enclosed keep
+   * with a blaze-spawner platform, window slits and twin loot chests.
+   */
   _buildNetherFortress(cx, cz) {
-    const Y = 34; // deck height above the lava sea
-    for (let dx = -5; dx <= 5; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        this.setBlock(cx + dx, Y, cz + dz, 57); // nether brick deck
-        // Corridor walls with window slits, roofed.
-        if (Math.abs(dz) === 2) {
-          for (let dy = 1; dy <= 3; dy++) {
-            if (dy === 2 && (dx % 3 === 0)) continue; // window slits
-            this.setBlock(cx + dx, Y + dy, cz + dz, 57);
+    const Y = 34;      // bridge deck height above the lava sea
+    const L = 20;      // bridge half-length
+    const NB = 57;     // nether bricks
+
+    // --- Two crossing bridges (3 wide, guard rails, support pillars). ---
+    const deck = (dx, dz) => {
+      const x = cx + dx, z = cz + dz;
+      this.setBlock(x, Y, z, NB);
+    };
+    for (let d = -L; d <= L; d++) {
+      for (let w = -1; w <= 1; w++) { deck(d, w); deck(w, d); }
+      // Guard rails along both edges every other block.
+      if ((d & 1) === 0) {
+        this.setBlock(cx + d, Y + 1, cz - 2, NB); this.setBlock(cx + d, Y + 1, cz + 2, NB);
+        this.setBlock(cx - 2, Y + 1, cz + d, NB); this.setBlock(cx + 2, Y + 1, cz + d, NB);
+      }
+      // Support pillars down to the netherrack/lava every 6 blocks.
+      if (d % 6 === 0) {
+        for (const [px, pz] of [[cx + d, cz], [cx, cz + d]]) {
+          for (let y = Y - 1; y > 4; y--) {
+            if (this.getBlock(px, y, pz) !== AIR && this.getBlock(px, y, pz) !== 54) break;
+            this.setBlock(px, y, pz, NB);
           }
         }
-        this.setBlock(cx + dx, Y + 4, cz + dz, 57); // roof
       }
     }
-    // Support pillars down toward the lava.
-    for (const [px, pz] of [[-4, -2], [-4, 2], [4, -2], [4, 2]]) {
-      for (let y = Y - 1; y > 6; y--) {
-        if (this.getBlock(cx + px, y, cz + pz) !== AIR) break;
-        this.setBlock(cx + px, y, cz + pz, 57);
+
+    // --- Central keep: 9×9, two floors, windowed walls. ---
+    const R = 4, H = 8;
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        for (let dy = 0; dy <= H; dy++) {
+          const x = cx + dx, y = Y + dy, z = cz + dz;
+          const shell = Math.abs(dx) === R || Math.abs(dz) === R || dy === 0 || dy === H;
+          if (!shell) { this.setBlock(x, y, z, AIR); continue; }
+          // Window slits on the upper floor.
+          if ((Math.abs(dx) === R || Math.abs(dz) === R) && dy === 5 && ((dx + dz) & 1)) continue;
+          this.setBlock(x, y, z, NB);
+        }
       }
     }
-    this.setBlock(cx, Y + 1, cz, 85);      // blaze spawner mid-corridor
-    this.setBlock(cx + 4, Y + 1, cz, 65);  // loot chest
-    this.loot[`${cx + 4},${Y + 1},${cz}`] = [
-      { type: 'blaze_rod', count: 2 }, { type: 'nether_wart', count: 3 },
-      { type: 'gold_ingot', count: 4 }, { type: 'obsidian', count: 2 },
-      { type: 'saddle', count: 1 }
+    // Doorways where the bridges enter the keep (both axes, ground floor).
+    for (const [ax, az] of [[1, 0], [0, 1]]) {
+      for (const s of [-1, 1]) {
+        for (let dy = 1; dy <= 2; dy++) {
+          this.setBlock(cx + ax * R * s, Y + dy, cz + az * R * s, AIR);
+          this.setBlock(cx + ax * (R * s - s), Y + dy, cz + az * (R * s - s), AIR);
+        }
+      }
+    }
+    // Blaze spawner on a raised interior platform + stairs of nether brick.
+    this.setBlock(cx, Y + 1, cz, NB);
+    this.setBlock(cx, Y + 2, cz, 85);
+    // Nether wart bed in one corner (soul sand + wart, the fortress classic).
+    for (const dz of [-2, -1]) {
+      this.setBlock(cx - 2, Y + 1, cz + dz, 55);
+      this.setBlock(cx - 2, Y + 2, cz + dz, 66);
+    }
+    // Twin loot chests.
+    for (const [lx, lz, key] of [[2, 2, 'a'], [-2, 2, 'b']]) {
+      this.setBlock(cx + lx, Y + 1, cz + lz, 65);
+      this.loot[`${cx + lx},${Y + 1},${cz + lz}`] = key === 'a'
+        ? [{ type: 'blaze_rod', count: 2 }, { type: 'nether_wart', count: 4 },
+           { type: 'gold_ingot', count: 5 }, { type: 'saddle', count: 1 }]
+        : [{ type: 'obsidian', count: 3 }, { type: 'iron_ingot', count: 4 },
+           { type: 'flint_and_steel', count: 1 }, { type: 'diamond', count: 1 }];
+    }
+  }
+
+  /**
+   * Bastion Remnant: a hulking deepslate-and-gold ruin rising from the
+   * netherrack — thick ramparts, an open central courtyard with a bridge,
+   * gold-block accents and a treasure room stacked with netherite loot.
+   */
+  _buildBastion(cx, cz) {
+    const Y = 24, R = 9, H = 16, DS = 70, GOLD = 48;
+    // Outer ramparts: a hollow square keep with crumbled top edges.
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        const wall = Math.abs(dx) >= R - 1 || Math.abs(dz) >= R - 1;
+        for (let dy = 0; dy <= H; dy++) {
+          const x = cx + dx, y = Y + dy, z = cz + dz;
+          if (dy === 0) { this.setBlock(x, y, z, DS); continue; }        // floor
+          if (wall) {
+            // Ruined silhouette: the top few blocks crumble away irregularly.
+            const crumble = dy > H - 4 && this.noise.hash3(x, y, z) < 0.45;
+            if (!crumble) this.setBlock(x, y, z, this.noise.hash3(x, y, z) < 0.06 ? GOLD : DS);
+          } else if (dy <= H) {
+            this.setBlock(x, y, z, AIR);                                  // courtyard air
+          }
+        }
+      }
+    }
+    // Courtyard bridge across the middle at mid-height.
+    for (let dx = -R + 2; dx <= R - 2; dx++) this.setBlock(cx + dx, Y + 6, cz, DS);
+    // Gate: a tall opening in the south rampart.
+    for (let dy = 1; dy <= 4; dy++) for (let dx = -1; dx <= 1; dx++) {
+      this.setBlock(cx + dx, Y + dy, cz - R, AIR); this.setBlock(cx + dx, Y + dy, cz - R + 1, AIR);
+    }
+    // Treasure room: gold-block pile + the netherite chest.
+    for (const [gx, gz] of [[2, 2], [3, 2], [2, 3]]) this.setBlock(cx + gx, Y + 1, cz + gz, GOLD);
+    this.setBlock(cx - 2, Y + 1, cz + 2, 65);
+    this.loot[`${cx - 2},${Y + 1},${cz + 2}`] = [
+      { type: 'netherite_scrap', count: 2 }, { type: 'ancient_debris', count: 1 },
+      { type: 'gold_ingot', count: 8 }, { type: 'gold_block', count: 1 },
+      { type: 'obsidian', count: 4 }, { type: 'golden_apple', count: 1 }
     ];
   }
 
@@ -1318,17 +1417,26 @@ export class World {
       }
     }
 
-    // Ten obsidian pillars (2x2, taller) in a ring around the centre.
+    // Ten HUGE obsidian pillars (3×3, up to 38 tall) ringing the island, each
+    // crowned with an End Crystal — a bedrock base with a glowing core.
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      const px = Math.round(Math.cos(a) * 20);
-      const pz = Math.round(Math.sin(a) * 20);
-      const h = 12 + (i % 4) * 4;
-      for (const [ox2, oz2] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-        const X = px + ox2, Z = pz + oz2;
-        if (X < baseX || X >= baseX + CHUNK_SIZE || Z < baseZ || Z >= baseZ + CHUNK_SIZE) continue;
-        for (let y = CY + 1; y <= CY + h; y++) this.setBlock(X, y, Z, 35); // obsidian
-        this.setBlock(X, CY + h + 1, Z, 36); // glowing crystal cap (glowstone)
+      const px = Math.round(Math.cos(a) * 24);
+      const pz = Math.round(Math.sin(a) * 24);
+      const h = 22 + (i % 5) * 4; // 22..38 tall, staggered like the wiki ring
+      for (let ox2 = -1; ox2 <= 1; ox2++) {
+        for (let oz2 = -1; oz2 <= 1; oz2++) {
+          const X = px + ox2, Z = pz + oz2;
+          if (X < baseX || X >= baseX + CHUNK_SIZE || Z < baseZ || Z >= baseZ + CHUNK_SIZE) continue;
+          for (let y = CY + 1; y <= CY + h; y++) this.setBlock(X, y, Z, 35); // obsidian shaft
+          // Crystal pedestal: bedrock slab across the top…
+          this.setBlock(X, CY + h + 1, Z, 4);
+        }
+      }
+      // …with the glowing crystal itself in the centre (2 blocks of light).
+      if (px >= baseX && px < baseX + CHUNK_SIZE && pz >= baseZ && pz < baseZ + CHUNK_SIZE) {
+        this.setBlock(px, CY + h + 2, pz, 36);
+        this.setBlock(px, CY + h + 3, pz, 36);
       }
     }
   }
@@ -1448,11 +1556,15 @@ export class World {
         if (!onGrass && !onSnow) continue;
 
         let density = 0, type = 'oak';
+        // Groves: one tree species per ~24-block cell, so forests read as
+        // distinct biomes (oak wood, birch grove, dark forest, cherry grove)
+        // rather than a random species salad.
+        const grove = this.noise.hash2(Math.floor(wx / 24) * 53 + 7, Math.floor(wz / 24) * 53 + 3);
         switch (biome) {
-          case BIOME.JUNGLE:  density = 0.10; type = this.noise.hash2(wx * 3, wz * 3) < 0.18 ? 'mangrove' : 'jungle'; break;
-          case BIOME.FOREST:  density = 0.12; { const h = this.noise.hash2(wx * 3, wz * 3); type = h < 0.15 ? 'cherry' : h < 0.32 ? 'dark_oak' : h < 0.6 ? 'birch' : 'oak'; } break;
+          case BIOME.JUNGLE:  density = 0.10; type = grove < 0.25 ? 'mangrove' : 'jungle'; break;
+          case BIOME.FOREST:  density = 0.12; type = grove < 0.18 ? 'cherry' : grove < 0.40 ? 'dark_oak' : grove < 0.68 ? 'birch' : 'oak'; break;
           case BIOME.TAIGA:   density = 0.10; type = 'spruce'; break;
-          case BIOME.PLAINS:  density = 0.035; type = this.noise.hash2(wx * 3, wz * 3) < 0.25 ? 'birch' : 'oak'; break;
+          case BIOME.PLAINS:  density = 0.035; type = 'oak'; break; // plains = oak country
           case BIOME.SAVANNA: density = 0.025; type = 'acacia'; break;
           case BIOME.SNOWY:   density = 0.03; type = 'spruce'; break;
           default: density = 0;
@@ -1639,8 +1751,9 @@ export class World {
 
   /** Mossy stepped ziggurat in the jungle with a buried treasure chest. */
   _buildJungleTemple(cx, cz) {
-    const base = this.getSpawnHeight(cx, cz) - 1;
+    const base = this.getTerrainHeight(cx, cz) - 1;
     if (base < SEA_LEVEL) return;
+    this.clearAbove(cx, cz, 4, 4, base + 1, 8);
     for (let layer = 0; layer < 4; layer++) {
       const r = 4 - layer;
       for (let dx = -r; dx <= r; dx++)
@@ -1659,7 +1772,7 @@ export class World {
 
   /** Prismarine hall on a deep seabed, lit by sea lanterns, holding gold. */
   _buildOceanMonument(cx, cz) {
-    const seabed = this.getSpawnHeight(cx, cz);
+    const seabed = this.getTerrainHeight(cx, cz);
     if (seabed >= SEA_LEVEL - 3) return; // only in genuinely deep water
     const H = Math.min(SEA_LEVEL - seabed, 8), R = 3;
     for (let dx = -R; dx <= R; dx++) {
@@ -1683,8 +1796,9 @@ export class World {
 
   /** A half-collapsed obsidian portal frame on a rubble of netherrack. */
   _buildRuinedPortal(cx, cz) {
-    const base = this.getSpawnHeight(cx, cz);
+    const base = this.getTerrainHeight(cx, cz);
     if (base < SEA_LEVEL) return;
+    this.clearAbove(cx + 1, cz, 4, 3, base, 8);
     // Frame: 4 wide × 5 tall outline, ~30% of blocks missing (ruined).
     for (let dx = 0; dx <= 3; dx++) {
       for (let dy = 0; dy <= 4; dy++) {
@@ -1706,8 +1820,9 @@ export class World {
   }
 
   _buildOutpost(cx, cz) {
-    const base = this.getSpawnHeight(cx, cz);
+    const base = this.getTerrainHeight(cx, cz);
     if (base < SEA_LEVEL) return;
+    this.clearAbove(cx, cz, 3, 3, base, 14);
     const H = 11;
     for (let dy = 0; dy < H; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
@@ -1749,7 +1864,8 @@ export class World {
   }
 
   _buildPyramid(cx, cz) {
-    const base = this.getSpawnHeight(cx, cz) - 1;
+    const base = this.getTerrainHeight(cx, cz) - 1;
+    this.clearAbove(cx, cz, 5, 5, base + 1, 8);
     for (let layer = 0; layer < 6; layer++) {
       const r = 5 - layer;
       for (let dx = -r; dx <= r; dx++) {
@@ -1765,29 +1881,40 @@ export class World {
 
   _generateVillage(chunk) {
     if (this.dimension !== 'overworld') return; // no villages in other dimensions
-    if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.07) return;
+    if (this.noise.hash2(chunk.cx * 911 + 7, chunk.cz * 911 + 13) > 0.05) return;
+    // Bigger villages need breathing room — never two centres within 96 blocks.
+    const cxw0 = chunk.cx * CHUNK_SIZE + 8, czw0 = chunk.cz * CHUNK_SIZE + 8;
+    if (this.villages.some((v) => Math.hypot(v.x - cxw0, v.z - czw0) < 96)) return;
 
     const cxw = chunk.cx * CHUNK_SIZE + 8;
     const czw = chunk.cz * CHUNK_SIZE + 8;
-    const { biome } = this.sampleColumn(cxw, czw);
-    if (biome !== BIOME.PLAINS && biome !== BIOME.SNOWY) return;
+    // The WHOLE footprint must sit in a village-friendly biome — no spilling
+    // half a village into a desert, jungle or ocean.
+    const okBiome = (b) => b === BIOME.PLAINS || b === BIOME.SNOWY;
+    for (const [ox, oz] of [[0, 0], [-20, -20], [20, -20], [-20, 20], [20, 20]]) {
+      if (!okBiome(this.sampleColumn(cxw + ox, czw + oz).biome)) return;
+    }
 
-    // Place a few houses at deterministic offsets around the chunk centre.
-    const offsets = [[0, 0], [7, 2], [-6, 5], [3, -7]];
+    // A proper village: up to 7 houses spread ~40 blocks around a centre well.
+    const offsets = [
+      [0, 7], [11, 2], [-11, 6], [5, -11], [-8, -10],
+      [16, 10], [-17, 1], [2, 16], [16, -7], [-6, 15]
+    ];
     let built = 0;
     for (let i = 0; i < offsets.length; i++) {
       const r = this.noise.hash2(chunk.cx * 31 + i, chunk.cz * 31 - i);
-      if (r > 0.7) continue;
+      if (r > 0.85) continue; // almost every plot attempts a house
       const hx = cxw + offsets[i][0];
       const hz = czw + offsets[i][1];
       if (this._buildHouse(hx, hz)) built++;
-      if (built >= 3) break;
+      if (built >= 7) break;
     }
     if (built > 0) {
-      // Every village gets a blacksmith (forge + loot) and a wheat farm.
-      this._buildBlacksmith(cxw + 9, czw - 6);
-      this._buildFarm(cxw - 8, czw - 4);
-      if (this.noise.hash2(chunk.cx * 91, chunk.cz * 91) < 0.5) this._buildFarm(cxw + 2, czw + 9);
+      // Centre well + blacksmith + two farms complete the village.
+      this._buildWell(cxw, czw);
+      this._buildBlacksmith(cxw + 9, czw - 15);
+      this._buildFarm(cxw - 15, czw - 4);
+      this._buildFarm(cxw + 7, czw + 12);
       // Remember the centre so the EntityManager can populate this village.
       if (!this.villages.some((v) => v.x === cxw && v.z === czw)) {
         this.villages.push({ x: cxw, z: czw });
@@ -1795,13 +1922,33 @@ export class World {
     }
   }
 
+  /** The classic village well: a cobblestone ring around water, post-roofed. */
+  _buildWell(cx, cz) {
+    const ground = this.getTerrainHeight(cx, cz) - 1;
+    if (ground < SEA_LEVEL) return false;
+    this.clearAbove(cx, cz, 2, 2, ground + 1, 6);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const rim = Math.abs(dx) === 1 || Math.abs(dz) === 1;
+        this.setBlock(cx + dx, ground, cz + dz, rim ? 19 : 8);      // rim / water
+        this.setBlock(cx + dx, ground - 1, cz + dz, rim ? 19 : 8);  // deeper water
+        this.setBlock(cx + dx, ground + 4, cz + dz, 118);           // cobble slab roof
+      }
+    }
+    for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + px, ground + dy, cz + pz, 19); // posts
+    }
+    return true;
+  }
+
   /**
    * Wiki-style wheat farm: a log frame around two farmland strips flanking a
    * central water channel, planted with wheat at mixed growth stages.
    */
   _buildFarm(cx, cz) {
-    const ground = this.getSpawnHeight(cx, cz) - 1;
+    const ground = this.getTerrainHeight(cx, cz) - 1;
     if (ground < SEA_LEVEL) return false;
+    this.clearAbove(cx, cz, 4, 3, ground + 1, 6);
     for (let dx = -3; dx <= 3; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         const edge = Math.abs(dx) === 3 || Math.abs(dz) === 2;
@@ -1825,8 +1972,9 @@ export class World {
    * diamonds.
    */
   _buildBlacksmith(cx, cz) {
-    const ground = this.getSpawnHeight(cx, cz) - 1;
+    const ground = this.getTerrainHeight(cx, cz) - 1;
     if (ground < SEA_LEVEL) return false;
+    this.clearAbove(cx, cz, 4, 3, ground + 1, 7);
     const floorY = ground + 1;
     for (let dx = -3; dx <= 3; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
@@ -1872,15 +2020,16 @@ export class World {
    * @returns {boolean} whether a house was placed
    */
   _buildHouse(cx, cz) {
-    const ground = this.getSpawnHeight(cx, cz) - 1;
+    const ground = this.getTerrainHeight(cx, cz) - 1;
     // Reject steep/under-water ground.
     if (ground < SEA_LEVEL) return false;
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
-        const g = this.getSpawnHeight(cx + dx, cz + dz) - 1;
+        const g = this.getTerrainHeight(cx + dx, cz + dz) - 1;
         if (Math.abs(g - ground) > 2) return false;
       }
     }
+    this.clearAbove(cx, cz, 3, 3, ground + 1, 7); // fell any tree in the way
 
     const wallH = 3;
     const floorY = ground + 1;
@@ -2064,6 +2213,23 @@ export class World {
       }
     }
     return SEA_LEVEL + 1;
+  }
+
+  /**
+   * Deterministic TERRAIN surface (first air Y above the ground column), from
+   * the generator — ignores trees, leaves and other decoration entirely.
+   * Structures must use this so they never end up perched on a tree canopy.
+   */
+  getTerrainHeight(wx, wz) {
+    return this.sampleColumn(Math.floor(wx), Math.floor(wz)).height + 1;
+  }
+
+  /** Clear decoration (trees etc.) in a box so a structure has open ground. */
+  clearAbove(cx, cz, rx, rz, baseY, height = 8) {
+    for (let dx = -rx; dx <= rx; dx++)
+      for (let dz = -rz; dz <= rz; dz++)
+        for (let dy = 0; dy < height; dy++)
+          this.setBlock(cx + dx, baseY + dy, cz + dz, AIR);
   }
 
   /** @param {number} wx @param {number} wy @param {number} wz */

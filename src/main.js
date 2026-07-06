@@ -204,8 +204,26 @@ class Game {
   _initWorld() {
     this.world = new World(this.scene, this.record.seed);
     this._loadRadius = RENDER_RADIUS;
-    const spawnCx = Math.floor((this.record.spawn?.x ?? 8) / CHUNK_SIZE);
-    const spawnCz = Math.floor((this.record.spawn?.z ?? 8) / CHUNK_SIZE);
+
+    // Never spawn in the ocean: if the recorded spawn column is under water,
+    // spiral outward until we find dry land and adopt that as the spawn.
+    if (!this.record.spawn || this.record.spawn.dryChecked !== true) {
+      let sx = this.record.spawn?.x ?? 8, sz = this.record.spawn?.z ?? 8;
+      if (this.world.sampleColumn(sx, sz).height < 190 /* SEA_LEVEL */) {
+        outer: for (let r = 16; r <= 512; r += 16) {
+          for (let a = 0; a < 12; a++) {
+            const ang = (a / 12) * Math.PI * 2;
+            const x = Math.round(sx + Math.cos(ang) * r), z = Math.round(sz + Math.sin(ang) * r);
+            if (this.world.sampleColumn(x, z).height >= 192) { sx = x; sz = z; break outer; }
+          }
+        }
+      }
+      this.record.spawn = { x: sx, z: sz, dryChecked: true };
+      this._spawn = { x: sx, z: sz }; // refresh the cached copy taken earlier
+    }
+
+    const spawnCx = Math.floor(this.record.spawn.x / CHUNK_SIZE);
+    const spawnCz = Math.floor(this.record.spawn.z / CHUNK_SIZE);
     // Stream the spawn region; chunks then load/unload as the player moves.
     this.world.streamAround(spawnCx, spawnCz, this._loadRadius, this.record.editedBlocks || {});
     this._lastChunk = { cx: spawnCx, cz: spawnCz };
@@ -249,6 +267,7 @@ class Game {
       if (id === 0) Audio.mine(); else Audio.place();
       // Capture device facing at placement (pistons, observers, dispensers free;
       // repeaters lie flat; hoppers default to pointing down).
+      if (id === 0) this._collapsePortal(x, y, z); // breaking the frame kills the portal
       if (id === PISTON || id === STICKY_PISTON || id === 112 || id === 114 || id === 115) this._recordFacing(x, y, z, 'free');
       else if (id === 110) this._recordFacing(x, y, z, 'horizontal'); // repeater
       else if (id === 113) this._recordFacing(x, y, z, 'down');       // hopper
@@ -1265,6 +1284,34 @@ class Game {
       this._recordEdit(x, y, z, 58);
     }
     return true;
+  }
+
+  /**
+   * When a block is broken next to (or inside) a lit Nether portal, the whole
+   * connected sheet of portal blocks winks out — exactly like the wiki says.
+   */
+  _collapsePortal(x, y, z) {
+    // Find a seed portal block adjacent to the broken cell.
+    const seeds = [];
+    for (const [dx, dy, dz] of [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+      if (this.world.getBlock(x + dx, y + dy, z + dz) === 58) seeds.push([x + dx, y + dy, z + dz]);
+    }
+    if (!seeds.length) return;
+    const seen = new Set();
+    const queue = [...seeds];
+    while (queue.length) {
+      const [px, py, pz] = queue.pop();
+      const key = `${px},${py},${pz}`;
+      if (seen.has(key) || this.world.getBlock(px, py, pz) !== 58) continue;
+      seen.add(key);
+      this.world.setBlock(px, py, pz, 0);
+      this._recordEdit(px, py, pz, 0);
+      this.net?.sendEdit({ x: px, y: py, z: pz, id: 0 });
+      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+        queue.push([px + dx, py + dy, pz + dz]);
+      }
+    }
+    this.chat?.system('The portal collapses…');
   }
 
   /** Travel through a portal block: 58 = Nether, 61 = End. */
