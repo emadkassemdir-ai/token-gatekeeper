@@ -1702,9 +1702,11 @@ export class World {
   }
 
   /**
-   * Deep stronghold: a multi-room complex of cobblestone and mossy cobblestone
-   * (with stone-brick accents) — main hall, corridor, library wall, a portal
-   * room with an obsidian base, and a loot chest.
+   * The GRAND stronghold (~3000 placed blocks): a five-room cobblestone +
+   * mossy-cobblestone complex joined by corridors — main hall, two-storey
+   * library, storage vault, monster cell, and the End Portal room, where an
+   * obsidian dais awaits an Eye of Ender (use one on the dais to open the
+   * 3×3 portal, exactly like the in-game mechanic).
    */
   _buildStronghold(cx, y, cz) {
     // Walls are cobble/mossy-cobble mix with occasional stone bricks.
@@ -1723,30 +1725,101 @@ export class World {
         }
       }
     };
+    // A 3-wide floored+roofed corridor along one axis between two rooms.
+    const corridor = (x0, z0, x1, z1) => {
+      const sx = Math.sign(x1 - x0), sz = Math.sign(z1 - z0);
+      let x = x0, z = z0;
+      while (x !== x1 || z !== z1) {
+        for (let w = -1; w <= 1; w++) {
+          const wx2 = cx + x + (sz ? w : 0), wz2 = cz + z + (sx ? w : 0);
+          this.setBlock(wx2, y, wz2, wallBlock(wx2, y, wz2));           // floor
+          this.setBlock(wx2, y + 4, wz2, wallBlock(wx2, y + 4, wz2));   // ceiling
+          for (let dy = 1; dy <= 3; dy++) this.setBlock(wx2, y + dy, wz2, AIR);
+        }
+        // Side walls.
+        for (const w of [-2, 2]) {
+          const wx2 = cx + x + (sz ? w : 0), wz2 = cz + z + (sx ? w : 0);
+          for (let dy = 1; dy <= 3; dy++) this.setBlock(wx2, y + dy, wz2, wallBlock(wx2, y + dy, wz2));
+        }
+        x += sx; z += sz;
+      }
+    };
 
-    room(0, 0, 5, 5, 6);       // main hall
-    room(9, 0, 4, 2, 4);       // corridor east
-    room(16, 0, 4, 4, 5);      // portal room
-    // Doorways between the rooms.
-    for (let dy = 1; dy <= 2; dy++) {
-      this.setBlock(cx + 5, y + dy, cz, AIR); this.setBlock(cx + 6, y + dy, cz, AIR);
-      this.setBlock(cx + 12, y + dy, cz, AIR); this.setBlock(cx + 13, y + dy, cz, AIR);
+    /* ---- Rooms ---- */
+    room(0, 0, 6, 6, 7);       // main hall (13×13)
+    room(19, 0, 6, 5, 7);      // grand library (13×11)
+    room(-17, 0, 4, 4, 5);     // storage vault (9×9)
+    room(0, -16, 4, 4, 5);     // monster cell (9×9)
+    room(0, 20, 6, 6, 8);      // END PORTAL ROOM (13×13)
+
+    /* ---- Corridors (carved after rooms so doorways open up) ---- */
+    corridor(6, 0, 13, 0);     // hall -> library
+    corridor(-6, 0, -13, 0);   // hall -> storage
+    corridor(0, -6, 0, -12);   // hall -> cell
+    corridor(0, 6, 0, 14);     // hall -> portal room
+    // Open the doorways through the room walls themselves.
+    for (let dy = 1; dy <= 3; dy++) {
+      for (const [ox, oz] of [[6, 0], [13, 0], [-6, 0], [-13, 0], [0, -6], [0, -12], [0, 6], [0, 14]]) {
+        this.setBlock(cx + ox, y + dy, cz + oz, AIR);
+      }
     }
-    // Library wall of bookshelves in the main hall.
-    for (let dx = -3; dx <= 3; dx++)
-      for (let dy = 1; dy <= 3; dy++) this.setBlock(cx + dx, y + dy, cz - 4, 37);
-    // Portal room: obsidian platform ringed by a lava moat feel (just the base).
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dz = -1; dz <= 1; dz++) this.setBlock(cx + 16 + dx, y + 1, cz + dz, 35);
-    this.setBlock(cx + 16, y + 1, cz + 3, 85); // silverfish-style spawner
-    // Loot chest in the main hall.
-    const chx = cx + 3, chz = cz + 3;
-    this.setBlock(chx, y + 1, chz, 65);
-    this.loot[`${chx},${y + 1},${chz}`] = [
+
+    /* ---- Main hall: pillars + loot ---- */
+    for (const [px, pz] of [[-4, -4], [4, -4], [-4, 4], [4, 4]]) {
+      for (let dy = 1; dy <= 6; dy++) this.setBlock(cx + px, y + dy, cz + pz, 24); // stone-brick pillars
+    }
+    this.setBlock(cx + 3, y + 1, cz + 3, 65);
+    this.loot[`${cx + 3},${y + 1},${cz + 3}`] = [
       { type: 'eye_of_ender', count: 2 }, { type: 'ender_pearl', count: 2 },
       { type: 'book', count: 3 }, { type: 'iron_ingot', count: 5 },
       { type: 'gold_ingot', count: 3 }, { type: 'diamond', count: 1 }
     ];
+
+    /* ---- Library: double-decker bookshelf walls + a reading table ---- */
+    for (const dz of [-4, 4]) {
+      for (let dx = -5; dx <= 5; dx++) {
+        for (const dy of [1, 2, 4, 5]) this.setBlock(cx + 19 + dx, y + dy, cz + dz, 37); // shelves
+        this.setBlock(cx + 19 + dx, y + 3, cz + dz, 11); // plank walkway ledge between decks
+      }
+    }
+    this.setBlock(cx + 19, y + 1, cz, 123);  // lectern centrepiece
+    this.setBlock(cx + 21, y + 1, cz, 65);   // library chest
+    this.loot[`${cx + 21},${y + 1},${cz}`] = [
+      { type: 'book', count: 5 }, { type: 'paper', count: 6 }, { type: 'emerald', count: 2 }
+    ];
+
+    /* ---- Storage vault: chests + barrels ---- */
+    this.setBlock(cx - 17, y + 1, cz - 2, 65);
+    this.loot[`${cx - 17},${y + 1},${cz - 2}`] = [
+      { type: 'iron_ingot', count: 6 }, { type: 'bread', count: 4 },
+      { type: 'redstone', count: 8 }, { type: 'lapis', count: 5 }
+    ];
+    this.setBlock(cx - 17, y + 1, cz + 2, 76); // barrel
+    this.setBlock(cx - 15, y + 1, cz, 76);
+
+    /* ---- Monster cell: spawner behind a glass viewing wall ---- */
+    this.setBlock(cx, y + 1, cz - 16, 85);
+    for (let dx = -2; dx <= 2; dx++) this.setBlock(cx + dx, y + 1, cz - 13, 9); // glass wall
+
+    /* ---- END PORTAL ROOM: lava moat, silverfish spawner, obsidian dais ---- */
+    const pz0 = cz + 20;
+    // Lava moat strip across the entrance third of the room.
+    for (let dx = -5; dx <= 5; dx++) this.setBlock(cx + dx, y + 1, pz0 - 4, 54);
+    // Walkway over the moat.
+    this.setBlock(cx, y + 1, pz0 - 4, 24);
+    // Silverfish-style spawner guarding the dais.
+    this.setBlock(cx - 3, y + 1, pz0 - 1, 85);
+    // Raised stone-brick dais with steps…
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dz = -2; dz <= 2; dz++) this.setBlock(cx + dx, y + 1, pz0 + dz, 24);
+    this.setBlock(cx, y + 1, pz0 - 3, 120); // stone stairs up
+    // …topped with the 3×3 obsidian portal frame: aim an Eye of Ender at its
+    // centre to open the End portal right here.
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dz = -1; dz <= 1; dz++) this.setBlock(cx + dx, y + 2, pz0 + dz, 35);
+    // End-stone corner markers hint at what this dais is for.
+    for (const [ex, ez] of [[-2, -2], [2, -2], [-2, 2], [2, 2]])
+      this.setBlock(cx + ex, y + 2, pz0 + ez, 60);
   }
 
   /** Mossy stepped ziggurat in the jungle with a buried treasure chest. */

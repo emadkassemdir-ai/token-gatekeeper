@@ -28,7 +28,8 @@ export const MSG = Object.freeze({
   ATTACK: 'attack',
   DROP: 'drop',
   PICKUP: 'pickup',
-  MODE: 'mode'
+  MODE: 'mode',
+  WORLD: 'world' // host -> joining guest: { seed, edits, mode, time, spawn }
 });
 
 /**

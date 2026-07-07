@@ -434,6 +434,43 @@ class Game {
         this.chat?.system(`The host set you to ${d.mode} mode.`);
       }
     };
+
+    // Server browser: as host, hand joiners a snapshot of THIS world so they
+    // truly join our world (same seed + all edits); as guest, adopt it.
+    this.net.worldProvider = () => ({
+      seed: this.record.seed,
+      edits: this.record.editedBlocks || {},
+      time: this._time,
+      spawn: { x: Math.floor(this.physics.position.x), z: Math.floor(this.physics.position.z) }
+    });
+    this.net.onWorld = (w) => this._adoptWorld(w);
+  }
+
+  /**
+   * Guest side of "join their world": regenerate the local world with the
+   * host's seed, apply every edit they've made, sync the clock, and appear
+   * beside them.
+   */
+  _adoptWorld(w) {
+    if (!w || !Number.isFinite(w.seed)) return;
+    this.chat?.system('🌍 Joining the host\'s world…');
+    this.record.seed = w.seed;
+    this.record.editedBlocks = w.edits || {};
+    this._time = typeof w.time === 'number' ? w.time : this._time;
+
+    // Rebuild the world engine around the new seed.
+    this.world.seed = w.seed >>> 0;
+    this.dim = 'overworld';
+    this.world.setDimension('overworld'); // clears chunks + reseeds the noise
+    const sx = w.spawn?.x ?? 8, sz = w.spawn?.z ?? 8;
+    const cx = Math.floor(sx / CHUNK_SIZE), cz = Math.floor(sz / CHUNK_SIZE);
+    this._lastChunk = { cx, cz };
+    this.world.streamAround(cx, cz, this._loadRadius, this.record.editedBlocks);
+    const sy = this.world.getSpawnHeight(sx, sz) + 0.2;
+    this.physics.position.set(sx + 0.5, sy, sz + 0.5);
+    this.physics.velocity.set(0, 0, 0);
+    this.entities.clear(); // the host's mobs are theirs; ours respawn locally
+    this.chat?.system('🌍 You are now in the host\'s world!');
   }
 
   /** @returns {boolean} whether it is currently night. */
@@ -507,7 +544,10 @@ class Game {
       { onOpen: () => this._releasePointer(), log: (m) => { this.chat?.system(m); Audio.craft(); } });
 
     // Multiplayer menu (M).
-    this.mpMenu = new MultiplayerMenu(this.app, this.net, { onOpen: () => this._releasePointer() });
+    this.mpMenu = new MultiplayerMenu(this.app, this.net, {
+      onOpen: () => this._releasePointer(),
+      worldName: () => this.record.name || 'my world'
+    });
 
     if (TouchControls.isTouchDevice()) {
       this.touchControls = new TouchControls(this.app, this.physics, this.interaction, {
