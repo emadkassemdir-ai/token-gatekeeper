@@ -1,9 +1,16 @@
 # 🟩 VoxelCraft
 
-A massively-featured, performance-optimized 3D block sandbox engine — a
-Minecraft-style game built from scratch with **Vite** + **Three.js**, no game
-engine and no backend. Runs entirely in the browser and deploys to static
-hosting (GitHub Pages).
+### ▶️ [PLAY VOXELCRAFT FREE IN YOUR BROWSER](https://emadkassemdir-ai.github.io/token-gatekeeper/) — no download, works on desktop, tablet and phone
+
+**VoxelCraft** is a free Minecraft-style voxel sandbox game that runs entirely
+in the browser: infinite worlds, survival & creative modes, crafting, mining,
+villages with villagers and iron golems, the Nether and the End, the Ender
+Dragon and Wither boss fights, redstone contraptions, enchanting, brewing, and
+4-player online multiplayer with a one-click server browser.
+
+A massively-featured, performance-optimized 3D block sandbox engine — built
+from scratch with **Vite** + **Three.js**, no game engine and no backend.
+Runs entirely in the browser and deploys to static hosting (GitHub Pages).
 
 ## ✨ Features
 
