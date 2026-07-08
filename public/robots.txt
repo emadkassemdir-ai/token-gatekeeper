@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://playvoxelcraft.com/sitemap.xml
+Sitemap: https://emadkassemdir-ai.github.io/token-gatekeeper/sitemap.xml
