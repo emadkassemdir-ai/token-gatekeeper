@@ -1,6 +1,6 @@
 # 🟩 VoxelCraft
 
-### ▶️ [PLAY VOXELCRAFT FREE IN YOUR BROWSER](https://emadkassemdir-ai.github.io/token-gatekeeper/) — no download, works on desktop, tablet and phone
+### ▶️ [PLAY VOXELCRAFT FREE IN YOUR BROWSER](https://playvoxelcraft.com/) — no download, works on desktop, tablet and phone
 
 **VoxelCraft** is a free Minecraft-style voxel sandbox game that runs entirely
 in the browser: infinite worlds, survival & creative modes, crafting, mining,
