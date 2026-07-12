@@ -197,7 +197,8 @@ const TEX = {
   131: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, // mangrove
   132: { all: 'planks' },
   133: { all: 'leaves' },
-  134: { all: 'bamboo' }
+  134: { all: 'bamboo' },
+  135: { all: 'command' }
 };
 
 const TILE = 16; // texels per tile
@@ -695,6 +696,14 @@ function paintTile(ctx, ox, kind, base, accent) {
         case 'stonecut_top':
           c = mul([0.6, 0.6, 0.62], 0.85 + n * 0.2); // stone bed
           if (px >= 7 && px <= 8 && py >= 1 && py <= 14) c = [0.85, 0.85, 0.88]; // saw blade
+          break;
+        case 'command':
+          // Canon command block: tan body with a dotted "circuit" border and a
+          // central glyph panel.
+          c = mul([0.76, 0.6, 0.44], 0.9 + n * 0.14);
+          if ((px + py) % 2 === 0 && (px < 2 || px > 13 || py < 2 || py > 13)) c = [0.45, 0.32, 0.22]; // dotted rim
+          if (px >= 4 && px <= 11 && py >= 4 && py <= 11) c = mul([0.55, 0.42, 0.3], 0.95); // panel
+          if (px >= 6 && px <= 9 && py >= 6 && py <= 9) c = [0.85, 0.72, 0.5]; // glyph core
           break;
         case 'bamboo':
           c = [0.05, 0.08, 0.04]; // dark backing (mostly transparent gaps)

@@ -333,7 +333,12 @@ export const BLOCKS = {
   131: { id: 131, name: 'Mangrove Log', color: [0.4, 0.22, 0.18], faceColors: { top: [0.46, 0.3, 0.22], side: [0.38, 0.2, 0.16], bottom: [0.46, 0.3, 0.22] }, solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
   132: { id: 132, name: 'Mangrove Planks', color: [0.52, 0.24, 0.2], solid: true, transparent: false, breakable: true, hardness: 2.0, liquid: false },
   133: { id: 133, name: 'Mangrove Leaves', color: [0.28, 0.45, 0.22], solid: true, transparent: true, breakable: true, hardness: 0.2, liquid: false },
-  134: { id: 134, name: 'Bamboo', color: [0.45, 0.62, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.3, liquid: false }
+  134: { id: 134, name: 'Bamboo', color: [0.45, 0.62, 0.25], solid: false, transparent: true, breakable: true, hardness: 0.3, liquid: false },
+
+  // ---- Command Block (wiki: impulse command block, runs a command when powered) ----
+  135: { id: 135, name: 'Command Block', color: [0.76, 0.6, 0.44],
+    faceColors: { top: [0.8, 0.64, 0.48], bottom: [0.72, 0.56, 0.4], side: [0.76, 0.6, 0.44] },
+    solid: true, transparent: false, breakable: true, hardness: 3.0, liquid: false }
 };
 
 /** Ordered list of placeable block ids (everything except AIR & non-placeable). */
@@ -355,7 +360,8 @@ export const PLACEABLE_BLOCKS = [
   113, 114, 115,                              // hopper, dispenser, dropper
   116, 117, 118, 119, 120, 121,               // slabs + stairs
   122, 123, 124, 125, 126, 127,               // villager job-site blocks
-  128, 129, 130, 131, 132, 133, 134           // dark oak / mangrove / bamboo
+  128, 129, 130, 131, 132, 133, 134,          // dark oak / mangrove / bamboo
+  135                                         // command block (creative//give only)
 ];
 
 /** Crafting Table block id (referenced by the crafting proximity check). */

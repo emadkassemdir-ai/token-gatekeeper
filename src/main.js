@@ -43,6 +43,8 @@ import { recomputeRedstone, computePowered, isRedstone } from './world/Redstone.
 import { actuatePistons, PISTON, STICKY_PISTON } from './world/Pistons.js';
 import { injectTheme } from './world/UITextures.js';
 import { isYassin, isYassinSigma, applyYassinUI, applyYassinSigmaUI, applyYassinScene } from './world/EasterEgg.js';
+import { ModLoader } from './state/ModLoader.js';
+import { ModsMenu } from './ui/ModsMenu.js';
 import { NetworkManager } from './net/NetworkManager.js';
 import { RemotePlayers } from './net/RemotePlayers.js';
 import { packState } from './net/Protocol.js';
@@ -268,6 +270,8 @@ class Game {
       // Capture device facing at placement (pistons, observers, dispensers free;
       // repeaters lie flat; hoppers default to pointing down).
       if (id === 0) this._collapsePortal(x, y, z); // breaking the frame kills the portal
+      if (id === 0) { this.mods?.onBlockBreak(x, y, z, 0); delete this.record.commandBlocks?.[`${x},${y},${z}`]; }
+      else this.mods?.onBlockPlace(x, y, z, id);
       if (id === PISTON || id === STICKY_PISTON || id === 112 || id === 114 || id === 115) this._recordFacing(x, y, z, 'free');
       else if (id === 110) this._recordFacing(x, y, z, 'horizontal'); // repeater
       else if (id === 113) this._recordFacing(x, y, z, 'down');       // hopper
@@ -494,6 +498,17 @@ class Game {
     });
     this.app.appendChild(leave);
     this._leaveBtn = leave;
+
+    // Mods: paste-a-mod loader (J or the MODS button).
+    this.mods = new ModLoader(this);
+    this.modsMenu = new ModsMenu(this.app, this.mods, { onOpen: () => this._releasePointer() });
+    const modsBtn = document.createElement('button');
+    modsBtn.id = 'mods-button';
+    modsBtn.textContent = '🧩 MODS';
+    modsBtn.style.cssText = 'position:fixed;top:10px;right:118px;z-index:60;' +
+      'padding:8px 14px;font-size:16px;letter-spacing:1px;';
+    modsBtn.addEventListener('click', () => this.modsMenu.toggle());
+    this.app.appendChild(modsBtn);
 
     // First-person held-item viewmodel (overlay).
     this.viewModel = new ViewModel();
@@ -822,6 +837,18 @@ class Game {
       case 88: return this._grindstone();                        // grindstone
       case 113: case 114: case 115:                              // hopper/dispenser/dropper storage
         this._openChest(target); return true;
+      case 135: {                                                // command block: program it
+        this.record.commandBlocks = this.record.commandBlocks || {};
+        const key = `${target.x},${target.y},${target.z}`;
+        this._releasePointer();
+        const cur = this.record.commandBlocks[key] || '';
+        const cmd = window.prompt('Command to run when powered (e.g. /time night, /give diamond 5, /spawn zombie 3):', cur);
+        if (cmd !== null) {
+          this.record.commandBlocks[key] = cmd.trim();
+          this.chat?.system(cmd.trim() ? `Command block set: ${cmd.trim()}` : 'Command block cleared.');
+        }
+        return true;
+      }
       case 108: case 109: {                                      // door: toggle open/closed
         const next = id === 108 ? 109 : 108;
         this.world.setBlock(target.x, target.y, target.z, next);
@@ -885,7 +912,7 @@ class Game {
   /** Recompute redstone (lamps + pistons) if the edit touches a circuit or piston. */
   _redstoneTouch(x, y, z, id) {
     const isDevice = (n) => isRedstone(n) || n === PISTON || n === STICKY_PISTON ||
-      n === 113 || n === 114 || n === 115; // hopper/dispenser/dropper
+      n === 113 || n === 114 || n === 115 || n === 135; // hopper/dispenser/dropper/command block
     let near = isDevice(id);
     if (!near) {
       for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
@@ -917,17 +944,29 @@ class Game {
       for (let z = oz - R; z <= oz + R; z++) {
         for (let x = ox - R; x <= ox + R; x++) {
           const id = this.world.getBlock(x, y, z);
-          if (id !== 114 && id !== 115) continue; // dispenser / dropper
+          if (id !== 114 && id !== 115 && id !== 135) continue; // dispenser / dropper / command block
           const k = `${x},${y},${z}`;
           let on = false;
           for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
             if (powered(x + dx, y + dy, z + dz)) { on = true; break; }
           }
-          if (on && !onSet.has(k)) { onSet.add(k); this._dispense(x, y, z, id === 114); }
-          else if (!on) onSet.delete(k);
+          if (on && !onSet.has(k)) {
+            onSet.add(k);
+            if (id === 135) this._runCommandBlock(x, y, z);
+            else this._dispense(x, y, z, id === 114);
+          } else if (!on) onSet.delete(k);
         }
       }
     }
+  }
+
+  /** Run the command stored in a command block (op-level, per the wiki). */
+  _runCommandBlock(x, y, z) {
+    const cmd = this.record.commandBlocks?.[`${x},${y},${z}`];
+    if (!cmd) return;
+    this.chat?.system(`⌘ Command block: ${cmd}`);
+    this.chat?.execute(cmd);
+    Audio.click();
   }
 
   /** Facing map for the current dimension (created lazily). */
@@ -1514,6 +1553,7 @@ class Game {
     Audio.resume();
     Audio.startMusic();
     if (this._yassin) this.chat?.system('😃 YASSIN MODE ACTIVATED — behold.');
+    this.mods?.restart(); // enabled mods come alive with the world
     this._loop();
   }
 
@@ -1568,13 +1608,14 @@ class Game {
     this.remotePlayers.update(dt);
 
     // Dropped items: bob/spin and let the local player collect them.
+    this.mods?.tick(dt);
     this.drops.update(dt, this.physics.position, (item) => {
       if (this.inventory.add(item.type, item.count) <= 0 && !this.inventory.isCreative) return false;
       this.net?.sendPickup(item.id);
       Audio.pickup();
       this.chat?.system(`Picked up ${item.count} × ${item.type.replace(/_/g, ' ')}`);
       return true;
-    });
+    }, this.world);
 
     if (this.net.connected) {
       this._netTimer += dt;

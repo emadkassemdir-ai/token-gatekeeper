@@ -89,11 +89,26 @@ export class DroppedItems {
    * @param {(item:{id:string,type:string,count:number}) => boolean} onCollect
    *        return true if the item was taken (added to inventory)
    */
-  update(dt, playerPos, onCollect) {
+  update(dt, playerPos, onCollect, world = null) {
     const t = performance.now() / 1000;
     for (const item of [...this.items.values()]) {
       item.age += dt;
       item.group.rotation.y += dt * 1.6;
+
+      // Gravity: items fall until they rest on a solid block (lets mods rain
+      // things from the sky, and makes ordinary drops settle on the ground).
+      if (world) {
+        const p = item.group.position;
+        item.vy = (item.vy ?? 0) - 16 * dt;
+        if (item.vy < -30) item.vy = -30;
+        const ny = p.y + item.vy * dt;
+        if (world.isSolidAt(p.x, ny - 0.18, p.z)) {
+          item.vy = 0;
+          p.y = Math.floor(ny - 0.18) + 1 + 0.32; // rest on the block top
+        } else if (ny > 0) {
+          p.y = ny;
+        } else { this.remove(item.id); continue; } // fell out of the world
+      }
       item.group.position.y += Math.sin(t * 2 + item.phase) * 0.12 * dt;
 
       if (item.age < PICKUP_DELAY || !playerPos) continue;

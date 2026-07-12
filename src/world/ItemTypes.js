@@ -62,7 +62,8 @@ export const CATEGORY = {
   // Villager job-site blocks:
   122: 'wood', 123: 'wood', 124: 'wood', 125: 'wood', 126: 'wood', 127: 'stone',
   // Extra wood types:
-  128: 'wood', 129: 'wood', 130: 'leaves', 131: 'wood', 132: 'wood', 133: 'leaves', 134: 'leaves'
+  128: 'wood', 129: 'wood', 130: 'leaves', 131: 'wood', 132: 'wood', 133: 'leaves', 134: 'leaves',
+  135: 'stone'
 };
 
 /**
@@ -137,7 +138,8 @@ export const BLOCK_DROPS = {
   // Villager job-site blocks:
   122: 'composter', 123: 'lectern', 124: 'cartography_table', 125: 'fletching_table', 126: 'loom', 127: 'stonecutter',
   // Extra wood types (leaves drop nothing):
-  128: 'dark_oak_log', 129: 'dark_oak_planks', 130: null, 131: 'mangrove_log', 132: 'mangrove_planks', 133: null, 134: 'bamboo'
+  128: 'dark_oak_log', 129: 'dark_oak_planks', 130: null, 131: 'mangrove_log', 132: 'mangrove_planks', 133: null, 134: 'bamboo',
+  135: 'command_block'
 };
 
 /**
@@ -274,6 +276,8 @@ export const ITEMS = {
   mangrove_planks:   { type: 'mangrove_planks', name: 'Mangrove Planks', maxStack: 64, place: 132 },
   mangrove_leaves:   { type: 'mangrove_leaves', name: 'Mangrove Leaves', maxStack: 64, place: 133 },
   bamboo:            { type: 'bamboo', name: 'Bamboo', maxStack: 64, place: 134 },
+  command_block:     { type: 'command_block', name: 'Command Block', maxStack: 64, place: 135 },
+  taco:              { type: 'taco', name: 'Taco', maxStack: 64, glyph: '\ud83c\udf2e', food: { hunger: 2.5 } },
 
   // Materials.
   stick:          { type: 'stick', name: 'Stick', maxStack: 64, glyph: '/' },
@@ -475,7 +479,7 @@ export const CREATIVE_PALETTE = [
   'oak_slab', 'stone_slab', 'cobblestone_slab', 'oak_stairs', 'stone_stairs', 'cobblestone_stairs',
   'composter', 'lectern', 'cartography_table', 'fletching_table', 'loom', 'stonecutter',
   'dark_oak_log', 'dark_oak_planks', 'dark_oak_leaves',
-  'mangrove_log', 'mangrove_planks', 'mangrove_leaves', 'bamboo'
+  'mangrove_log', 'mangrove_planks', 'mangrove_leaves', 'bamboo', 'command_block'
 ];
 
 /** Tilling a hoe gives BREAK_TIMES a 'hoe' column; default to the hand speed. */

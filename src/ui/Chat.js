@@ -99,6 +99,20 @@ export class Chat {
 
   /* ------------------------------ commands ------------------------------- */
 
+  /**
+   * Run a command programmatically (command blocks, mods). Command blocks are
+   * op-level per the wiki, so cheats are forced on for the duration.
+   * @param {string} text e.g. "/time night"
+   */
+  execute(text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    const prev = this.api.cheats;
+    this.api.cheats = true;
+    try { this._handle(t.startsWith('/') ? t : '/' + t); }
+    finally { this.api.cheats = prev; }
+  }
+
   _handle(text) {
     if (!text.startsWith('/')) {
       this._push('<you> ' + text);
