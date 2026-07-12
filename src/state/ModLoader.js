@@ -1,23 +1,27 @@
 /**
  * ModLoader
  * ---------
- * Paste-a-mod support: players write (or paste) a few lines of JavaScript, and
- * the loader runs them against a friendly `api` object wired into the live
- * game. Mods are stored in localStorage, can be toggled on/off, and reload
- * with the Apply button — no rebuild, no files.
+ * Paste-a-mod support. The house language is JN (.jn — see JNLang.js), a
+ * Lua/JS hybrid where variables exist the moment you assign them and every
+ * game function is a bare word:
  *
- * A mod is just a function body that receives `api`. Example — tacos raining
- * from the sky:
+ *   every 0.5 do
+ *     drop("taco", 1, player.x + random(-8, 8), player.y + 14, player.z + random(-8, 8))
+ *   end
  *
- *   api.every(0.5, () => {
- *     const p = api.player();
- *     api.dropItem('taco', 1, { x: p.x + api.random(-8, 8), y: p.y + 14, z: p.z + api.random(-8, 8) });
- *   });
+ * Advanced mods can opt into plain JavaScript (lang: 'js') and get the same
+ * `api` object directly. Mods live in localStorage, toggle on/off, reload
+ * with Apply, and can register images to paste into the world (billboards)
+ * or onto the screen (HUD overlays).
  *
  * Mod code runs with the same trust as the player's own browser console —
  * it's their machine and their save. Errors are caught per-mod and reported
  * in chat so a broken mod can't take the game down.
  */
+
+import * as THREE from 'three';
+import { runJN } from './JNLang.js';
+import { YASSIN_IMAGE } from '../world/EasterEgg.js';
 
 const STORE_KEY = 'vc-mods';
 
@@ -25,32 +29,46 @@ const STORE_KEY = 'vc-mods';
 export const EXAMPLE_MODS = [
   {
     name: 'Taco Rain',
-    code: `// 🌮 Tacos fall from the sky around you. Eat up!
-api.chat('🌮 Taco rain has begun!');
-api.every(0.5, () => {
-  const p = api.player();
-  api.dropItem('taco', 1, {
-    x: p.x + api.random(-9, 9),
-    y: p.y + 14,
-    z: p.z + api.random(-9, 9)
-  });
-});`
+    lang: 'jn',
+    code: `-- 🌮 Tacos fall from the sky around you. Eat up!
+chat("🌮 Taco rain has begun!")
+every 0.5 do
+  drop("taco", 1, player.x + random(-9, 9), player.y + 14, player.z + random(-9, 9))
+end`
   },
   {
     name: 'Super Jump',
-    code: `// 🐇 Jump twice as high, forever.
-api.jumpBoost(2.0);
-api.chat('🐇 Super jump enabled!');`
+    lang: 'jn',
+    code: `-- 🐇 Jump twice as high, forever.
+jumpboost(2)
+chat("🐇 Super jump enabled!")`
   },
   {
     name: 'Midas Touch',
-    code: `// ✨ Every block you break also pays out a gold ingot.
-api.onBreak(() => api.give('gold_ingot', 1));
-api.chat('✨ Midas touch: breaking blocks drops gold!');`
+    lang: 'jn',
+    code: `-- ✨ Every block you break also pays out gold. Every 10th: a diamond.
+broken = 0
+on break do
+  broken = broken + 1
+  give("gold_ingot", 1)
+  if broken % 10 == 0 then
+    give("diamond", 1)
+    chat("✨ " .. broken .. " blocks — bonus diamond!")
+  end
+end`
   },
   {
-    name: 'Zombie Party',
-    code: `// 🧟 A zombie spawns near you every 10 seconds. Good luck.
+    name: 'Yassin Watches',
+    lang: 'jn',
+    code: `-- 👁 He floats beside you. He is always there.
+billboard("yassin", player.x + 3, player.y + 3, player.z + 3, 4)
+hud("yassin", 92, 86, 80)
+chat("👁 he is watching")`
+  },
+  {
+    name: 'Zombie Party (JS)',
+    lang: 'js',
+    code: `// 🧟 The same power, in plain JavaScript (pick JS in the language box).
 api.every(10, () => {
   const p = api.player();
   api.spawnMob('zombie', p.x + api.random(-6, 6), p.z + api.random(-6, 6));
@@ -68,6 +86,10 @@ export class ModLoader {
     this._placeHandlers = [];
     this._timers = [];         // [{mod, interval, t, fn}]
     this.running = [];         // names of successfully started mods
+    // Image support: named textures, world sprites and HUD overlays.
+    this._images = new Map([['yassin', YASSIN_IMAGE]]); // one built-in celebrity
+    this._sprites = [];        // THREE.Sprite billboards added by mods
+    this._hudEls = [];         // DOM <img> overlays added by mods
   }
 
   /* ------------------------------ storage -------------------------------- */
@@ -127,6 +149,31 @@ export class ModLoader {
       onBreak: (fn) => this._breakHandlers.push({ modName, fn }),
       onPlace: (fn) => this._placeHandlers.push({ modName, fn }),
 
+      // --- images: register once, then paste into the world or the screen ---
+      image: safe((name, src) => { this._images.set(name, src); }),
+      billboard: safe((name, x, y, z, size = 2) => {
+        const src = this._images.get(name) || name; // registered name or direct URL/data URI
+        const tex = new THREE.TextureLoader().load(src);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+        sp.position.set(x, y, z);
+        sp.scale.set(size, size, 1);
+        g.scene.add(sp);
+        this._sprites.push(sp);
+        return sp;
+      }),
+      hudImage: safe((name, xPct = 50, yPct = 20, widthPx = 96) => {
+        const src = this._images.get(name) || name;
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = `position:fixed;left:${xPct}%;top:${yPct}%;` +
+          `transform:translate(-50%,-50%);width:${widthPx}px;image-rendering:pixelated;` +
+          'z-index:55;pointer-events:none;border-radius:8px;';
+        document.body.appendChild(img);
+        this._hudEls.push(img);
+        return img;
+      }),
+
       // --- helpers ---
       random: (min, max) => min + Math.random() * (max - min)
     };
@@ -144,12 +191,26 @@ export class ModLoader {
     // Reset the knobs mods commonly turn, so disabling a mod undoes it.
     this.game.physics.statusJump = 1;
     this.game.physics.speedMultiplier = 1;
+    // Tear down mod visuals (billboards + HUD overlays).
+    for (const sp of this._sprites) {
+      this.game.scene.remove(sp);
+      sp.material?.map?.dispose?.();
+      sp.material?.dispose?.();
+    }
+    this._sprites = [];
+    for (const el of this._hudEls) el.remove();
+    this._hudEls = [];
 
     for (const mod of ModLoader.load()) {
       if (!mod.enabled) continue;
       try {
-        const fn = new Function('api', mod.code);
-        fn(this._buildApi(mod.name));
+        // JN is the house language; legacy/advanced mods can opt into raw JS.
+        if ((mod.lang || 'js') === 'jn') {
+          runJN(mod.code, this._buildApi(mod.name));
+        } else {
+          const fn = new Function('api', mod.code);
+          fn(this._buildApi(mod.name));
+        }
         this.running.push(mod.name);
       } catch (err) {
         this.game.chat?.error(`[mod:${mod.name}] failed to load: ${err.message}`);

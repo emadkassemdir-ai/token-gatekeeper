@@ -1,8 +1,8 @@
 /**
  * ModsMenu
  * --------
- * The player-facing mod manager (toggle with 'J' or the MODS button): paste a
- * few lines of JavaScript, name it, add it — and it runs in the live game.
+ * The player-facing mod manager (toggle with J or the MODS button). The house
+ * language is JN (.jn): paste a few lines, name it, add it — it runs live.
  * Ships with one-click example mods (Taco Rain!) and an API cheat-sheet.
  * Storage + execution live in state/ModLoader.js.
  */
@@ -30,16 +30,20 @@ export class ModsMenu {
     root.id = 'mods';
     root.innerHTML = `
       <div class="mods-panel">
-        <div class="mods-head"><span>🧩 MODS</span><button id="mods-close" class="mods-close">✕</button></div>
+        <div class="mods-head"><span>🧩 MODS <small style="opacity:.6;font-size:11px">powered by JN</small></span><button id="mods-close" class="mods-close">✕</button></div>
         <div class="mods-body">
           <div id="mods-list" class="mods-list"></div>
 
-          <p class="mods-step">Add a mod — paste code, name it, hit ADD:</p>
+          <p class="mods-step">Add a mod — write JN (our language: easy like Lua, strong like JS), name it, hit ADD:</p>
           <input id="mod-name" class="mods-input" placeholder="Mod name (e.g. Taco Rain)" />
           <textarea id="mod-code" class="mods-code" spellcheck="false"
-            placeholder="// JavaScript with the api object, e.g.&#10;api.every(0.5, () => {&#10;  const p = api.player();&#10;  api.dropItem('taco', 1, { x: p.x, y: p.y + 14, z: p.z });&#10;});"></textarea>
+            placeholder="-- JN: no declarations, game words built in&#10;chat(&quot;hello world!&quot;)&#10;every 0.5 do&#10;  drop(&quot;taco&quot;, 1, player.x, player.y + 14, player.z)&#10;end"></textarea>
           <div class="mods-row">
             <button id="mod-add" class="mods-btn">＋ ADD MOD</button>
+            <select id="mod-lang" class="mods-select" style="max-width:110px">
+              <option value="jn">JN (.jn)</option>
+              <option value="js">JavaScript</option>
+            </select>
             <select id="mod-example" class="mods-select">
               <option value="">Load an example…</option>
               ${EXAMPLE_MODS.map((m, i) => `<option value="${i}">${m.name}</option>`).join('')}
@@ -47,18 +51,28 @@ export class ModsMenu {
           </div>
           <button id="mods-apply" class="mods-btn apply">▶ APPLY &amp; RUN MODS</button>
 
-          <details class="mods-api"><summary>📖 Mod API cheat-sheet</summary>
-            <pre>api.player() → {x,y,z}         api.tp(x,y,z)
-api.getBlock(x,y,z)            api.setBlock(x,y,z,id)
-api.groundAt(x,z)              api.give('diamond', 5)
-api.dropItem('taco',1,{x,y,z}) api.spawnMob('zombie', x, z)
-api.heal() api.hurt(n) api.feed()
-api.effect('speed', 30)        api.jumpBoost(2) api.speed(1.5)
-api.chat('hello')              api.command('/time night')
-api.time(0.75)                 api.killAllMobs()
-api.onTick(fn) api.every(seconds, fn)
-api.onBreak((x,y,z,id)=>…)     api.onPlace((x,y,z,id)=>…)
-api.random(min, max)</pre>
+          <details class="mods-api"><summary>📖 JN language cheat-sheet</summary>
+            <pre>-- comments        x = 5 (no let/var — variables just exist)
+if x > 3 then … elseif … else … end
+while cond do … end        for i = 1, 10 do … end
+fn name(a, b) … end        "text " .. x   and or not  ~=  nil
+
+EVENTS   every 0.5 do … end     on tick do … end
+         on break do … end      on place do … end
+
+GAME     player.x/.y/.z   chat("hi")   give("diamond", 5)
+         drop("taco", 1, x, y, z)      spawn("zombie", x, z)
+         setblock(x,y,z,id) getblock(x,y,z) ground(x,z)
+         tp(x,y,z) heal() hurt(n) feed() effect("speed", 30)
+         jumpboost(2) speed(1.5) time(0.75) random(a, b)
+         command("/give diamond 5")    killallmobs()
+
+IMAGES   image("cat", "https://…png or data:…")
+         billboard("cat", x, y, z, size)  -- floats in the world
+         hud("cat", 50, 20, 120)          -- on screen (x%, y%, px)
+         built-in image: "yassin" 👁
+
+(JavaScript mods get the same powers via the api object.)</pre>
           </details>
         </div>
         <div id="mods-status" class="mods-status">Mods run on your machine only (and sync nothing).</div>
@@ -74,6 +88,7 @@ api.random(min, max)</pre>
       if (!ex) return;
       root.querySelector('#mod-name').value = ex.name;
       root.querySelector('#mod-code').value = ex.code;
+      root.querySelector('#mod-lang').value = ex.lang || 'jn';
       e.target.value = '';
     });
 
@@ -82,7 +97,8 @@ api.random(min, max)</pre>
       const code = root.querySelector('#mod-code').value;
       if (!code.trim()) return this._status('Paste some mod code first.');
       const mods = ModLoader.load();
-      mods.push({ id: 'm' + Date.now().toString(36), name, code, enabled: true });
+      const lang = root.querySelector('#mod-lang').value || 'jn';
+      mods.push({ id: 'm' + Date.now().toString(36), name, code, lang, enabled: true });
       ModLoader.save(mods);
       root.querySelector('#mod-name').value = '';
       root.querySelector('#mod-code').value = '';
@@ -111,7 +127,8 @@ api.random(min, max)</pre>
     for (const mod of mods) {
       const row = document.createElement('div');
       row.className = 'mods-mod' + (mod.enabled ? '' : ' off');
-      row.innerHTML = `<span class="mods-mname">${this._escape(mod.name)}</span>`;
+      row.innerHTML = `<span class="mods-mname">${this._escape(mod.name)}</span>` +
+        `<span class="mods-lang">${(mod.lang || 'js').toUpperCase()}</span>`;
       const toggle = document.createElement('button');
       toggle.className = 'mods-mini';
       toggle.textContent = mod.enabled ? 'ON' : 'OFF';
@@ -184,6 +201,8 @@ api.random(min, max)</pre>
         background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; }
       .mods-mod.off { opacity: 0.55; }
       .mods-mname { flex: 1; color: #fff; font-weight: 700; font-size: 13px; }
+      .mods-lang { font-size: 10px; font-weight: 800; color: #0a0a14; background: #c8b8f0;
+        padding: 2px 6px; border-radius: 4px; letter-spacing: 1px; }
       .mods-mini { padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700;
         background: #7c5cd6; color: #fff; font-size: 11px; }
       .mods-mini.del { background: #5a4470; }
